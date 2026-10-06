@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Droid Sentence Miner</string>
+    <string name="overlay_channel_name">Floating overlay</string>
+    <string name="overlay_channel_description">Keeps the floating OCR bubble alive</string>
+    <string name="ov_service_title">Droid Sentence Miner is running</string>
+    <string name="ov_service_text">Tap the bubble to scan text from the screen</string>
+    <string name="ov_action_scan">Scan region</string>
+    <string name="ov_action_full">Scan full screen</string>
+    <string name="ov_action_hide">Hide bubble</string>
+    <string name="ov_action_stop">Stop overlay</string>
+    <string name="ov_scanning">Scanning…</string>
+    <string name="ov_capture_hint">Drag the box over the Japanese text, then tap Scan</string>
+    <string name="ov_add_anki">Add to Anki</string>
+    <string name="ov_loaded">Added to Anki</string>
+    <string name="process_text_label">Droid Sentence Miner lookup</string>
+</resources>

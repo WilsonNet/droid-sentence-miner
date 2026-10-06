@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  AnkiConnect runs as a plain HTTP JSON endpoint, typically on 127.0.0.1, 10.0.2.2
+  (emulator host) or a private LAN/Tailscale address such as 192.168.x.x.
+  CIDR ranges cannot be expressed here, so cleartext is permitted for this
+  user-configured convenience API only. No other network traffic is affected.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>
