@@ -83,6 +83,37 @@ class OcrPostProcessorTest {
     }
 
     @Test
+    fun `keeps japanese lines that embed latin words like NG`() {
+        val lines = listOf(
+            line("彼はNGを出した", 100, 500, 600, 550),
+            line("HP 1200 MP 340", 100, 100, 400, 140),
+        )
+        val merged = OcrPostProcessor.merge(lines)
+        assertEquals(1, merged.size)
+        assertEquals("彼はNGを出した", merged.first().text)
+    }
+
+    @Test
+    fun `latin inside a sentence survives normalization`() {
+        assertEquals("ナルトはNGワードを言った", OcrPostProcessor.normalize("ナルトは NG ワードを言った"))
+    }
+
+    @Test
+    fun `standalone short latin line is treated as ui noise`() {
+        val lines = listOf(
+            line("こんにちは", 100, 700, 400, 750),
+            line("NG", 100, 100, 200, 140),
+        )
+        val merged = OcrPostProcessor.merge(lines)
+        assertEquals(1, merged.size)
+        assertEquals("こんにちは", merged.first().text)
+
+        // ...but is kept when the noise filter is disabled.
+        val unfiltered = OcrPostProcessor.merge(lines, dropNoise = false)
+        assertEquals(2, unfiltered.size)
+    }
+
+    @Test
     fun `dropNoise false keeps non japanese lines`() {
         val lines = listOf(
             line("こんにちは", 100, 500, 400, 550),
