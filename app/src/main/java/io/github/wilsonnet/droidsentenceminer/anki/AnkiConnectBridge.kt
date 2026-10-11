@@ -123,14 +123,19 @@ class AnkiConnectBridge(
             storeMedia(card.audioName ?: "dsm_audio.mp3", bytes)?.let { "[sound:$it]" }
         }
 
+        val valueMap = mapOf(
+            CardFields.EXPRESSION to card.expression,
+            CardFields.READING to card.reading,
+            CardFields.MEANING to card.meaningHtml,
+            CardFields.SENTENCE to card.sentenceHtml,
+            CardFields.IMAGE to (imageField ?: ""),
+            CardFields.AUDIO to (audioField ?: ""),
+            CardFields.SOURCE to (card.sourceTitle ?: ""),
+        )
+        val modelFields = modelFieldNames(model) ?: CardFields.ORDER
+        val mappedFields = AnkiFieldMapper.mapToNamedFields(modelFields, valueMap)
         val fields = buildJsonObject {
-            put(CardFields.EXPRESSION, card.expression)
-            put(CardFields.READING, card.reading)
-            put(CardFields.MEANING, card.meaningHtml)
-            put(CardFields.SENTENCE, card.sentenceHtml)
-            put(CardFields.IMAGE, imageField ?: "")
-            put(CardFields.AUDIO, audioField ?: "")
-            put(CardFields.SOURCE, card.sourceTitle ?: "")
+            mappedFields.forEach { (name, value) -> put(name, value) }
         }
 
         val params = buildJsonObject {
@@ -179,6 +184,16 @@ class AnkiConnectBridge(
             is AnkiResult.Success -> AnkiResult.Success(response.value.jsonArray.isNotEmpty())
             is AnkiResult.Error -> response
             AnkiResult.NotAvailable -> AnkiResult.NotAvailable
+        }
+    }
+
+    private suspend fun modelFieldNames(model: String): List<String>? {
+        val params = buildJsonObject { put("modelName", model) }
+        return when (val response = invoke("modelFieldNames", params)) {
+            is AnkiResult.Success -> response.value.jsonArray
+                .mapNotNull { it.jsonPrimitive.contentOrNull }
+                .takeIf { it.isNotEmpty() }
+            else -> null
         }
     }
 

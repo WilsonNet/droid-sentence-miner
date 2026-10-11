@@ -111,7 +111,7 @@ class AnkiDroidBridge(private val context: Context) : AnkiBridge {
                 CardFields.SOURCE to (card.sourceTitle ?: ""),
             )
             val fieldNames = api.getFieldList(modelId)?.toList() ?: CardFields.ORDER
-            val fields = mapFields(fieldNames, values)
+            val fields = AnkiFieldMapper.mapToArray(fieldNames, values)
             val tags = card.tags.toSet()
 
             if (api.findDuplicateNotes(modelId, card.expression).isNotEmpty()) {
@@ -133,7 +133,7 @@ class AnkiDroidBridge(private val context: Context) : AnkiBridge {
                 val basicId = api.modelList.orEmpty().entries
                     .firstOrNull { it.value == BASIC_MODEL }?.key
                 if (basicId != null && basicId != modelId) {
-                    val basicFields = mapFields(
+                    val basicFields = AnkiFieldMapper.mapToArray(
                         api.getFieldList(basicId)?.toList() ?: listOf("Front", "Back"),
                         values,
                     )
@@ -168,41 +168,6 @@ class AnkiDroidBridge(private val context: Context) : AnkiBridge {
     }
 
     private fun ankiModelName(): String = io.github.wilsonnet.droidsentenceminer.core.DsmPrefs.DEFAULT_MODEL
-
-    /**
-     * Maps card content onto the target note type.
-     *
-     * - A note type created by Droid Sentence Miner has all our fields, so names match.
-     * - Two-field note types (Front/Back, such as AnkiDroid's Basic) get a compact layout.
-     * - Anything else falls back to positional mapping of our canonical field order.
-     */
-    internal fun mapFields(fieldNames: List<String>, values: Map<String, String>): Array<String> {
-        val hasNamedField = fieldNames.any { it in values }
-        if (hasNamedField) {
-            return fieldNames.map { values[it] ?: "" }.toTypedArray()
-        }
-        if (fieldNames.size == 2) {
-            val front = buildString {
-                append("<div class=\"expression\"><b>").append(values[CardFields.EXPRESSION]).append("</b></div>")
-                values[CardFields.READING]?.takeIf { it.isNotBlank() }?.let {
-                    append("<div class=\"reading\">").append(it).append("</div>")
-                }
-                values[CardFields.SENTENCE]?.takeIf { it.isNotBlank() }?.let {
-                    append("<div class=\"sentence\">").append(it).append("</div>")
-                }
-            }
-            val back = buildString {
-                values[CardFields.MEANING]?.takeIf { it.isNotBlank() }?.let { append(it).append("<hr>") }
-                values[CardFields.IMAGE]?.takeIf { it.isNotBlank() }?.let { append(it).append("<br>") }
-                values[CardFields.AUDIO]?.takeIf { it.isNotBlank() }?.let { append(it).append("<br>") }
-                values[CardFields.SOURCE]?.takeIf { it.isNotBlank() }?.let { append("<div class=\"source\">").append(it).append("</div>") }
-            }
-            return arrayOf(front, back)
-        }
-        return fieldNames.mapIndexed { index, _ ->
-            values[CardFields.ORDER.getOrNull(index)] ?: ""
-        }.toTypedArray()
-    }
 
     private fun addMedia(bytes: ByteArray, filename: String, mimeType: String): String? {
         val dir = File(context.cacheDir, "anki-media").apply { mkdirs() }
