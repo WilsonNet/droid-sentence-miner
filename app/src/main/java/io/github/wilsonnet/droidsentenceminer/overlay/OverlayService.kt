@@ -94,6 +94,7 @@ class OverlayService : Service() {
     override fun onCreate() {
         super.onCreate()
         container = AppContainer.from(this)
+        activeInstance = this
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
         audioManager = AudioCaptureManager(this)
         captureManager = ScreenCaptureManager(this).apply {
@@ -169,6 +170,7 @@ class OverlayService : Service() {
     override fun onDestroy() {
         running.value = false
         container.appScope.launch { container.prefs.setOverlayRunning(false) }
+        if (activeInstance === this) activeInstance = null
         removeBubble()
         closeCaptureOverlay()
         hidePanel()
@@ -357,49 +359,64 @@ class OverlayService : Service() {
     }
 
     private fun runScan(region: RectF) {
+        scope.launch { executeScan(region) }
+    }
+
+    internal data class ScanOutcome(
+        val text: String,
+        val elapsedMs: Long,
+        val matchCount: Int,
+        val status: String,
+    )
+
+    /** Full capture -> OCR -> lookup pipeline; updates [panelState] along the way. */
+    internal suspend fun executeScan(region: RectF): ScanOutcome {
         panelState.scanning = true
         panelState.status = null
         panelState.selectedWord = null
         panelState.selectedDetails = null
         panelState.definitionsHtml = null
 
-        scope.launch {
-            val frame = captureManager.grabFrame()
-            if (frame == null) {
-                panelState.scanning = false
-                panelState.status = "Could not capture the screen. Try again."
-                return@launch
-            }
-            val frac = ScreenCaptureManager.RectFrac(region.left, region.top, region.right, region.bottom)
-            val cropped = captureManager.cropToRegion(frame, frac)
-            lastCapture = cropped
-
-            val result = try {
-                val twoPass = container.prefs.ocrTwoPass.first()
-                val dropNoise = container.prefs.ocrDropNoise.first()
-                ocrEngine(twoPass, dropNoise).recognize(cropped)
-            } catch (e: Exception) {
-                panelState.scanning = false
-                panelState.status = "OCR failed: ${e.message}"
-                return@launch
-            }
-
-            val text = result.text.trim()
-            if (text.isBlank() || JapaneseTextScore.score(text) < 1.0) {
-                panelState.scanning = false
-                panelState.status = "No Japanese text found (${result.elapsedMs} ms)"
-                return@launch
-            }
-
-            val matches = container.lookup.scan(text)
-            panelState.ocrText = text
-            panelState.matches = matches
+        val frame = captureManager.grabFrame()
+        if (frame == null) {
             panelState.scanning = false
-            panelState.audioSegment = if (audioManager.isRunning) audioManager.latestSegment() else null
-            val audioNote = panelState.audioSegment?.let { " · audio ${it.durationMs / 1000}s" }.orEmpty()
-            panelState.status = "OCR ${result.elapsedMs} ms · ${matches.size} words found$audioNote"
-            container.prefs.setLastScanText(text)
+            val status = "Could not capture the screen. Try again."
+            panelState.status = status
+            return ScanOutcome("", 0L, 0, status)
         }
+        val frac = ScreenCaptureManager.RectFrac(region.left, region.top, region.right, region.bottom)
+        val cropped = captureManager.cropToRegion(frame, frac)
+        lastCapture = cropped
+
+        val result = try {
+            val twoPass = container.prefs.ocrTwoPass.first()
+            val dropNoise = container.prefs.ocrDropNoise.first()
+            ocrEngine(twoPass, dropNoise).recognize(cropped)
+        } catch (e: Exception) {
+            panelState.scanning = false
+            val status = "OCR failed: ${e.message}"
+            panelState.status = status
+            return ScanOutcome("", 0L, 0, status)
+        }
+
+        val text = result.text.trim()
+        if (text.isBlank() || JapaneseTextScore.score(text) < 1.0) {
+            panelState.scanning = false
+            val status = "No Japanese text found (${result.elapsedMs} ms)"
+            panelState.status = status
+            return ScanOutcome(text, result.elapsedMs, 0, status)
+        }
+
+        val matches = container.lookup.scan(text)
+        panelState.ocrText = text
+        panelState.matches = matches
+        panelState.scanning = false
+        panelState.audioSegment = if (audioManager.isRunning) audioManager.latestSegment() else null
+        val audioNote = panelState.audioSegment?.let { " · audio ${it.durationMs / 1000}s" }.orEmpty()
+        val status = "OCR ${result.elapsedMs} ms · ${matches.size} words found$audioNote"
+        panelState.status = status
+        container.prefs.setLastScanText(text)
+        return ScanOutcome(text, result.elapsedMs, matches.size, status)
     }
 
     private fun retryWithSameRegion() {
@@ -630,7 +647,22 @@ class OverlayService : Service() {
         stopSelf()
     }
 
+    // --------------------------------------------------- test/debug accessors
+
+    internal val debugPanelState: OverlayPanelState get() = panelState
+    internal val debugContainer: AppContainer get() = container
+    internal val debugCaptureManager: ScreenCaptureManager get() = captureManager
+
+    /** Kicks off a scan (requesting projection consent when needed). */
+    internal fun debugRequestScan(region: RectF) {
+        android.os.Handler(mainLooper).post { performScan(region) }
+    }
+
     companion object {
+        @Volatile
+        internal var activeInstance: OverlayService? = null
+            private set
+
         const val ACTION_START = "io.github.wilsonnet.droidsentenceminer.action.START"
         const val ACTION_STOP = "io.github.wilsonnet.droidsentenceminer.action.STOP"
         const val ACTION_SCAN_REGION = "io.github.wilsonnet.droidsentenceminer.action.SCAN_REGION"

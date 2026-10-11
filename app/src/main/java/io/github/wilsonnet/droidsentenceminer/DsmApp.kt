@@ -25,6 +25,12 @@ class DsmApp : Application() {
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)
+        // Debug builds only: boot the loopback text API (see DebugApi in src/debug).
+        runCatching {
+            val apiClass = Class.forName("io.github.wilsonnet.droidsentenceminer.debug.DebugApi")
+            val api = apiClass.getField("INSTANCE").get(null)
+            apiClass.getMethod("boot", Application::class.java).invoke(api, this)
+        }
     }
 }
 

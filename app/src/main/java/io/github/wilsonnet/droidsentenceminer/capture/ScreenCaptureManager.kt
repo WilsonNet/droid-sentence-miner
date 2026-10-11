@@ -45,6 +45,9 @@ class ScreenCaptureManager(private val context: Context) {
     private var heldImage: Image? = null
 
     @Volatile
+    private var lastFrameBitmap: Bitmap? = null
+
+    @Volatile
     private var lastFrameAt: Long = 0L
 
     var isReady: Boolean = false
@@ -140,6 +143,7 @@ class ScreenCaptureManager(private val context: Context) {
         synchronized(this) {
             runCatching { heldImage?.close() }
             heldImage = null
+            lastFrameBitmap = null
         }
         runCatching { projection?.stop() }
         projection = null
@@ -151,8 +155,10 @@ class ScreenCaptureManager(private val context: Context) {
     /** Grabs the most recent frame, waiting briefly for a fresh one if needed. */
     suspend fun grabFrame(timeoutMs: Long = 2000L, maxAgeMs: Long = 350L): Bitmap? {
         if (!isReady) return null
+        // With a cached frame available, don't stall scans on static screens.
+        val effectiveTimeout = if (lastFrameBitmap != null) minOf(timeoutMs, 800L) else timeoutMs
         val start = SystemClock.elapsedRealtime()
-        while (SystemClock.elapsedRealtime() - start < timeoutMs) {
+        while (SystemClock.elapsedRealtime() - start < effectiveTimeout) {
             val fresh = lastFrameAt > 0 && SystemClock.elapsedRealtime() - lastFrameAt <= maxAgeMs
             if (fresh) {
                 val bitmap = synchronized(this) {
@@ -163,19 +169,23 @@ class ScreenCaptureManager(private val context: Context) {
                         bmp
                     }
                 }
-                if (bitmap != null) return bitmap
+                if (bitmap != null) {
+                    lastFrameBitmap = bitmap
+                    return bitmap
+                }
             }
             delay(32)
         }
-        // Fall back to the latest available frame even if slightly stale.
-        return synchronized(this) {
+        // A static screen produces no new buffers, so fall back to the last frame we saw.
+        synchronized(this) {
             heldImage?.let { img ->
                 val bmp = img.toBitmapSafe()
                 img.close()
                 heldImage = null
-                bmp
+                lastFrameBitmap = bmp
             }
         }
+        return lastFrameBitmap
     }
 
     fun cropToRegion(frame: Bitmap, region: RectFrac): Bitmap {
