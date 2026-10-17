@@ -74,6 +74,8 @@ data class OverlayCallbacks(
     val onEditAudio: () -> Unit = {},
     val onAudioApplied: (AudioSegment) -> Unit = {},
     val onAudioSkipped: () -> Unit = {},
+    val onToggleAutoOcr: () -> Unit = {},
+    val onLatestLine: () -> Unit = {},
 )
 
 @Composable
@@ -95,7 +97,7 @@ fun OverlayPanel(
             Column(Modifier.padding(16.dp)) {
                 Header(state, callbacks)
                 when (state.mode) {
-                    PanelMode.MENU -> MenuContent(callbacks)
+                    PanelMode.MENU -> MenuContent(state, callbacks)
                     PanelMode.RESULT -> ResultContent(state, dark, callbacks)
                 }
                 state.status?.let { status ->
@@ -147,9 +149,21 @@ private fun Header(state: OverlayPanelState, callbacks: OverlayCallbacks) {
 }
 
 @Composable
-private fun MenuContent(callbacks: OverlayCallbacks) {
+private fun MenuContent(state: OverlayPanelState, callbacks: OverlayCallbacks) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Spacer(Modifier.height(4.dp))
+        FilledTonalButton(
+            onClick = callbacks.onToggleAutoOcr,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(if (state.autoOcrRunning) "Stop auto OCR" else "Start auto OCR (saved region)")
+        }
+        FilledTonalButton(
+            onClick = callbacks.onLatestLine,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text("Mine the latest line")
+        }
         FilledTonalButton(
             onClick = callbacks.onScanRegion,
             modifier = Modifier.fillMaxWidth(),
@@ -322,7 +336,8 @@ fun ClickableJapaneseText(
         Text("(no text found)", style = MaterialTheme.typography.bodyMedium)
         return
     }
-    val annotated: AnnotatedString = remember(text, matches) {
+    val linkColor = MaterialTheme.colorScheme.primary
+    val annotated: AnnotatedString = remember(text, matches, linkColor) {
         buildAnnotatedString {
             var cursor = 0
             val sorted = matches.sortedBy { it.start }
@@ -330,7 +345,7 @@ fun ClickableJapaneseText(
                 if (match.start > cursor) append(text.substring(cursor, match.start))
                 pushStyle(
                     SpanStyle(
-                        color = ComposeColor(0xFF0E7A5F),
+                        color = linkColor,
                         textDecoration = TextDecoration.Underline,
                         fontWeight = FontWeight.Medium,
                     ),

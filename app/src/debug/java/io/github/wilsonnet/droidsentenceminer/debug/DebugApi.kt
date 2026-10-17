@@ -135,6 +135,26 @@ object DebugApi {
                 respondJson(socket, JSONObject().put("ok", true).put("action", "stop"))
             }
             "/request_projection" -> respondApi(socket) { requestProjection(params) }
+            "/autoocr" -> respondApi(socket) { autoOcr(params) }
+            "/lines" -> respondApi(socket) { lines(params) }
+            "/clip.wav" -> {
+                val wav = clipWav(params)
+                if (wav == null) respondText(socket, 404, "no audio for line")
+                else respondBytes(socket, "audio/wav", wav)
+            }
+            "/line_shot.jpg" -> {
+                val id = params["id"]?.toLongOrNull()
+                val path = id?.let { runBlocking { AppContainer.from(app).textLog.get(it) }?.screenshotPath }
+                if (path == null || !File(path).exists()) respondText(socket, 404, "no screenshot")
+                else respondBytes(socket, "image/jpeg", File(path).readBytes())
+            }
+            "/mine_line" -> respondApi(socket) { mineLine(params) }
+            "/add_line" -> respondApi(socket) { addLine(params) }
+            "/clear_lines" -> respondApi(socket) {
+                runBlocking { AppContainer.from(app).textLog.clear() }
+                JSONObject().put("ok", true)
+            }
+            "/set_region" -> respondApi(socket) { setRegion(params) }
             else -> respondText(socket, 404, "unknown endpoint: $pathOnly")
         }
     }
@@ -166,7 +186,27 @@ object DebugApi {
             json.put("lastScanText", container.prefs.lastScanText.first())
             json.put("twoPass", container.prefs.ocrTwoPass.first())
             json.put("dropNoise", container.prefs.ocrDropNoise.first())
+            json.put("audioEnabled", container.prefs.audioEnabled.first())
         }
+        val auto = OverlayService.observeAutoOcr().value
+        json.put(
+            "autoOcr",
+            JSONObject()
+                .put("running", auto.running)
+                .put("reads", auto.reads)
+                .put("lines", auto.lines)
+                .put("lastRead", auto.lastRead)
+                .put("error", auto.error),
+        )
+        val buffer = container.textLog.audioBuffer
+        json.put(
+            "audioBuffer",
+            JSONObject()
+                .put("capturing", service?.debugAudioRunning == true)
+                .put("bufferedMs", buffer.bufferedMs)
+                .put("capacitySeconds", buffer.capacitySeconds)
+                .put("newestAgeMs", buffer.newestMs?.let { System.currentTimeMillis() - it }),
+        )
         service?.debugPanelState?.let { panel ->
             json.put(
                 "panel",
@@ -219,8 +259,14 @@ object DebugApi {
 
     private fun ocrFile(params: Map<String, String>): JSONObject {
         val path = params["file"] ?: return errorJson("missing 'file' parameter")
-        val bitmap = BitmapFactory.decodeFile(path)
+        val decoded = BitmapFactory.decodeFile(path)
             ?: return errorJson("could not decode $path")
+        // Optional l,t,r,b fractions crop the image first (e.g. a stored line screenshot).
+        val bitmap = regionParam(params)?.let { r ->
+            val left = (r.left * decoded.width).toInt()
+            val top = (r.top * decoded.height).toInt()
+            Bitmap.createBitmap(decoded, left, top, (r.right * decoded.width).toInt() - left, (r.bottom * decoded.height).toInt() - top)
+        } ?: decoded
         return ocrBitmap(bitmap, params)
     }
 
@@ -393,6 +439,96 @@ object DebugApi {
     }
 
     // ------------------------------------------------------------- helpers
+
+    private fun autoOcr(params: Map<String, String>): JSONObject {
+        when (params["on"]) {
+            "1", "true" -> {
+                app.startActivity(Intent(app, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                pool.execute {
+                    Thread.sleep(800)
+                    runCatching { OverlayService.startAutoOcr(app) }
+                }
+            }
+            "0", "false" -> OverlayService.stopAutoOcr(app)
+        }
+        return JSONObject().put("ok", true).put("running", OverlayService.observeAutoOcr().value.running)
+    }
+
+    private fun lines(params: Map<String, String>): JSONObject {
+        val container = AppContainer.from(app)
+        val limit = params["limit"]?.toIntOrNull() ?: 50
+        val out = JSONArray()
+        runBlocking {
+            for (line in container.textLog.dao.recent(limit)) {
+                val bounds = container.textLog.clipBounds(line)
+                out.put(
+                    JSONObject()
+                        .put("id", line.id)
+                        .put("text", line.text)
+                        .put("startMs", line.startMs)
+                        .put("endMs", line.endMs)
+                        .put("source", line.source)
+                        .put("screenshot", line.screenshotPath)
+                        .put("mined", line.minedCount)
+                        .put("clip", JSONArray(listOf(bounds.startMs, bounds.endMs)))
+                        .put("hasAudio", container.textLog.audioBuffer.covers(bounds.startMs, bounds.endMs)),
+                )
+            }
+        }
+        return JSONObject().put("ok", true).put("lines", out)
+    }
+
+    private fun clipWav(params: Map<String, String>): ByteArray? {
+        val container = AppContainer.from(app)
+        val id = params["id"]?.toLongOrNull() ?: return null
+        return runBlocking {
+            val line = container.textLog.get(id) ?: return@runBlocking null
+            val trim = params["trim"]?.let { it == "1" || it == "true" }
+            container.textLog.clip(line, trim)?.segment?.let {
+                io.github.wilsonnet.droidsentenceminer.audio.WavEncoder.encode(it)
+            }
+        }
+    }
+
+    private fun mineLine(params: Map<String, String>): JSONObject {
+        val container = AppContainer.from(app)
+        val id = params["id"]?.toLongOrNull() ?: return errorJson("missing 'id' parameter")
+        val word = params["word"] ?: return errorJson("missing 'word' parameter")
+        val result = runBlocking {
+            val line = container.textLog.get(id) ?: return@runBlocking null
+            container.miner.mineLine(line, word, container.lookup.lookup(word))
+        } ?: return errorJson("no line $id")
+        return when (result) {
+            is AnkiResult.Success -> JSONObject().put("ok", true)
+            is AnkiResult.Error -> JSONObject().put("ok", false).put("error", result.message)
+            AnkiResult.NotAvailable -> JSONObject().put("ok", false).put("error", "anki not available")
+        }
+    }
+
+    /** Logs a synthetic line [ago] ms in the past lasting [dur] ms — exercises clip/mining without OCR. */
+    private fun addLine(params: Map<String, String>): JSONObject {
+        val text = params["text"] ?: return errorJson("missing 'text' parameter")
+        val ago = params["ago"]?.toLongOrNull() ?: 4_000L
+        val dur = params["dur"]?.toLongOrNull() ?: 3_000L
+        val start = System.currentTimeMillis() - ago
+        val log = AppContainer.from(app).textLog
+        val id = runBlocking {
+            log.startLine(text, start, io.github.wilsonnet.droidsentenceminer.textlog.TextLineEntity.SOURCE_AUTO, null)
+                .also { log.endLine(it, start + dur) }
+        }
+        return JSONObject().put("ok", true).put("id", id)
+    }
+
+    private fun setRegion(params: Map<String, String>): JSONObject {
+        val region = regionParam(params) ?: return errorJson("need l,t,r,b")
+        runBlocking {
+            AppContainer.from(app).prefs.setCaptureRegion(
+                io.github.wilsonnet.droidsentenceminer.core.DsmPrefs.CaptureRegion(region.left, region.top, region.right, region.bottom),
+            )
+        }
+        OverlayService.activeInstance?.debugSetRegion(region)
+        return JSONObject().put("ok", true)
+    }
 
     private fun regionParam(params: Map<String, String>): RectF? {
         val nos = listOf("l", "t", "r", "b").map { params[it] } 

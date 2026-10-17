@@ -24,8 +24,13 @@ class OverlayPanelState {
     var canUndo by mutableStateOf(false)
     var imagePreview by mutableStateOf<Bitmap?>(null)
 
+    /** Text-log line the panel is showing; mining attaches its screenshot and voice clip. */
+    var lineId by mutableStateOf<Long?>(null)
+    var autoOcrRunning by mutableStateOf(false)
+
     // Audio (GSM-style sentence audio)
     var audioSegment by mutableStateOf<AudioSegment?>(null)
+    var audioSkipped by mutableStateOf(false)
     var audioEditorVisible by mutableStateOf(false)
     var audioReady by mutableStateOf(false)
 }

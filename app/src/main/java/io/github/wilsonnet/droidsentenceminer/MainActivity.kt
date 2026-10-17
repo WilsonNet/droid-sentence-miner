@@ -10,6 +10,7 @@ import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Style
+import androidx.compose.material.icons.filled.Subject
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -25,6 +26,7 @@ import io.github.wilsonnet.droidsentenceminer.ui.screens.AnkiScreen
 import io.github.wilsonnet.droidsentenceminer.ui.screens.DictionaryScreen
 import io.github.wilsonnet.droidsentenceminer.ui.screens.HomeScreen
 import io.github.wilsonnet.droidsentenceminer.ui.screens.SettingsScreen
+import io.github.wilsonnet.droidsentenceminer.ui.screens.TextsScreen
 import io.github.wilsonnet.droidsentenceminer.ui.theme.DsmTheme
 
 class MainActivity : ComponentActivity() {
@@ -56,18 +58,24 @@ private fun AppRoot() {
                 NavigationBarItem(
                     selected = tab == 1,
                     onClick = { tab = 1 },
-                    icon = { Icon(Icons.Default.Book, contentDescription = null) },
-                    label = { Text("Dictionaries") },
+                    icon = { Icon(Icons.Default.Subject, contentDescription = null) },
+                    label = { Text("Texts") },
                 )
                 NavigationBarItem(
                     selected = tab == 2,
                     onClick = { tab = 2 },
-                    icon = { Icon(Icons.Default.Style, contentDescription = null) },
-                    label = { Text("Anki") },
+                    icon = { Icon(Icons.Default.Book, contentDescription = null) },
+                    label = { Text("Dicts") },
                 )
                 NavigationBarItem(
                     selected = tab == 3,
                     onClick = { tab = 3 },
+                    icon = { Icon(Icons.Default.Style, contentDescription = null) },
+                    label = { Text("Anki") },
+                )
+                NavigationBarItem(
+                    selected = tab == 4,
+                    onClick = { tab = 4 },
                     icon = { Icon(Icons.Default.Settings, contentDescription = null) },
                     label = { Text("Settings") },
                 )
@@ -77,8 +85,9 @@ private fun AppRoot() {
         val modifier = Modifier.padding(padding)
         when (tab) {
             0 -> HomeScreen(modifier)
-            1 -> DictionaryScreen(modifier)
-            2 -> AnkiScreen(modifier)
+            1 -> TextsScreen(modifier)
+            2 -> DictionaryScreen(modifier)
+            3 -> AnkiScreen(modifier)
             else -> SettingsScreen(modifier)
         }
     }

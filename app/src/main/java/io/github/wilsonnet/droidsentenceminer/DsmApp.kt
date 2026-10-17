@@ -13,6 +13,8 @@ import io.github.wilsonnet.droidsentenceminer.dict.TermLookup
 import io.github.wilsonnet.droidsentenceminer.dict.YomitanImporter
 import io.github.wilsonnet.droidsentenceminer.ocr.MlKitJapaneseOcr
 import io.github.wilsonnet.droidsentenceminer.ocr.OcrEngine
+import io.github.wilsonnet.droidsentenceminer.textlog.TextLog
+import io.github.wilsonnet.droidsentenceminer.textlog.TextLogDatabase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -48,7 +50,8 @@ class AppContainer(private val context: Context) {
     val ankiDroid: AnkiDroidBridge by lazy { AnkiDroidBridge(context) }
     val ankiConnect: AnkiConnectBridge by lazy { AnkiConnectBridge(prefs) }
     val ankiClient: AnkiClient by lazy { AnkiClient(ankiDroid, ankiConnect, prefs) }
-    val miner: CardMiner by lazy { CardMiner(context, db, lookup, ankiClient, prefs) }
+    val textLog: TextLog by lazy { TextLog(context, TextLogDatabase.build(context), prefs) }
+    val miner: CardMiner by lazy { CardMiner(context, db, lookup, ankiClient, prefs, textLog) }
 
     fun ocrEngine(twoPass: Boolean): OcrEngine = MlKitJapaneseOcr(twoPass = twoPass)
 

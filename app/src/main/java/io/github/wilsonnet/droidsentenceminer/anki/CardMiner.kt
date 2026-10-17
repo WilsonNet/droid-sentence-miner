@@ -2,6 +2,7 @@ package io.github.wilsonnet.droidsentenceminer.anki
 
 import android.content.Context
 import android.graphics.Bitmap
+import io.github.wilsonnet.droidsentenceminer.audio.AudioSegment
 import io.github.wilsonnet.droidsentenceminer.audio.M4aEncoder
 import io.github.wilsonnet.droidsentenceminer.core.DsmPrefs
 import io.github.wilsonnet.droidsentenceminer.dict.DictArchive
@@ -9,6 +10,8 @@ import io.github.wilsonnet.droidsentenceminer.dict.DictDatabase
 import io.github.wilsonnet.droidsentenceminer.dict.GlossaryHtml
 import io.github.wilsonnet.droidsentenceminer.dict.GlossaryParser
 import io.github.wilsonnet.droidsentenceminer.dict.TermLookup
+import io.github.wilsonnet.droidsentenceminer.textlog.TextLineEntity
+import io.github.wilsonnet.droidsentenceminer.textlog.TextLog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
@@ -23,6 +26,7 @@ class CardMiner(
     private val lookup: TermLookup,
     private val ankiClient: AnkiClient,
     private val prefs: DsmPrefs,
+    private val textLog: TextLog,
 ) {
 
     suspend fun buildCard(
@@ -111,6 +115,34 @@ class CardMiner(
             ),
         )
         result
+    }
+
+    /**
+     * GSM's flow: mine [word] from a logged line, attaching that line's screenshot and its
+     * voice clip cut from the replay buffer. [audio] overrides the clip (e.g. after editing).
+     */
+    suspend fun mineLine(
+        line: TextLineEntity,
+        word: String,
+        details: TermLookup.LookupDetails? = null,
+        audio: AudioSegment? = null,
+        includeAudio: Boolean = true,
+    ): AnkiResult<String> {
+        val segment = when {
+            !includeAudio -> null
+            audio != null -> audio
+            prefs.audioEnabled.first() -> textLog.clip(line)?.segment
+            else -> null
+        }
+        val encoded = segment?.let {
+            withContext(Dispatchers.IO) {
+                M4aEncoder.encode(it, java.io.File(context.cacheDir, "line-${line.id}-${System.currentTimeMillis()}.m4a"))
+            }
+        }
+        val image = textLog.screenshot(line)
+        val result = mine(word, line.text, image, details, audio = encoded)
+        if (result is AnkiResult.Success) withContext(Dispatchers.IO) { textLog.dao.markMined(line.id) }
+        return result
     }
 
     /** Builds the HTML body shown in the popup WebView. */

@@ -29,6 +29,11 @@ class DsmPrefs(private val context: Context) {
         val ocrTwoPass = booleanPreferencesKey("ocr_two_pass")
         val ocrDropNoise = booleanPreferencesKey("ocr_drop_noise")
         val audioEnabled = booleanPreferencesKey("audio_enabled")
+        val audioTrim = booleanPreferencesKey("audio_trim")
+        val audioBufferSeconds = intPreferencesKey("audio_buffer_seconds")
+        val clipBeforeMs = intPreferencesKey("clip_before_ms")
+        val clipAfterMs = intPreferencesKey("clip_after_ms")
+        val autoOcrIntervalMs = intPreferencesKey("auto_ocr_interval_ms")
 
         val captureLeft = floatPreferencesKey("capture_left")
         val captureTop = floatPreferencesKey("capture_top")
@@ -52,7 +57,13 @@ class DsmPrefs(private val context: Context) {
 
     val ocrTwoPass: Flow<Boolean> = context.dataStore.data.map { it[Keys.ocrTwoPass] ?: true }
     val ocrDropNoise: Flow<Boolean> = context.dataStore.data.map { it[Keys.ocrDropNoise] ?: true }
-    val audioEnabled: Flow<Boolean> = context.dataStore.data.map { it[Keys.audioEnabled] ?: false }
+    val audioEnabled: Flow<Boolean> = context.dataStore.data.map { it[Keys.audioEnabled] ?: true }
+    // Off by default: energy VAD can't separate voice from loud BGM/ambience reliably.
+    val audioTrim: Flow<Boolean> = context.dataStore.data.map { it[Keys.audioTrim] ?: false }
+    val audioBufferSeconds: Flow<Int> = context.dataStore.data.map { it[Keys.audioBufferSeconds] ?: DEFAULT_AUDIO_BUFFER_SECONDS }
+    val clipBeforeMs: Flow<Int> = context.dataStore.data.map { it[Keys.clipBeforeMs] ?: 500 }
+    val clipAfterMs: Flow<Int> = context.dataStore.data.map { it[Keys.clipAfterMs] ?: 500 }
+    val autoOcrIntervalMs: Flow<Int> = context.dataStore.data.map { it[Keys.autoOcrIntervalMs] ?: 400 }
 
     val captureRegion: Flow<CaptureRegion> = context.dataStore.data.map {
         CaptureRegion(
@@ -83,6 +94,11 @@ class DsmPrefs(private val context: Context) {
     suspend fun setOcrTwoPass(value: Boolean) = edit { it[Keys.ocrTwoPass] = value }
     suspend fun setOcrDropNoise(value: Boolean) = edit { it[Keys.ocrDropNoise] = value }
     suspend fun setAudioEnabled(value: Boolean) = edit { it[Keys.audioEnabled] = value }
+    suspend fun setAudioTrim(value: Boolean) = edit { it[Keys.audioTrim] = value }
+    suspend fun setAudioBufferSeconds(value: Int) = edit { it[Keys.audioBufferSeconds] = value }
+    suspend fun setClipBeforeMs(value: Int) = edit { it[Keys.clipBeforeMs] = value }
+    suspend fun setClipAfterMs(value: Int) = edit { it[Keys.clipAfterMs] = value }
+    suspend fun setAutoOcrIntervalMs(value: Int) = edit { it[Keys.autoOcrIntervalMs] = value }
 
     suspend fun setCaptureRegion(region: CaptureRegion) = edit {
         it[Keys.captureLeft] = region.left
@@ -141,5 +157,6 @@ class DsmPrefs(private val context: Context) {
         const val DEFAULT_DECK = "Droid Sentence Miner"
         const val DEFAULT_MODEL = "Droid Sentence Miner"
         const val DEFAULT_TAGS = "DroidSentenceMiner"
+        const val DEFAULT_AUDIO_BUFFER_SECONDS = 300
     }
 }

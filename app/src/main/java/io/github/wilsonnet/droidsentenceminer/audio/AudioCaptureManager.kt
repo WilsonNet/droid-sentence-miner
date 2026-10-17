@@ -1,6 +1,7 @@
 package io.github.wilsonnet.droidsentenceminer.audio
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
 import android.media.AudioAttributes
@@ -16,14 +17,15 @@ import androidx.core.content.ContextCompat
  * the existing MediaProjection session — the Android equivalent of the system
  * loopback capture used by GameSentenceMiner.
  *
- * The stream is segmented by [VadSegmenter] so cards can receive the voice line
- * that was playing when the text was mined.
+ * Mono PCM goes into [buffer], the rolling replay buffer that text lines cut
+ * their voice clips from.
  */
-class AudioCaptureManager(private val context: Context) {
+class AudioCaptureManager(
+    private val context: Context,
+    private val buffer: () -> AudioRingBuffer,
+) {
 
     companion object {
-        const val SAMPLE_RATE = 44_100
-        const val CHANNELS = 2
 
         fun isSupported(): Boolean = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
 
@@ -32,11 +34,8 @@ class AudioCaptureManager(private val context: Context) {
                 PackageManager.PERMISSION_GRANTED
     }
 
-    private val lock = Any()
     private var record: AudioRecord? = null
     private var thread: Thread? = null
-    private var segmenter = VadSegmenter(SAMPLE_RATE, CHANNELS)
-
     @Volatile
     private var running = false
 
@@ -46,6 +45,8 @@ class AudioCaptureManager(private val context: Context) {
     val isRunning: Boolean get() = running
     val error: String? get() = lastError
 
+    // RECORD_AUDIO is checked via hasPermission() below; lint can't see through the helper.
+    @SuppressLint("MissingPermission")
     fun start(projection: MediaProjection): Boolean {
         if (!isSupported()) {
             lastError = "Audio capture needs Android 10 or newer"
@@ -56,6 +57,7 @@ class AudioCaptureManager(private val context: Context) {
             return false
         }
         if (running) return true
+        val sampleRate = buffer().sampleRate
 
         return try {
             val captureConfig = AudioPlaybackCaptureConfiguration.Builder(projection)
@@ -66,13 +68,13 @@ class AudioCaptureManager(private val context: Context) {
 
             val format = AudioFormat.Builder()
                 .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                .setSampleRate(SAMPLE_RATE)
-                .setChannelMask(AudioFormat.CHANNEL_IN_STEREO)
+                .setSampleRate(sampleRate)
+                .setChannelMask(AudioFormat.CHANNEL_IN_MONO)
                 .build()
 
             val minBuffer = AudioRecord.getMinBufferSize(
-                SAMPLE_RATE,
-                AudioFormat.CHANNEL_IN_STEREO,
+                sampleRate,
+                AudioFormat.CHANNEL_IN_MONO,
                 AudioFormat.ENCODING_PCM_16BIT,
             ).coerceAtLeast(8192)
 
@@ -104,26 +106,20 @@ class AudioCaptureManager(private val context: Context) {
     }
 
     private fun readLoop(recorder: AudioRecord) {
-        val buffer = ShortArray(2048 * CHANNELS)
+        val chunk = ShortArray(2048)
         while (running) {
             val read = try {
-                recorder.read(buffer, 0, buffer.size)
+                recorder.read(chunk, 0, chunk.size)
             } catch (e: Exception) {
                 -1
             }
             if (read > 0) {
-                val chunk = if (read == buffer.size) buffer.copyOf() else buffer.copyOf(read)
-                synchronized(lock) { segmenter.process(chunk) }
+                buffer().write(chunk, read, System.currentTimeMillis())
             } else if (read < 0) {
                 break
             }
         }
     }
-
-    /** Latest completed voice line, or the currently playing one when long enough. */
-    fun latestSegment(): AudioSegment? = synchronized(lock) { segmenter.latestSegment() }
-
-    fun currentSegment(): AudioSegment? = synchronized(lock) { segmenter.currentSegment() }
 
     fun stop() {
         running = false
@@ -132,6 +128,5 @@ class AudioCaptureManager(private val context: Context) {
         record = null
         thread?.join(600)
         thread = null
-        synchronized(lock) { segmenter = VadSegmenter(SAMPLE_RATE, CHANNELS) }
     }
 }

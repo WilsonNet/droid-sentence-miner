@@ -58,9 +58,12 @@ class ScreenCaptureManager(private val context: Context) {
 
     var onProjectionStopped: (() -> Unit)? = null
 
-    val screenWidth: Int
-    val screenHeight: Int
-    val densityDpi: Int
+    var screenWidth: Int
+        private set
+    var screenHeight: Int
+        private set
+    var densityDpi: Int
+        private set
 
     init {
         val metrics = screenMetrics(context)
@@ -117,14 +120,7 @@ class ScreenCaptureManager(private val context: Context) {
             null,
             h,
         )
-        reader.setOnImageAvailableListener({ r ->
-            synchronized(this) {
-                val image = r.acquireLatestImage() ?: return@setOnImageAvailableListener
-                heldImage?.close()
-                heldImage = image
-                lastFrameAt = SystemClock.elapsedRealtime()
-            }
-        }, h)
+        reader.setOnImageAvailableListener(::onImageAvailable, h)
 
         projection = newProjection
         virtualDisplay = display
@@ -132,6 +128,44 @@ class ScreenCaptureManager(private val context: Context) {
         handlerThread = thread
         handler = h
         isReady = true
+    }
+
+    /**
+     * Follows a rotation without asking for consent again: the virtual display is resized and
+     * pointed at a reader of the new size (a projection token can't create a second display).
+     * Returns false when there is nothing to resize.
+     */
+    @SuppressLint("WrongConstant")
+    fun onScreenSizeChanged(): Boolean {
+        val metrics = screenMetrics(context)
+        if (metrics.widthPixels == screenWidth && metrics.heightPixels == screenHeight) return true
+        screenWidth = metrics.widthPixels
+        screenHeight = metrics.heightPixels
+        densityDpi = metrics.densityDpi
+        val display = virtualDisplay ?: return false
+        val h = handler ?: return false
+        val reader = ImageReader.newInstance(screenWidth, screenHeight, PixelFormat.RGBA_8888, 2)
+        reader.setOnImageAvailableListener(::onImageAvailable, h)
+        val old = imageReader
+        display.resize(screenWidth, screenHeight, densityDpi)
+        display.surface = reader.surface
+        imageReader = reader
+        synchronized(this) {
+            runCatching { heldImage?.close() }
+            heldImage = null
+            lastFrameBitmap = null
+        }
+        runCatching { old?.close() }
+        return true
+    }
+
+    private fun onImageAvailable(reader: ImageReader) {
+        synchronized(this) {
+            val image = runCatching { reader.acquireLatestImage() }.getOrNull() ?: return
+            heldImage?.close()
+            heldImage = image
+            lastFrameAt = SystemClock.elapsedRealtime()
+        }
     }
 
     fun release() {
@@ -186,6 +220,25 @@ class ScreenCaptureManager(private val context: Context) {
             }
         }
         return lastFrameBitmap
+    }
+
+    data class Frame(val bitmap: Bitmap, val atMs: Long)
+
+    /**
+     * Non-blocking: the newest frame if the screen changed since the last grab/poll, else null
+     * (MediaProjection only delivers buffers on change). [Frame.atMs] is wall-clock arrival time.
+     */
+    fun pollNewFrame(): Frame? {
+        if (!isReady) return null
+        synchronized(this) {
+            val image = heldImage ?: return null
+            val bitmap = image.toBitmapSafe()
+            image.close()
+            heldImage = null
+            lastFrameBitmap = bitmap
+            val ageMs = SystemClock.elapsedRealtime() - lastFrameAt
+            return Frame(bitmap, System.currentTimeMillis() - ageMs)
+        }
     }
 
     fun cropToRegion(frame: Bitmap, region: RectFrac): Bitmap {

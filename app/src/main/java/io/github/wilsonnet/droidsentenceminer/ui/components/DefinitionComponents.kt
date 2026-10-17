@@ -80,6 +80,8 @@ fun WordLookupDialog(
     sentence: String,
     image: Bitmap?,
     onDismiss: () -> Unit,
+    /** Overrides the default mining (e.g. to attach a text-log line's audio and screenshot). */
+    onMine: (suspend (TermLookup.LookupDetails?) -> AnkiResult<String>)? = null,
 ) {
     val context = LocalContext.current
     val container = remember { AppContainer.from(context) }
@@ -152,7 +154,7 @@ fun WordLookupDialog(
                     mining = true
                     status = "Adding to Anki…"
                     scope.launch {
-                        val result = container.miner.mine(word, sentence, image, details)
+                        val result = onMine?.invoke(details) ?: container.miner.mine(word, sentence, image, details)
                         status = when (result) {
                             is AnkiResult.Success -> "Added to Anki"
                             is AnkiResult.Error -> "Anki: ${result.message}"

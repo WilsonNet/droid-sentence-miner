@@ -33,10 +33,12 @@ import io.github.wilsonnet.droidsentenceminer.PanelMode
 import io.github.wilsonnet.droidsentenceminer.R
 import io.github.wilsonnet.droidsentenceminer.anki.AnkiResult
 import io.github.wilsonnet.droidsentenceminer.audio.AudioCaptureManager
-import io.github.wilsonnet.droidsentenceminer.audio.M4aEncoder
+import io.github.wilsonnet.droidsentenceminer.audio.AudioSegment
+import io.github.wilsonnet.droidsentenceminer.capture.AutoOcrController
 import io.github.wilsonnet.droidsentenceminer.capture.ScreenCaptureManager
 import io.github.wilsonnet.droidsentenceminer.ocr.JapaneseTextScore
 import io.github.wilsonnet.droidsentenceminer.ocr.MlKitJapaneseOcr
+import io.github.wilsonnet.droidsentenceminer.textlog.TextLineEntity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -60,6 +62,7 @@ class OverlayService : Service() {
     private lateinit var windowManager: WindowManager
     private lateinit var captureManager: ScreenCaptureManager
     private lateinit var audioManager: AudioCaptureManager
+    private lateinit var autoOcr: AutoOcrController
 
     private var bubbleView: BubbleView? = null
     private var bubbleParams: WindowManager.LayoutParams? = null
@@ -75,7 +78,7 @@ class OverlayService : Service() {
     private var lastRegion = RectF(0.06f, 0.62f, 0.94f, 0.82f)
     private var lastCapture: Bitmap? = null
     private var pendingScan: RectF? = null
-    private var pendingAudio: M4aEncoder.EncodedAudio? = null
+    private var pendingAutoOcr = false
 
     private var ocrEngine: MlKitJapaneseOcr? = null
     private var ocrEngineTwoPass: Boolean? = null
@@ -96,7 +99,7 @@ class OverlayService : Service() {
         container = AppContainer.from(this)
         activeInstance = this
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-        audioManager = AudioCaptureManager(this)
+        audioManager = AudioCaptureManager(this) { container.textLog.audioBuffer }
         captureManager = ScreenCaptureManager(this).apply {
             onProjectionStopped = {
                 audioManager.stop()
@@ -106,6 +109,16 @@ class OverlayService : Service() {
                         panelState.status = "Screen capture was stopped"
                     }
                 }
+            }
+        }
+
+        autoOcr = AutoOcrController(scope, captureManager, container.textLog, container.prefs) { RectF(lastRegion) }
+        scope.launch {
+            autoOcr.status.collect {
+                val changed = panelState.autoOcrRunning != it.running
+                panelState.autoOcrRunning = it.running
+                autoOcrState.value = it
+                if (changed && running.value) startForegroundCompat(includeProjection = captureManager.isReady)
             }
         }
 
@@ -146,6 +159,13 @@ class OverlayService : Service() {
                 startForegroundCompat(includeProjection = captureManager.isReady)
                 showMenu()
             }
+            ACTION_AUTO_OCR_START -> {
+                startForegroundCompat(includeProjection = captureManager.isReady)
+                running.value = true
+                if (bubbleView == null) installBubble()
+                startAutoOcr()
+            }
+            ACTION_AUTO_OCR_STOP -> autoOcr.stop()
             ACTION_PROJECTION_RESULT -> handleProjectionResult(intent)
             null -> {
                 // Service restarted by the system; make sure we are a valid foreground service.
@@ -159,8 +179,9 @@ class OverlayService : Service() {
 
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
-        // A rotation invalidates the virtual display; ask for consent again on the next scan.
-        if (captureManager.isReady) {
+        // Games usually run in landscape: keep capturing across rotations by resizing the display.
+        if (captureManager.isReady && !captureManager.onScreenSizeChanged()) {
+            autoOcr.stop()
             audioManager.stop()
             captureManager.release()
             startForegroundCompat(includeProjection = false)
@@ -174,6 +195,7 @@ class OverlayService : Service() {
         removeBubble()
         closeCaptureOverlay()
         hidePanel()
+        autoOcr.stop()
         audioManager.stop()
         captureManager.release()
         scope.cancel()
@@ -312,9 +334,7 @@ class OverlayService : Service() {
         panelState.status = null
         if (!captureManager.isReady) {
             pendingScan = region
-            val intent = Intent(this, ProjectionPermissionActivity::class.java)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            startActivity(intent)
+            requestProjection()
             panelState.scanning = false
             panelState.status = "Waiting for screen capture permission…"
             return
@@ -327,6 +347,7 @@ class OverlayService : Service() {
         val data = intent.getParcelableExtra<Intent>(EXTRA_RESULT_DATA)
         if (resultCode != android.app.Activity.RESULT_OK || data == null) {
             pendingScan = null
+            pendingAutoOcr = false
             panelState.scanning = false
             panelState.status = "Screen capture permission denied"
             return
@@ -343,6 +364,38 @@ class OverlayService : Service() {
             pendingScan = null
             runScan(pending)
         }
+        if (pendingAutoOcr) {
+            pendingAutoOcr = false
+            autoOcr.start()
+        }
+    }
+
+    private fun requestProjection() {
+        val intent = Intent(this, ProjectionPermissionActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        startActivity(intent)
+    }
+
+    private fun startAutoOcr() {
+        if (autoOcr.isRunning) return
+        if (!captureManager.isReady) {
+            pendingAutoOcr = true
+            requestProjection()
+            return
+        }
+        // Audio may have been enabled since the projection started.
+        maybeStartAudioCapture()
+        autoOcr.start()
+    }
+
+    private fun toggleAutoOcr() {
+        if (autoOcr.isRunning) {
+            autoOcr.stop()
+            panelState.status = "Auto OCR stopped"
+        } else {
+            hidePanel()
+            startAutoOcr()
+        }
     }
 
     private fun maybeStartAudioCapture() {
@@ -350,7 +403,9 @@ class OverlayService : Service() {
             val enabled = container.prefs.audioEnabled.first()
             if (!enabled || !AudioCaptureManager.isSupported()) return@launch
             if (!AudioCaptureManager.hasPermission(this@OverlayService)) return@launch
+            if (audioManager.isRunning) return@launch
             val projection = captureManager.activeProjection ?: return@launch
+            container.textLog.ensureAudioBuffer(container.prefs.audioBufferSeconds.first())
             val started = audioManager.start(projection)
             if (!started) {
                 panelState.status = "Audio capture unavailable: ${audioManager.error.orEmpty()}"
@@ -376,6 +431,10 @@ class OverlayService : Service() {
         panelState.selectedWord = null
         panelState.selectedDetails = null
         panelState.definitionsHtml = null
+        panelState.lineId = null
+        panelState.audioSegment = null
+        panelState.audioReady = false
+        panelState.audioSkipped = false
 
         val frame = captureManager.grabFrame()
         if (frame == null) {
@@ -411,7 +470,16 @@ class OverlayService : Service() {
         panelState.ocrText = text
         panelState.matches = matches
         panelState.scanning = false
-        panelState.audioSegment = if (audioManager.isRunning) audioManager.latestSegment() else null
+        // Manual scans join the text log too, so they can be mined later with their audio.
+        val now = System.currentTimeMillis()
+        val lineId = container.textLog.startLine(text, now, TextLineEntity.SOURCE_MANUAL, frame)
+        container.textLog.endLine(lineId, now)
+        panelState.lineId = lineId
+        panelState.audioSegment = if (audioManager.isRunning) {
+            container.textLog.get(lineId)?.let { container.textLog.clip(it)?.segment }
+        } else {
+            null
+        }
         val audioNote = panelState.audioSegment?.let { " · audio ${it.durationMs / 1000}s" }.orEmpty()
         val status = "OCR ${result.elapsedMs} ms · ${matches.size} words found$audioNote"
         panelState.status = status
@@ -489,27 +557,48 @@ class OverlayService : Service() {
         onAudioSkipped = {
             panelState.audioEditorVisible = false
             panelState.audioSegment = null
-            pendingAudio = null
             panelState.audioReady = false
+            panelState.audioSkipped = true
             panelState.status = "Audio skipped"
         },
+        onToggleAutoOcr = { toggleAutoOcr() },
+        onLatestLine = { showLatestLine() },
     )
 
-    private fun applyAudio(segment: io.github.wilsonnet.droidsentenceminer.audio.AudioSegment) {
+    private fun applyAudio(segment: AudioSegment) {
         panelState.audioEditorVisible = false
-        panelState.status = "Encoding audio…"
+        panelState.audioSegment = segment
+        panelState.audioReady = true
+        panelState.audioSkipped = false
+        panelState.status = "Audio ready (${"%.1f".format(segment.durationMs / 1000.0)}s)"
+    }
+
+    /** Loads the newest logged line into the panel so it can be mined without leaving the game. */
+    private fun showLatestLine() {
+        showPanel()
+        panelState.mode = PanelMode.RESULT
+        panelState.selectedWord = null
+        panelState.selectedDetails = null
+        panelState.definitionsHtml = null
+        panelState.audioReady = false
+        panelState.audioSkipped = false
         scope.launch {
-            val encoded = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                val file = java.io.File(cacheDir, "card-audio-${System.currentTimeMillis()}.m4a")
-                M4aEncoder.encode(segment, file)
+            val line = container.textLog.latest()
+            if (line == null) {
+                panelState.ocrText = ""
+                panelState.matches = emptyList()
+                panelState.lineId = null
+                panelState.status = "No lines yet — start auto OCR or scan a region"
+                return@launch
             }
-            if (encoded != null) {
-                pendingAudio = encoded
-                panelState.audioReady = true
-                panelState.status = "Audio ready (${"%.1f".format(segment.durationMs / 1000.0)}s)"
-            } else {
-                panelState.status = "Could not encode audio"
-            }
+            panelState.ocrText = line.text
+            panelState.matches = container.lookup.scan(line.text)
+            panelState.lineId = line.id
+            lastCapture = container.textLog.screenshot(line)
+            val clip = container.textLog.clip(line)
+            panelState.audioSegment = clip?.segment
+            val audioNote = clip?.let { " · audio ${"%.1f".format(it.segment.durationMs / 1000.0)}s" } ?: " · no audio in buffer"
+            panelState.status = "Latest line$audioNote"
         }
     }
 
@@ -532,22 +621,16 @@ class OverlayService : Service() {
         val sentence = panelState.ocrText
         val details = panelState.selectedDetails
         val audioSegment = panelState.audioSegment
+        val skipped = panelState.audioSkipped
+        val lineId = panelState.lineId
         panelState.status = "Adding to Anki…"
         scope.launch {
-            val audio = pendingAudio ?: audioSegment?.let { segment ->
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                    val file = java.io.File(cacheDir, "card-audio-auto.m4a")
-                    M4aEncoder.encode(segment, file)
-                }
+            val line = lineId?.let { container.textLog.get(it) }
+            val result = if (line != null) {
+                container.miner.mineLine(line, word, details, audio = audioSegment, includeAudio = !skipped)
+            } else {
+                container.miner.mine(word = word, sentence = sentence, image = lastCapture, details = details)
             }
-            if (audio != null) pendingAudio = audio
-            val result = container.miner.mine(
-                word = word,
-                sentence = sentence,
-                image = lastCapture,
-                details = details,
-                audio = audio,
-            )
             panelState.status = when (result) {
                 is AnkiResult.Success -> "Added to Anki"
                 is AnkiResult.Error -> "Anki: ${result.message}"
@@ -621,6 +704,13 @@ class OverlayService : Service() {
             Intent(this, OverlayService::class.java).setAction(ACTION_SCAN_REGION),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
+        val autoToggle = PendingIntent.getService(
+            this,
+            3,
+            Intent(this, OverlayService::class.java)
+                .setAction(if (autoOcr.isRunning) ACTION_AUTO_OCR_STOP else ACTION_AUTO_OCR_START),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
         val stop = PendingIntent.getService(
             this,
             2,
@@ -635,6 +725,7 @@ class OverlayService : Service() {
             .setOngoing(true)
             .setSilent(true)
             .addAction(0, getString(R.string.ov_action_scan), scanRegion)
+            .addAction(0, if (autoOcr.isRunning) "Stop auto OCR" else "Auto OCR", autoToggle)
             .addAction(0, getString(R.string.ov_action_stop), stop)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()
@@ -652,6 +743,11 @@ class OverlayService : Service() {
     internal val debugPanelState: OverlayPanelState get() = panelState
     internal val debugContainer: AppContainer get() = container
     internal val debugCaptureManager: ScreenCaptureManager get() = captureManager
+    internal val debugAudioRunning: Boolean get() = audioManager.isRunning
+
+    internal fun debugSetRegion(region: RectF) {
+        lastRegion = RectF(region)
+    }
 
     /** Kicks off a scan (requesting projection consent when needed). */
     internal fun debugRequestScan(region: RectF) {
@@ -669,6 +765,8 @@ class OverlayService : Service() {
         const val ACTION_SCAN_FULL = "io.github.wilsonnet.droidsentenceminer.action.SCAN_FULL"
         const val ACTION_HIDE_BUBBLE = "io.github.wilsonnet.droidsentenceminer.action.HIDE_BUBBLE"
         const val ACTION_SHOW_MENU = "io.github.wilsonnet.droidsentenceminer.action.SHOW_MENU"
+        const val ACTION_AUTO_OCR_START = "io.github.wilsonnet.droidsentenceminer.action.AUTO_OCR_START"
+        const val ACTION_AUTO_OCR_STOP = "io.github.wilsonnet.droidsentenceminer.action.AUTO_OCR_STOP"
         const val ACTION_PROJECTION_RESULT = "io.github.wilsonnet.droidsentenceminer.action.PROJECTION_RESULT"
         const val EXTRA_RESULT_CODE = "extra_result_code"
         const val EXTRA_RESULT_DATA = "extra_result_data"
@@ -677,6 +775,22 @@ class OverlayService : Service() {
 
         private val running = MutableStateFlow(false)
         fun observeRunning(): StateFlow<Boolean> = running
+
+        private val autoOcrState = MutableStateFlow(AutoOcrController.Status())
+        fun observeAutoOcr(): StateFlow<AutoOcrController.Status> = autoOcrState
+
+        fun startAutoOcr(context: Context) {
+            ContextCompat.startForegroundService(
+                context,
+                Intent(context, OverlayService::class.java).setAction(ACTION_AUTO_OCR_START),
+            )
+        }
+
+        fun stopAutoOcr(context: Context) {
+            context.startService(
+                Intent(context, OverlayService::class.java).setAction(ACTION_AUTO_OCR_STOP),
+            )
+        }
 
         fun start(context: Context) {
             ContextCompat.startForegroundService(

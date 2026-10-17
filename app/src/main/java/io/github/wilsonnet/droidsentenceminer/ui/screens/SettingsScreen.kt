@@ -15,9 +15,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -59,6 +61,12 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
         }
     }
 
+    val autoInterval by container.prefs.autoOcrIntervalMs.collectAsState(initial = 400)
+    val audioTrim by container.prefs.audioTrim.collectAsState(initial = false)
+    val bufferSeconds by container.prefs.audioBufferSeconds.collectAsState(initial = 300)
+    val clipBefore by container.prefs.clipBeforeMs.collectAsState(initial = 500)
+    val clipAfter by container.prefs.clipAfterMs.collectAsState(initial = 500)
+
     LaunchedEffect(Unit) {
         twoPass = container.prefs.ocrTwoPass.first()
         dropNoise = container.prefs.ocrDropNoise.first()
@@ -94,6 +102,14 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
                     dropNoise = value
                     scope.launch { container.prefs.setOcrDropNoise(value) }
                 }
+                SettingSlider(
+                    title = "Auto OCR interval",
+                    value = "$autoInterval ms",
+                    description = "How often auto OCR reads the region. Lower catches short lines sooner; higher saves battery.",
+                    position = autoInterval.toFloat(),
+                    range = 200f..2000f,
+                    steps = 17,
+                ) { scope.launch { container.prefs.setAutoOcrIntervalMs(it.toInt()) } }
             }
         }
 
@@ -114,6 +130,36 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
                         scope.launch { container.prefs.setAudioEnabled(value) }
                     }
                 }
+                SettingSlider(
+                    title = "Replay buffer",
+                    value = "${bufferSeconds / 60} min",
+                    description = "How far back a line can still be mined with audio. Uses about 2.9 MB of memory per minute.",
+                    position = bufferSeconds.toFloat(),
+                    range = 60f..600f,
+                    steps = 8,
+                ) { scope.launch { container.prefs.setAudioBufferSeconds(it.toInt()) } }
+                SettingSlider(
+                    title = "Start offset",
+                    value = "$clipBefore ms",
+                    description = "Audio kept before the line appeared on screen.",
+                    position = clipBefore.toFloat(),
+                    range = 0f..3000f,
+                    steps = 29,
+                ) { scope.launch { container.prefs.setClipBeforeMs(it.toInt()) } }
+                SettingSlider(
+                    title = "End offset",
+                    value = "$clipAfter ms",
+                    description = "Audio kept after the line disappeared or was replaced.",
+                    position = clipAfter.toFloat(),
+                    range = 0f..3000f,
+                    steps = 29,
+                ) { scope.launch { container.prefs.setClipAfterMs(it.toInt()) } }
+                SettingSwitch(
+                    title = "Trim silence (experimental)",
+                    description = "Cut leading and trailing quiet parts from the clip. Works for voice over quiet scenes; " +
+                        "with loud music or ambience it can clip speech, so it is off by default.",
+                    checked = audioTrim,
+                ) { value -> scope.launch { container.prefs.setAudioTrim(value) } }
                 if (!AudioCaptureManager.isSupported()) {
                     Text(
                         "Audio capture needs Android 10 or newer.",
@@ -181,5 +227,32 @@ private fun SettingSwitch(
             )
         }
         Switch(checked = checked, onCheckedChange = onChange)
+    }
+}
+
+@Composable
+private fun SettingSlider(
+    title: String,
+    value: String,
+    description: String,
+    position: Float,
+    range: ClosedFloatingPointRange<Float>,
+    steps: Int,
+    onChange: (Float) -> Unit,
+) {
+    var local by remember(position) { mutableStateOf(position) }
+    Column(Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(title, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+            Text(value, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+        }
+        Text(description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Slider(
+            value = local,
+            onValueChange = { local = it },
+            onValueChangeFinished = { onChange(local) },
+            valueRange = range,
+            steps = steps,
+        )
     }
 }
