@@ -15,9 +15,9 @@ as JSON so agents can validate the app with text instead of screenshot/tap loops
 ## Setup
 
 ```bash
-export JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
+# Toolchain: see AGENTS.md (Linux: JAVA_HOME=$HOME/Android/tools/jdk-21.*, SDK adb first on PATH)
 export ANDROID_HOME=$HOME/Android/Sdk
-GRADLE=$HOME/Android/tools/gradle-8.14.3/bin/gradle
+GRADLE=./gradlew
 ADB=$ANDROID_HOME/platform-tools/adb
 
 # Build, install (debug suffix!), start the app, forward the port
@@ -47,7 +47,7 @@ All GET, all JSON (except `frame.png`). Regions are screen fractions unless note
 | `/request_projection` | Ask for MediaProjection consent (shows system dialog on device) |
 | `/scan?l=&t=&r=&b=` | Full pipeline: grab frame → crop → OCR → dictionary lookup. Omit the region to reuse the saved one |
 | `/frame.png?l=&t=&r=&b=` | PNG of what MediaProjection actually sees (omit region for the raw full frame) |
-| `/ocr?file=/sdcard/...&twoPass=1&noise=1` | OCR an image file; returns text, per-line boxes + confidences, and dictionary matches |
+| `/ocr?file=/sdcard/...&twoPass=1&noise=1&l=&t=&r=&b=` | OCR an image file (optionally cropped to a region); returns text, per-line boxes + confidences, and dictionary matches |
 | `/lookup?word=<urlencoded>` | Dictionary lookup summary (reading, term count) |
 | `/mine?word=&sentence=` | Look a word up and add a card via the configured Anki backend (AnkiDroid/AnkiConnect) |
 | `/dicts` | Installed dictionaries with term/kanji counts and zip paths |
@@ -55,6 +55,16 @@ All GET, all JSON (except `frame.png`). Regions are screen fractions unless note
 | `/anki_notes?word=&model=` | Find notes by first field via the AnkiDroid provider; returns every field name → value, plus tags. Defaults to the configured model |
 | `/anki_meta` | AnkiDroid decks and note types as id → name maps |
 | `/startoverlay`, `/stopoverlay` | Start/stop the floating overlay service |
+| `/autoocr?on=1` / `?on=0` | Start/stop auto OCR on the saved region (starts the service and asks for consent if needed) |
+| `/set_region?l=&t=&r=&b=` | Save the capture region (also applies to a running auto OCR) |
+| `/lines?limit=50` | Text log: id, text, start/end ms, source, screenshot path, clip bounds, `hasAudio` |
+| `/clip.wav?id=&trim=0\|1` | The line's voice clip cut from the replay buffer (raw window or VAD-trimmed) |
+| `/line_shot.jpg?id=` | The screenshot stored with the line |
+| `/mine_line?id=&word=` | Mine a word from a logged line with its audio + screenshot (the Texts-tab flow) |
+| `/clear_lines` | Delete the whole text log |
+
+`/state` also reports `autoOcr` (`running`, `reads`, `lines`, `lastRead`) and `audioBuffer`
+(`capturing`, `bufferedMs`, `newestAgeMs`).
 
 Example output:
 
@@ -114,6 +124,17 @@ $ADB -s <serial> push test.png /sdcard/Android/data/io.github.wilsonnet.droidsen
   `INSTANCE` reflection, so release builds are untouched.
 - Post-install the overlay must be restarted and capture re-consented; verify with
   `/state` (`overlayService: true`, `captureReady: true`).
+
+## Auto OCR recipe (GSM texthooker flow)
+
+```bash
+curl -s "localhost:9099/set_region?l=0.1&t=0.72&r=0.9&b=0.97"   # subtitle band, landscape
+curl -s "localhost:9099/autoocr?on=1"                            # then tap through consent
+# ...play the game/video...
+curl -s "localhost:9099/lines?limit=20" | python3 -m json.tool
+curl -s "localhost:9099/clip.wav?id=42&trim=1" -o line42.wav      # listen / cross-correlate
+curl -s "localhost:9099/mine_line?id=42&word=%E8%85%B0"           # card with that line's audio
+```
 
 ## Validating checklist (suggested order)
 

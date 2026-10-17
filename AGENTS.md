@@ -4,12 +4,28 @@ Notes for CLI/agent-driven development of this Android app. No Android Studio is
 
 ## Toolchain
 
+Linux (current dev box, no sudo needed — everything lives under `~/Android`):
+
 ```bash
-export JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
-export ANDROID_HOME=$HOME/Android/Sdk          # sdk.dir is also in local.properties
-GRADLE=$HOME/Android/tools/gradle-8.14.3/bin/gradle   # or ./gradlew once the wrapper is committed
+export JAVA_HOME=$HOME/Android/tools/jdk-21.0.12.1+1   # Temurin 21 tarball
+export ANDROID_HOME=$HOME/Android/Sdk                   # sdk.dir is also in local.properties
+export PATH="$HOME/.local/bin:$JAVA_HOME/bin:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"
+GRADLE=./gradlew
 ADB=$ANDROID_HOME/platform-tools/adb
 ```
+
+macOS: `JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home`, same SDK layout.
+
+**Android CLI** (`android`, installed to `~/.local/bin`) handles SDK packages, emulators, screenshots,
+UI dumps and docs: `android sdk install platforms/android-36 build-tools/35.0.0 emulator`,
+`android layout --no-idle --flat`, `android screen capture -o s.png`, `android docs search "..."`.
+`android init` / `android skills add <id>` install its agent skills.
+
+Use the SDK's `adb` (first on `PATH` above). A distro `/usr/bin/adb` of a different version
+kills the server on every call and devices flap between `device` and `offline`.
+
+Debug builds are signed with the committed `app/debug.keystore`, so APKs built on any machine
+upgrade each other in place (no uninstall, dictionaries survive).
 
 Versions: AGP 8.13.2, Kotlin 2.3.21, KSP 2.3.12, compileSdk 36, minSdk 26, targetSdk 35,
 Compose BOM 2024.12.01, Room 2.8.5, ML Kit Japanese 16.0.1, AnkiDroid API v2.24.1 (JitPack).
@@ -27,8 +43,8 @@ ANDROID_SERIAL=emulator-5554 $GRADLE connectedDebugAndroidTest
 ANDROID_SERIAL=emulator-5554 $GRADLE connectedDebugAndroidTest \
   -Pandroid.testInstrumentationRunnerArguments.class=io.github.wilsonnet.droidsentenceminer.audio.AudioPipelineInstrumentedTest
 
-# Emulator lifecycle
-$ANDROID_HOME/emulator/emulator -avd dsm_test -no-window -no-audio -no-boot-anim -gpu host -no-snapshot &
+# Emulator lifecycle (Wayland hosts need QT_QPA_PLATFORM=xcb for a window)
+QT_QPA_PLATFORM=xcb $ANDROID_HOME/emulator/emulator -avd dsm_test -gpu host -no-snapshot-save -no-boot-anim &
 $ADB -s emulator-5554 wait-for-device shell 'while [ "$(getprop sys.boot_completed)" != 1 ]; do sleep 1; done'
 
 # Install / permissions (debug builds are suffixed .debug)
@@ -54,7 +70,9 @@ curl -s "localhost:9099/lookup?word=%E3%81%AA%E3%81%84"
 curl -s "localhost:9099/mine?word=%E3%81%AA%E3%81%84&sentence=..."   # Anki card via configured backend
 ```
 
-Endpoints: `/state`, `/scan`, `/frame.png`, `/ocr`, `/lookup`, `/mine`, `/dicts`,
+Endpoints: `/state`, `/scan`, `/frame.png`, `/ocr` (`l,t,r,b` crops the file first), `/lookup`, `/mine`, `/dicts`,
+`/autoocr?on=1|0`, `/lines?limit=`, `/clip.wav?id=&trim=0|1`, `/line_shot.jpg?id=`, `/mine_line?id=&word=`,
+`/set_region?l=&t=&r=&b=`, `/clear_lines`,
 `/install_dict?id=jitendex` (background install; progress in `/state.dictInstall`),
 `/anki_notes?word=` (field-level card verification via the AnkiDroid provider),
 `/anki_meta` (decks + note types), `/startoverlay`, `/stopoverlay`, `/request_projection`.
@@ -62,6 +80,22 @@ Regions are screen fractions.
 See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes.
 
 ## Gotchas learned the hard way
+
+- **Auto OCR / text log / replay buffer** (GSM model): `AutoOcrController` polls new frames,
+  OCRs the saved region, and `TextLineTracker` turns stable reads into lines (start = first
+  differing read). `AudioRingBuffer` keeps the last N minutes of mono 24 kHz playback audio by
+  wall-clock time; a line's clip is `[start − before, min(end, next.start) + after]`
+  (`ClipWindow`), then `VoiceTrimmer`. Lines live in a separate Room DB (`textlog.db`) —
+  never add tables to `dict.db`, it uses destructive migration and would wipe dictionaries.
+- **Samsung freezes cached apps**: with DSM in the background and no foreground service, the
+  debug API stops answering. Bring `MainActivity` forward before calling it.
+- **Rotation keeps the projection**: `ScreenCaptureManager.onScreenSizeChanged()` resizes the
+  virtual display and swaps in a new `ImageReader`, so starting in portrait and switching to a
+  landscape game keeps capturing (no re-consent).
+- **YouTube test bed**: softsub video `gM7sP8vT40o` + `yt-dlp --write-subs --sub-langs ja` gives
+  ground truth; pick the plain "日本語" caption track (not auto-generated/translated) in the
+  player settings. `yt-dlp -f bestaudio --download-sections "*0:00-8:00"` gives reference audio
+  to cross-correlate `/clip.wav` output against.
 
 - **Prefer the debug API over UI automation.** Debug builds expose a loopback text API
   (`curl localhost:9099/...` via `adb forward tcp:9099 tcp:9099`) for capture frames, OCR,

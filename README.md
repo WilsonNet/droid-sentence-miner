@@ -16,6 +16,16 @@ with [Yomitan](https://github.com/yomidevs/yomitan) dictionary compatibility.
 
 ## Features
 
+- **Auto OCR mode** — set the capture region once (e.g. the dialogue box) and keep playing. The
+  region is read every ~400 ms; each new line is logged with the moment it appeared, the moment it
+  went away and a screenshot. Repeated reads must agree before a line counts, so fades, typewriter
+  text and noise over moving video don't create junk, and background signage is filtered out.
+- **Texts page** (GSM's texthooker) — every recognized line, newest first. Tap a line, tap a word,
+  and mine it: the card gets that line's sentence, its screenshot and its voice clip.
+- **Replay buffer sentence audio** — the last 5 minutes (configurable 1–10) of game audio are kept
+  in memory. Any line still inside the buffer can be mined with audio cut from when it appeared to
+  when it was replaced (± configurable offsets). Preview or fine-tune it in the waveform editor
+  before mining; optional (experimental) silence trimming is in Settings.
 - **Floating popup overlay** — a draggable bubble that lets you select any screen region, OCR it,
   and look up words without leaving the game. Long-press opens a menu; the notification stays
   available as a shortcut.
@@ -34,8 +44,8 @@ with [Yomitan](https://github.com/yomidevs/yomitan) dictionary compatibility.
   Cards include Expression, Reading, Meaning (rendered glossary), Sentence (target word bolded),
   Image (captured screenshot), Audio (sentence voice line) and Source.
 - **Sentence audio** (Android 10+) — captures playback audio through the existing MediaProjection
-  session (the Android equivalent of GSM's loopback capture), segments voice lines with an
-  energy VAD, and includes a waveform **audio editor** to trim the exact line before mining.
+  session (the Android equivalent of GSM's loopback capture) into the replay buffer, with a
+  waveform **audio editor** to trim the exact line before mining.
 - **Mining history** — recent cards with a status showing whether they made it into Anki.
 - **Text selection lookup** — other apps can share selected text via `ACTION_PROCESS_TEXT`.
 
@@ -51,17 +61,20 @@ with [Yomitan](https://github.com/yomidevs/yomitan) dictionary compatibility.
 No Android Studio required.
 
 ```bash
-# 1. Toolchain (macOS example)
-brew install openjdk@21
-export JAVA_HOME=$(/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home)
+# 1. Toolchain — JDK 21 + Android CLI (Linux example, no root needed)
+curl -fsSL https://dl.google.com/android/cli/latest/linux_x86_64/install.sh | bash
+mkdir -p ~/Android/tools && curl -sSL "https://api.adoptium.net/v3/binary/latest/21/ga/linux/x64/jdk/hotspot/normal/eclipse" | tar xz -C ~/Android/tools
+export JAVA_HOME=$(echo ~/Android/tools/jdk-21*)      # macOS: brew install openjdk@21
 export ANDROID_HOME=$HOME/Android/Sdk
+export PATH="$JAVA_HOME/bin:$ANDROID_HOME/platform-tools:$PATH"
 
 # 2. Android SDK packages
-sdkmanager "platform-tools" "platforms;android-36" "build-tools;35.0.0" "emulator" \
-           "system-images;android-35;google_apis;arm64-v8a"
+android sdk install platform-tools platforms/android-36 build-tools/35.0.0 emulator \
+                    system-images/android-35/google_apis_playstore/x86_64
+echo "sdk.dir=$ANDROID_HOME" > local.properties
 
 # 3. Build & test
-./gradlew testDebugUnitTest          # 55 JVM unit tests
+./gradlew testDebugUnitTest          # 87 JVM unit tests
 ./gradlew connectedDebugAndroidTest  # 4 on-device tests (VAD + AAC encoding)
 ./gradlew assembleDebug              # app/build/outputs/apk/debug/app-debug.apk
 
@@ -79,23 +92,30 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
    - *AnkiConnect*: start Anki with the AnkiConnect add-on and enter the URL
      (e.g. `http://192.168.1.10:8765`).
    Pick a deck and note type (a "Droid Sentence Miner" note type is created automatically).
-3. **Mine** — tap *Start floating bubble*, tap the bubble over the Japanese text, adjust the
-   capture box and hit *Scan region*. Tap a highlighted word for definitions, then *Anki*.
-4. **Audio** (optional) — enable *Capture game audio* in *Settings* (grants microphone permission).
-   After a scan, an *Audio* chip appears in the popup; it opens the waveform editor where you can
-   trim the voice line before mining.
-5. **Test drive** — the Home tab has a built-in sample (a public-domain Aozora Bunko passage) and
+3. **Auto OCR (recommended)** — tap *Start floating bubble*, tap the bubble and drag the capture
+   box over the game's dialogue area, then long-press the bubble → *Start auto OCR* (or use the
+   switch on the *Texts* tab / the notification). Keep playing; open *Texts* whenever you want to
+   mine a line — tap the line, tap the word, *Anki*. Long-press → *Mine the latest line* does the
+   same without leaving the game.
+4. **Manual scan** — tap the bubble, adjust the capture box and hit *Scan region*. Tap a
+   highlighted word for definitions, then *Anki*. Manual scans are logged on *Texts* too.
+5. **Audio** — on by default; grant the microphone permission when asked (Android requires it for
+   playback capture). *Settings* has the buffer length, start/end offsets and silence trimming.
+   Apps that opt out of capture stay silent.
+6. **Test drive** — the Home tab has a built-in sample (a public-domain Aozora Bunko passage) and
    an image picker to test OCR + lookup without a game.
 
 ## How it works
 
 ```
-MediaProjection ──► ScreenCaptureManager ──► region crop ──► MlKitJapaneseOcr
-                        │                                        │  (two-pass)
-                        │                                        ▼
-                        └──► AudioCaptureManager ──► VadSegmenter ──► AudioSegment
-                                     (AudioPlaybackCapture)              │
-                                                                         ▼
+MediaProjection ──► ScreenCaptureManager ──► AutoOcrController ──► TextLineTracker ──► TextLog (Room)
+                        │   (new frames only)    (fast OCR → stable?     (start/end times,    │
+                        │                         → two-pass re-read)      screenshot)       │
+                        │                                                                    ▼
+                        └──► AudioCaptureManager ──► AudioRingBuffer ──► ClipWindow + VoiceTrimmer
+                                (AudioPlaybackCapture)   (last N min)         (line's voice clip)
+                                                                                    │
+                                                                                    ▼
    OCR text ──► TermLookup.scan() ──► JapaneseDeinflector ──► Room DB (Yomitan dictionaries)
                         │                                        │
                         ▼                                        ▼
@@ -147,7 +167,13 @@ Glossaries may be strings, arrays, image definitions, deinflection entries or st
 
 ## Validation
 
-- 55 JVM unit tests: deinflector (conjugations across godan/ichidan/suru/kuru/adjectives),
+- Auto OCR end-to-end on a Galaxy S24+ (Android 16) against a YouTube video with Japanese soft
+  subtitles, compared with the subtitle file and the original audio (see AGENTS.md for the
+  recipe): every subtitle cue in the run was logged (61/61, 56 exact, mean character accuracy
+  0.99), line start times within ±300 ms (p90) of the cue, and every voice clip located in the
+  original audio at correlation ≥0.97, starting 160–1080 ms (median ~400 ms) before the subtitle.
+- 87 JVM unit tests: replay buffer, voice trimming, line tracking, clip windows, subtitle-row
+  filtering, deinflector (conjugations across godan/ichidan/suru/kuru/adjectives),
   glossary parsing/rendering, OCR post-processing (merge, furigana filter, normalization),
   VAD segmentation, PCM utilities, Yomitan index parsing.
 - 4 on-device instrumented tests: VAD segmentation with real waveforms, AAC/M4A encoding through
@@ -159,6 +185,8 @@ Glossaries may be strings, arrays, image definitions, deinflection entries or st
 
 ## Roadmap
 
+- Neural VAD (Silero via ONNX Runtime, as GSM uses) for silence trimming that holds up under
+  loud BGM; the current energy trimmer is opt-in for that reason.
 - Optional ASR engines (e.g. whisper.cpp or Moonshine via JNI) as an alternative/complement to OCR
   for games with hard-to-read fonts.
 - Manga-style OCR models (manga-ocr) behind the existing `OcrEngine` abstraction.
