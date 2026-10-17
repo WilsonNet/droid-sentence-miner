@@ -186,7 +186,13 @@ Glossaries may be strings, arrays, image definitions, deinflection entries or st
 ## Roadmap
 
 - Neural VAD (Silero via ONNX Runtime, as GSM uses) for silence trimming that holds up under
-  loud BGM; the current energy trimmer is opt-in for that reason.
+  loud BGM; the current energy trimmer is opt-in because it clipped speech under rain/music in
+  the YouTube test.
+- Emulator capture E2E: MediaProjection frames go black once video plays on the emulator, so
+  auto OCR is only validated on real devices. Find a working GPU/rendering setup or a
+  frame-injection test path.
+- AnkiDroid media naming: the API stores our AAC clip as `…m4a_<n>.mp3`. It plays, but pass the
+  proper MIME type/extension so the file name matches the content.
 - Optional ASR engines (e.g. whisper.cpp or Moonshine via JNI) as an alternative/complement to OCR
   for games with hard-to-read fonts.
 - Manga-style OCR models (manga-ocr) behind the existing `OcrEngine` abstraction.
