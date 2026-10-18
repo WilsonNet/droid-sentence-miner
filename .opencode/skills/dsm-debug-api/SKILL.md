@@ -56,14 +56,15 @@ All GET, all JSON (except `frame.png`). Regions are screen fractions unless note
 | `/anki_meta` | AnkiDroid decks and note types as id → name maps |
 | `/startoverlay`, `/stopoverlay` | Start/stop the floating overlay service |
 | `/autoocr?on=1` / `?on=0` | Start/stop auto OCR on the saved region (starts the service and asks for consent if needed) |
-| `/set_region?l=&t=&r=&b=` | Save the capture region (also applies to a running auto OCR) |
+| `/set_region?l=&t=&r=&b=&orientation=` | Save the auto OCR text area for the current (or given `landscape`/`portrait`) orientation |
 | `/lines?limit=50` | Text log: id, text, start/end ms, source, screenshot path, clip bounds, `hasAudio` |
 | `/clip.wav?id=&trim=0\|1` | The line's voice clip cut from the replay buffer (raw window or VAD-trimmed) |
 | `/line_shot.jpg?id=` | The screenshot stored with the line |
 | `/mine_line?id=&word=` | Mine a word from a logged line with its audio + screenshot (the Texts-tab flow) |
 | `/clear_lines` | Delete the whole text log |
 
-`/state` also reports `autoOcr` (`running`, `reads`, `lines`, `lastRead`) and `audioBuffer`
+`/state` also reports `autoOcr` (`running`, `reads`, `lines`, `lastRead`, `error`),
+`areasPortrait`/`areasLandscape` (box counts) and `audioBuffer`
 (`capturing`, `bufferedMs`, `newestAgeMs`).
 
 Example output:

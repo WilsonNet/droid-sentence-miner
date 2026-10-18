@@ -34,6 +34,11 @@ class DsmPrefs(private val context: Context) {
         val clipBeforeMs = intPreferencesKey("clip_before_ms")
         val clipAfterMs = intPreferencesKey("clip_after_ms")
         val autoOcrIntervalMs = intPreferencesKey("auto_ocr_interval_ms")
+        val autoAreasPortrait = stringPreferencesKey("auto_areas_portrait")
+        val autoAreasLandscape = stringPreferencesKey("auto_areas_landscape")
+        val liveTextWindow = booleanPreferencesKey("live_text_window")
+        val liveWindowX = intPreferencesKey("live_window_x")
+        val liveWindowY = intPreferencesKey("live_window_y")
 
         val captureLeft = floatPreferencesKey("capture_left")
         val captureTop = floatPreferencesKey("capture_top")
@@ -64,6 +69,30 @@ class DsmPrefs(private val context: Context) {
     val clipBeforeMs: Flow<Int> = context.dataStore.data.map { it[Keys.clipBeforeMs] ?: 500 }
     val clipAfterMs: Flow<Int> = context.dataStore.data.map { it[Keys.clipAfterMs] ?: 500 }
     val autoOcrIntervalMs: Flow<Int> = context.dataStore.data.map { it[Keys.autoOcrIntervalMs] ?: 400 }
+    val liveTextWindow: Flow<Boolean> = context.dataStore.data.map { it[Keys.liveTextWindow] ?: true }
+    val liveWindowPosition: Flow<Pair<Int, Int>?> = context.dataStore.data.map {
+        val x = it[Keys.liveWindowX] ?: return@map null
+        val y = it[Keys.liveWindowY] ?: return@map null
+        x to y
+    }
+
+    fun autoAreas(landscape: Boolean): Flow<List<io.github.wilsonnet.droidsentenceminer.capture.TextArea>> =
+        context.dataStore.data.map {
+            io.github.wilsonnet.droidsentenceminer.capture.TextArea.decode(
+                it[if (landscape) Keys.autoAreasLandscape else Keys.autoAreasPortrait],
+            )
+        }
+
+    suspend fun setAutoAreas(landscape: Boolean, areas: List<io.github.wilsonnet.droidsentenceminer.capture.TextArea>) = edit {
+        it[if (landscape) Keys.autoAreasLandscape else Keys.autoAreasPortrait] =
+            io.github.wilsonnet.droidsentenceminer.capture.TextArea.encode(areas)
+    }
+
+    suspend fun setLiveTextWindow(value: Boolean) = edit { it[Keys.liveTextWindow] = value }
+    suspend fun setLiveWindowPosition(x: Int, y: Int) = edit {
+        it[Keys.liveWindowX] = x
+        it[Keys.liveWindowY] = y
+    }
 
     val captureRegion: Flow<CaptureRegion> = context.dataStore.data.map {
         CaptureRegion(

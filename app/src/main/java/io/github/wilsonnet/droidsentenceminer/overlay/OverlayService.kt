@@ -34,7 +34,9 @@ import io.github.wilsonnet.droidsentenceminer.R
 import io.github.wilsonnet.droidsentenceminer.anki.AnkiResult
 import io.github.wilsonnet.droidsentenceminer.audio.AudioCaptureManager
 import io.github.wilsonnet.droidsentenceminer.audio.AudioSegment
+import io.github.wilsonnet.droidsentenceminer.AppVisibility
 import io.github.wilsonnet.droidsentenceminer.capture.AutoOcrController
+import io.github.wilsonnet.droidsentenceminer.capture.TextArea
 import io.github.wilsonnet.droidsentenceminer.capture.ScreenCaptureManager
 import io.github.wilsonnet.droidsentenceminer.ocr.JapaneseTextScore
 import io.github.wilsonnet.droidsentenceminer.ocr.MlKitJapaneseOcr
@@ -72,6 +74,15 @@ class OverlayService : Service() {
     private var captureParams: WindowManager.LayoutParams? = null
 
     private var panelView: ComposeView? = null
+
+    private var liveView: ComposeView? = null
+    private var liveOwner: OverlayLifecycleOwner? = null
+    private var liveParams: WindowManager.LayoutParams? = null
+    private var liveDismissed = false
+
+    private var areaSelector: AreaSelectorView? = null
+    private var portraitAreas: List<TextArea> = emptyList()
+    private var landscapeAreas: List<TextArea> = emptyList()
     private var panelOwner: OverlayLifecycleOwner? = null
     private val panelState = OverlayPanelState()
 
@@ -112,13 +123,32 @@ class OverlayService : Service() {
             }
         }
 
-        autoOcr = AutoOcrController(scope, captureManager, container.textLog, container.prefs) { RectF(lastRegion) }
+        autoOcr = AutoOcrController(
+            scope,
+            captureManager,
+            container.textLog,
+            container.prefs,
+            areas = { currentAreas() },
+            paused = {
+                AppVisibility.mainResumed || panelView != null || areaSelector != null || !captureManager.contentVisible
+            },
+        )
+        scope.launch { container.prefs.autoAreas(landscape = false).collect { portraitAreas = it } }
+        scope.launch { container.prefs.autoAreas(landscape = true).collect { landscapeAreas = it } }
         scope.launch {
             autoOcr.status.collect {
                 val changed = panelState.autoOcrRunning != it.running
                 panelState.autoOcrRunning = it.running
                 autoOcrState.value = it
                 if (changed && running.value) startForegroundCompat(includeProjection = captureManager.isReady)
+                if (changed) {
+                    if (it.running) {
+                        liveDismissed = false
+                        if (container.prefs.liveTextWindow.first()) showLiveWindow()
+                    } else {
+                        hideLiveWindow()
+                    }
+                }
             }
         }
 
@@ -166,6 +196,12 @@ class OverlayService : Service() {
                 startAutoOcr()
             }
             ACTION_AUTO_OCR_STOP -> autoOcr.stop()
+            ACTION_SELECT_AREAS -> {
+                startForegroundCompat(includeProjection = captureManager.isReady)
+                running.value = true
+                if (bubbleView == null) installBubble()
+                showAreaSelector()
+            }
             ACTION_PROJECTION_RESULT -> handleProjectionResult(intent)
             null -> {
                 // Service restarted by the system; make sure we are a valid foreground service.
@@ -194,7 +230,9 @@ class OverlayService : Service() {
         if (activeInstance === this) activeInstance = null
         removeBubble()
         closeCaptureOverlay()
+        closeAreaSelector()
         hidePanel()
+        hideLiveWindow()
         autoOcr.stop()
         audioManager.stop()
         captureManager.release()
@@ -371,6 +409,13 @@ class OverlayService : Service() {
     }
 
     private fun requestProjection() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            android.widget.Toast.makeText(
+                this,
+                "Tip: choose \"A single app\" and pick your game to capture only it",
+                android.widget.Toast.LENGTH_LONG,
+            ).show()
+        }
         val intent = Intent(this, ProjectionPermissionActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         startActivity(intent)
@@ -386,6 +431,122 @@ class OverlayService : Service() {
         // Audio may have been enabled since the projection started.
         maybeStartAudioCapture()
         autoOcr.start()
+        // Started from inside the game with nothing selected yet: go straight to picking areas.
+        if (currentAreas().isEmpty() && !AppVisibility.mainResumed) showAreaSelector()
+    }
+
+    private fun isLandscape(): Boolean =
+        resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
+    private fun currentAreas(): List<TextArea> = if (isLandscape()) landscapeAreas else portraitAreas
+
+    // ------------------------------------------------------------ text areas
+
+    private fun showAreaSelector() {
+        if (areaSelector != null || !Settings.canDrawOverlays(this)) return
+        hidePanel()
+        closeCaptureOverlay()
+        val landscape = isLandscape()
+        val view = AreaSelectorView(
+            this,
+            initial = currentAreas(),
+            orientationLabel = if (landscape) "landscape" else "portrait",
+            onSave = { areas ->
+                closeAreaSelector()
+                scope.launch {
+                    container.prefs.setAutoAreas(landscape, areas)
+                    if (areas.isNotEmpty() && !autoOcr.isRunning) startAutoOcr()
+                }
+            },
+            onCancel = { closeAreaSelector() },
+        )
+        val params = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+            PixelFormat.TRANSLUCENT,
+        ).apply { gravity = Gravity.TOP or Gravity.START }
+        liveView?.visibility = android.view.View.GONE
+        areaSelector = view
+        runCatching { windowManager.addView(view, params) }
+    }
+
+    private fun closeAreaSelector() {
+        areaSelector?.let { runCatching { windowManager.removeView(it) } }
+        areaSelector = null
+        liveView?.visibility = android.view.View.VISIBLE
+    }
+
+    // ------------------------------------------------------------ live text
+
+    private fun showLiveWindow() {
+        if (liveView != null || liveDismissed || !Settings.canDrawOverlays(this)) return
+        val owner = OverlayLifecycleOwner().apply {
+            onCreate()
+            onStart()
+        }
+        val density = resources.displayMetrics.density
+        val params = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+            PixelFormat.TRANSLUCENT,
+        ).apply {
+            gravity = Gravity.TOP or Gravity.START
+            x = (12 * density).roundToInt()
+            y = (40 * density).roundToInt()
+        }
+        val view = ComposeView(this).apply {
+            setViewTreeLifecycleOwner(owner)
+            setViewTreeViewModelStoreOwner(owner)
+            setViewTreeSavedStateRegistryOwner(owner)
+            setContent {
+                LiveTextWindow(
+                    dao = container.textLog.dao,
+                    status = autoOcr.status,
+                    onLineClick = { id -> showLatestLine(id) },
+                    onDrag = { dx, dy -> moveLiveWindow(dx, dy) },
+                    onDragEnd = {
+                        liveParams?.let { p -> scope.launch { container.prefs.setLiveWindowPosition(p.x, p.y) } }
+                    },
+                    onClose = {
+                        liveDismissed = true
+                        hideLiveWindow()
+                    },
+                )
+            }
+        }
+        liveOwner = owner
+        liveView = view
+        liveParams = params
+        scope.launch {
+            container.prefs.liveWindowPosition.first()?.let { (x, y) ->
+                params.x = x
+                params.y = y
+            }
+            runCatching { windowManager.addView(view, params) }
+        }
+    }
+
+    private fun moveLiveWindow(dx: Float, dy: Float) {
+        val view = liveView ?: return
+        val params = liveParams ?: return
+        val metrics = ScreenCaptureManager.screenMetrics(this)
+        params.x = (params.x + dx).roundToInt().coerceIn(0, max(0, metrics.widthPixels - view.width))
+        params.y = (params.y + dy).roundToInt().coerceIn(0, max(0, metrics.heightPixels - view.height))
+        runCatching { windowManager.updateViewLayout(view, params) }
+    }
+
+    private fun hideLiveWindow() {
+        liveView?.let { runCatching { windowManager.removeView(it) } }
+        liveView = null
+        liveParams = null
+        liveOwner?.onDestroy()
+        liveOwner = null
     }
 
     private fun toggleAutoOcr() {
@@ -563,6 +724,12 @@ class OverlayService : Service() {
         },
         onToggleAutoOcr = { toggleAutoOcr() },
         onLatestLine = { showLatestLine() },
+        onSelectAreas = { showAreaSelector() },
+        onShowLiveText = {
+            hidePanel()
+            liveDismissed = false
+            showLiveWindow()
+        },
     )
 
     private fun applyAudio(segment: AudioSegment) {
@@ -573,8 +740,8 @@ class OverlayService : Service() {
         panelState.status = "Audio ready (${"%.1f".format(segment.durationMs / 1000.0)}s)"
     }
 
-    /** Loads the newest logged line into the panel so it can be mined without leaving the game. */
-    private fun showLatestLine() {
+    /** Loads a logged line (the newest by default) into the panel to mine it without leaving the game. */
+    private fun showLatestLine(lineId: Long? = null) {
         showPanel()
         panelState.mode = PanelMode.RESULT
         panelState.selectedWord = null
@@ -583,7 +750,7 @@ class OverlayService : Service() {
         panelState.audioReady = false
         panelState.audioSkipped = false
         scope.launch {
-            val line = container.textLog.latest()
+            val line = lineId?.let { container.textLog.get(it) } ?: container.textLog.latest()
             if (line == null) {
                 panelState.ocrText = ""
                 panelState.matches = emptyList()
@@ -733,6 +900,8 @@ class OverlayService : Service() {
 
     private fun stopSelfSafely() {
         hidePanel()
+        hideLiveWindow()
+        closeAreaSelector()
         closeCaptureOverlay()
         removeBubble()
         stopSelf()
@@ -748,6 +917,8 @@ class OverlayService : Service() {
     internal fun debugSetRegion(region: RectF) {
         lastRegion = RectF(region)
     }
+
+    internal val debugLandscape: Boolean get() = isLandscape()
 
     /** Kicks off a scan (requesting projection consent when needed). */
     internal fun debugRequestScan(region: RectF) {
@@ -766,6 +937,7 @@ class OverlayService : Service() {
         const val ACTION_HIDE_BUBBLE = "io.github.wilsonnet.droidsentenceminer.action.HIDE_BUBBLE"
         const val ACTION_SHOW_MENU = "io.github.wilsonnet.droidsentenceminer.action.SHOW_MENU"
         const val ACTION_AUTO_OCR_START = "io.github.wilsonnet.droidsentenceminer.action.AUTO_OCR_START"
+        const val ACTION_SELECT_AREAS = "io.github.wilsonnet.droidsentenceminer.action.SELECT_AREAS"
         const val ACTION_AUTO_OCR_STOP = "io.github.wilsonnet.droidsentenceminer.action.AUTO_OCR_STOP"
         const val ACTION_PROJECTION_RESULT = "io.github.wilsonnet.droidsentenceminer.action.PROJECTION_RESULT"
         const val EXTRA_RESULT_CODE = "extra_result_code"
@@ -783,6 +955,13 @@ class OverlayService : Service() {
             ContextCompat.startForegroundService(
                 context,
                 Intent(context, OverlayService::class.java).setAction(ACTION_AUTO_OCR_START),
+            )
+        }
+
+        fun selectAreas(context: Context) {
+            ContextCompat.startForegroundService(
+                context,
+                Intent(context, OverlayService::class.java).setAction(ACTION_SELECT_AREAS),
             )
         }
 

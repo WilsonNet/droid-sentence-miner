@@ -172,7 +172,22 @@ fun TextsScreen(modifier: Modifier = Modifier) {
                         },
                         style = MaterialTheme.typography.bodySmall,
                     )
-                    if (audioEnabled && !hasAudioPermission) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilledTonalButton(onClick = {
+                        OverlayService.selectAreas(context)
+                        // Get out of the way so the boxes are drawn over the game, not over us.
+                        (context as? android.app.Activity)?.moveTaskToBack(true)
+                    }) { Text("Select text areas") }
+                }
+                Text(
+                    "Open the game first, then use the bubble's long-press menu → Select text areas " +
+                        "(or this button, which returns to the last app). Areas are kept separately " +
+                        "for portrait and landscape. When sharing the screen, pick \"A single app\" → " +
+                        "your game to ignore everything else.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f),
+                )
+                if (audioEnabled && !hasAudioPermission) {
                         FilledTonalButton(onClick = { audioPermission.launch(Manifest.permission.RECORD_AUDIO) }) {
                             Text("Allow audio capture")
                         }

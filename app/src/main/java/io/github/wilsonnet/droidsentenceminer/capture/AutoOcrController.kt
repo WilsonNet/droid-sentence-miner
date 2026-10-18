@@ -2,7 +2,6 @@ package io.github.wilsonnet.droidsentenceminer.capture
 
 import android.graphics.Bitmap
 import android.graphics.Color
-import android.graphics.RectF
 import android.util.Log
 import io.github.wilsonnet.droidsentenceminer.core.DsmPrefs
 import io.github.wilsonnet.droidsentenceminer.ocr.JapaneseTextScore
@@ -11,6 +10,7 @@ import io.github.wilsonnet.droidsentenceminer.ocr.OcrPostProcessor
 import io.github.wilsonnet.droidsentenceminer.ocr.SubtitleLineFilter
 import io.github.wilsonnet.droidsentenceminer.textlog.TextLineEntity
 import io.github.wilsonnet.droidsentenceminer.textlog.TextLineTracker
+import io.github.wilsonnet.droidsentenceminer.textlog.TextSimilarity
 import io.github.wilsonnet.droidsentenceminer.textlog.TextLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -27,16 +27,20 @@ import kotlinx.coroutines.withContext
 import kotlin.math.abs
 
 /**
- * Auto OCR mode: keeps reading the saved region while you play and logs every new line
- * (GSM's OCR "auto" scan). Fast single-pass reads detect changes; once a line is stable it
- * is re-read with the configured (two-pass) engine and stored with its screenshot.
+ * Auto OCR mode: keeps reading the selected text areas while you play and logs every new
+ * line (GSM's OCR "auto" scan). Fast single-pass reads detect changes; once a line is stable
+ * it is re-read with the configured (two-pass) engine and stored with its screenshot.
+ * Multiple areas (e.g. name box + dialogue box) are read in order and joined.
  */
 class AutoOcrController(
     private val scope: CoroutineScope,
     private val capture: ScreenCaptureManager,
     private val textLog: TextLog,
     private val prefs: DsmPrefs,
-    private val region: () -> RectF,
+    /** Areas for the current orientation. */
+    private val areas: () -> List<TextArea>,
+    /** True while DSM's own UI covers the screen; reads are skipped so it isn't logged. */
+    private val paused: () -> Boolean = { false },
 ) {
     data class Status(
         val running: Boolean = false,
@@ -79,13 +83,28 @@ class AutoOcrController(
         val tracker = TextLineTracker()
         var lastSignature: IntArray? = null
         var lastRead = ""
-        var lastCrop: Bitmap? = null
+        var lastCrops: List<Bitmap> = emptyList()
 
         while (currentCoroutineContext().isActive) {
             val loopStart = System.currentTimeMillis()
             val interval = prefs.autoOcrIntervalMs.first().toLong().coerceIn(150, 5_000)
             if (!capture.isReady) {
                 _status.value = _status.value.copy(error = "Screen capture stopped")
+                delay(interval)
+                continue
+            }
+
+            val selected = TextArea.ordered(areas())
+            if (selected.isEmpty()) {
+                _status.value = _status.value.copy(error = NO_AREA)
+                delay(interval)
+                continue
+            }
+            if (paused()) {
+                // Our own screen/panel is showing: don't log it, keep the current line open.
+                capture.pollNewFrame()
+                lastSignature = null
+                _status.value = _status.value.copy(error = PAUSED)
                 delay(interval)
                 continue
             }
@@ -99,19 +118,20 @@ class AutoOcrController(
                 atMs = loopStart
                 text = lastRead
             } else {
-                val r = region()
-                val crop = capture.cropToRegion(frame.bitmap, ScreenCaptureManager.RectFrac(r.left, r.top, r.right, r.bottom))
-                val signature = FrameSignature.of(crop)
+                val crops = selected.map { a ->
+                    capture.cropToRegion(frame.bitmap, ScreenCaptureManager.RectFrac(a.left, a.top, a.right, a.bottom))
+                }
+                val signature = crops.map { FrameSignature.of(it) }.reduce { acc, sig -> acc + sig }
                 atMs = frame.atMs
                 frameBitmap = frame.bitmap
                 text = if (lastSignature != null && FrameSignature.distance(signature, lastSignature) < STATIC_REGION_DISTANCE) {
                     lastRead
                 } else {
-                    val raw = runCatching { dialogueText(fast, crop, dropNoise) }.getOrElse { "" }
+                    val raw = crops.map { crop -> runCatching { dialogueText(fast, crop, dropNoise) }.getOrElse { "" } }.joinToString("\n").trim()
                     if (looksJapanese(raw)) raw else ""
                 }
                 lastSignature = signature
-                lastCrop = crop
+                lastCrops = crops
                 _status.value = _status.value.copy(reads = _status.value.reads + 1, lastRead = text, lastReadMs = atMs, error = null)
             }
             lastRead = text
@@ -120,15 +140,17 @@ class AutoOcrController(
                 when (event) {
                     is TextLineTracker.Event.Ended -> closeOpenLine(event.atMs)
                     is TextLineTracker.Event.Started -> {
-                        val refined = lastCrop?.let { refine(it, event.text) } ?: event.text
+                        val refined = refine(lastCrops, event.text)
                         val screenshot = frameBitmap ?: capture.pollNewFrame()?.bitmap
                         openLineId = textLog.startLine(refined, event.atMs, TextLineEntity.SOURCE_AUTO, screenshot)
+                        // The slower pass counts as one more vote in the line's consensus.
+                        if (refined != TextSimilarity.clean(event.text)) tracker.addReading(refined)
                         _status.value = _status.value.copy(lines = _status.value.lines + 1)
                         Log.i(TAG, "line @${event.atMs}: $refined")
                     }
+                    is TextLineTracker.Event.Settled -> openLineId?.let { id -> textLog.updateText(id, event.text) }
                     is TextLineTracker.Event.Updated -> openLineId?.let { id ->
-                        val refined = lastCrop?.let { refine(it, event.text) } ?: event.text
-                        textLog.updateText(id, refined)
+                        textLog.updateText(id, refine(lastCrops, event.text))
                     }
                 }
             }
@@ -138,14 +160,17 @@ class AutoOcrController(
         }
     }
 
-    /** Re-reads a stable line with the user's OCR settings; keeps the fast read if worse. */
-    private suspend fun refine(crop: Bitmap, fastText: String): String {
-        if (!prefs.ocrTwoPass.first()) return fastText
+    /** Re-reads a stable line with the user's OCR settings; keeps the fast read if worse. Stored joined. */
+    private suspend fun refine(crops: List<Bitmap>, fastText: String): String {
+        val fast = TextSimilarity.clean(fastText)
+        if (!prefs.ocrTwoPass.first() || crops.isEmpty()) return fast
         val dropNoise = prefs.ocrDropNoise.first()
         val engine = MlKitJapaneseOcr(twoPass = true, dropNoise = dropNoise)
-        val text = runCatching { dialogueText(engine, crop, dropNoise) }.getOrElse { return fastText }
-        if (text.isBlank()) return fastText
-        return if (JapaneseTextScore.score(text) >= JapaneseTextScore.score(fastText)) text else fastText
+        val text = runCatching {
+            TextSimilarity.clean(crops.map { dialogueText(engine, it, dropNoise) }.joinToString("\n"))
+        }.getOrElse { return fast }
+        if (text.isBlank()) return fast
+        return if (JapaneseTextScore.score(text) >= JapaneseTextScore.score(fast)) text else fast
     }
 
     private suspend fun dialogueText(engine: MlKitJapaneseOcr, crop: Bitmap, dropNoise: Boolean): String {
@@ -168,6 +193,8 @@ class AutoOcrController(
     companion object {
         private const val TAG = "DSM-AutoOcr"
         private const val STATIC_REGION_DISTANCE = 0.012
+        const val NO_AREA = "No text area for this orientation — long-press the bubble → Select text areas"
+        const val PAUSED = "Paused while Droid Sentence Miner is on screen"
     }
 }
 

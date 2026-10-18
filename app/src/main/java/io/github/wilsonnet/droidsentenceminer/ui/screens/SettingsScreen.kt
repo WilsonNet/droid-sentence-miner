@@ -62,6 +62,7 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
     }
 
     val autoInterval by container.prefs.autoOcrIntervalMs.collectAsState(initial = 400)
+    val liveWindow by container.prefs.liveTextWindow.collectAsState(initial = true)
     val audioTrim by container.prefs.audioTrim.collectAsState(initial = false)
     val bufferSeconds by container.prefs.audioBufferSeconds.collectAsState(initial = 300)
     val clipBefore by container.prefs.clipBeforeMs.collectAsState(initial = 500)
@@ -102,6 +103,11 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
                     dropNoise = value
                     scope.launch { container.prefs.setOcrDropNoise(value) }
                 }
+                SettingSwitch(
+                    title = "Live text window",
+                    description = "Show a small floating feed of new lines over the game while auto OCR runs. Tap a line to mine it.",
+                    checked = liveWindow,
+                ) { value -> scope.launch { container.prefs.setLiveTextWindow(value) } }
                 SettingSlider(
                     title = "Auto OCR interval",
                     value = "$autoInterval ms",

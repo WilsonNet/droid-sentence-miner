@@ -16,10 +16,16 @@ with [Yomitan](https://github.com/yomidevs/yomitan) dictionary compatibility.
 
 ## Features
 
-- **Auto OCR mode** — set the capture region once (e.g. the dialogue box) and keep playing. The
-  region is read every ~400 ms; each new line is logged with the moment it appeared, the moment it
-  went away and a screenshot. Repeated reads must agree before a line counts, so fades, typewriter
-  text and noise over moving video don't create junk, and background signage is filtered out.
+- **Auto OCR mode** — draw boxes over the game's text areas once (dialogue box, name box,
+  subtitles; kept separately for portrait and landscape) and keep playing. The areas are read
+  every ~400 ms; each new line is logged with the moment it appeared, the moment it went away and
+  a screenshot. Repeated reads must agree before a line counts, and the stored text is the
+  consensus of all reads of that line, so fades, typewriter text and OCR noise over moving video
+  don't create junk; background signage is filtered out.
+- **Live text window** — a small floating feed of the newest lines over the game, updated in
+  real time. Tap a line to look up and mine it without leaving the game.
+- **App focus** — share "A single app" (Android 14+) and pick the game: only it is read, and
+  auto OCR pauses while you are in other apps or in Droid Sentence Miner itself.
 - **Texts page** (GSM's texthooker) — every recognized line, newest first. Tap a line, tap a word,
   and mine it: the card gets that line's sentence, its screenshot and its voice clip.
 - **Replay buffer sentence audio** — the last 5 minutes (configurable 1–10) of game audio are kept
@@ -92,11 +98,12 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
    - *AnkiConnect*: start Anki with the AnkiConnect add-on and enter the URL
      (e.g. `http://192.168.1.10:8765`).
    Pick a deck and note type (a "Droid Sentence Miner" note type is created automatically).
-3. **Auto OCR (recommended)** — tap *Start floating bubble*, tap the bubble and drag the capture
-   box over the game's dialogue area, then long-press the bubble → *Start auto OCR* (or use the
-   switch on the *Texts* tab / the notification). Keep playing; open *Texts* whenever you want to
-   mine a line — tap the line, tap the word, *Anki*. Long-press → *Mine the latest line* does the
-   same without leaving the game.
+3. **Auto OCR (recommended)** — open the game, long-press the bubble → *Start auto OCR*. In the
+   share dialog choose *A single app* → your game. If no text area exists for the current
+   orientation the area editor opens: drag boxes over the dialogue/subtitle area (drag to move,
+   corners to resize, × to delete) and *Save* (later: long-press → *Select text areas*). New lines
+   appear in the floating *Live text* window — tap one to look up words and mine it with its audio
+   and screenshot. Everything is also on the *Texts* tab.
 4. **Manual scan** — tap the bubble, adjust the capture box and hit *Scan region*. Tap a
    highlighted word for definitions, then *Anki*. Manual scans are logged on *Texts* too.
 5. **Audio** — on by default; grant the microphone permission when asked (Android requires it for

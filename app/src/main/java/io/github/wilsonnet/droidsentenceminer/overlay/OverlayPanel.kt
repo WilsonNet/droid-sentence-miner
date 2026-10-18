@@ -76,6 +76,8 @@ data class OverlayCallbacks(
     val onAudioSkipped: () -> Unit = {},
     val onToggleAutoOcr: () -> Unit = {},
     val onLatestLine: () -> Unit = {},
+    val onSelectAreas: () -> Unit = {},
+    val onShowLiveText: () -> Unit = {},
 )
 
 @Composable
@@ -156,13 +158,24 @@ private fun MenuContent(state: OverlayPanelState, callbacks: OverlayCallbacks) {
             onClick = callbacks.onToggleAutoOcr,
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Text(if (state.autoOcrRunning) "Stop auto OCR" else "Start auto OCR (saved region)")
+            Text(if (state.autoOcrRunning) "Stop auto OCR" else "Start auto OCR")
+        }
+        FilledTonalButton(
+            onClick = callbacks.onSelectAreas,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text("Select text areas")
         }
         FilledTonalButton(
             onClick = callbacks.onLatestLine,
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text("Mine the latest line")
+        }
+        if (state.autoOcrRunning) {
+            TextButton(onClick = callbacks.onShowLiveText, modifier = Modifier.fillMaxWidth()) {
+                Text("Show live text window")
+            }
         }
         FilledTonalButton(
             onClick = callbacks.onScanRegion,

@@ -187,6 +187,8 @@ object DebugApi {
             json.put("twoPass", container.prefs.ocrTwoPass.first())
             json.put("dropNoise", container.prefs.ocrDropNoise.first())
             json.put("audioEnabled", container.prefs.audioEnabled.first())
+            json.put("areasPortrait", container.prefs.autoAreas(false).first().size)
+            json.put("areasLandscape", container.prefs.autoAreas(true).first().size)
         }
         val auto = OverlayService.observeAutoOcr().value
         json.put(
@@ -521,13 +523,24 @@ object DebugApi {
 
     private fun setRegion(params: Map<String, String>): JSONObject {
         val region = regionParam(params) ?: return errorJson("need l,t,r,b")
+        // Sets the auto OCR area for the current (or ?orientation=landscape|portrait) orientation.
+        val landscape = when (params["orientation"]) {
+            "landscape" -> true
+            "portrait" -> false
+            else -> app.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+        }
         runBlocking {
-            AppContainer.from(app).prefs.setCaptureRegion(
+            val prefs = AppContainer.from(app).prefs
+            prefs.setCaptureRegion(
                 io.github.wilsonnet.droidsentenceminer.core.DsmPrefs.CaptureRegion(region.left, region.top, region.right, region.bottom),
+            )
+            prefs.setAutoAreas(
+                landscape,
+                listOf(io.github.wilsonnet.droidsentenceminer.capture.TextArea(region.left, region.top, region.right, region.bottom)),
             )
         }
         OverlayService.activeInstance?.debugSetRegion(region)
-        return JSONObject().put("ok", true)
+        return JSONObject().put("ok", true).put("orientation", if (landscape) "landscape" else "portrait")
     }
 
     private fun regionParam(params: Map<String, String>): RectF? {

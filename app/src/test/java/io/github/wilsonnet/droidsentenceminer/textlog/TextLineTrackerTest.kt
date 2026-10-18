@@ -48,6 +48,47 @@ class TextLineTrackerTest {
     }
 
     @Test
+    fun lineSettlesOnTheConsensusOfItsReads() {
+        val tracker = TextLineTracker(stableReads = 2)
+        val events = tracker.feed(
+            "特に予約じなくても乗れるみたいで" to 0,
+            "特に予約しなくても乗れるみたいで" to 400,
+            "特に予約しなくても乗れるみたいで" to 800,
+            "特に予約しなくても乗れるみたいて" to 1200,
+            "特に予約しなくても乗れるみたいで" to 1600,
+            "" to 2000,
+            "" to 2400,
+        )
+        assertEquals(Event.Started("特に予約じなくても乗れるみたいで", 0), events.first())
+        assertTrue(events.contains(Event.Settled("特に予約しなくても乗れるみたいで")))
+        assertEquals(Event.Ended(2000), events.last())
+    }
+
+    @Test
+    fun noisyReReadOfTheSameLineDoesNotStartANewLine() {
+        val tracker = TextLineTracker(stableReads = 2)
+        val events = tracker.feed(
+            "ちょっと昔ながらの温泉街って感じしない" to 0,
+            "ちょっと昔ながらの温泉街って感じしない" to 400,
+            "もはっと普ながらの温泉街って感じしない" to 800,
+            "ちよっと貴ながらの温街うて感じしない" to 1200,
+            "ちよっと貴ながらの温街うて感じしない" to 1600,
+        )
+        assertTrue(events.none { it is Event.Ended })
+        assertEquals(1, events.count { it is Event.Started })
+    }
+
+    @Test
+    fun consensusPicksTheMedoid() {
+        assertEquals("送迎バスが30分ごとに出ているので", TextSimilarity.consensus(listOf(
+            "送迎バスが30分ごとに出いるので",
+            "送迎バスが30分ごとに出ているので",
+            "送迎バスが30分ごとにているので",
+            "送迎バスが30分ごとに出ているのて",
+        )))
+    }
+
+    @Test
     fun replacementEndsPreviousLineAtTheSameInstant() {
         val tracker = TextLineTracker(stableReads = 2)
         tracker.feed("最初のセリフです" to 0, "最初のセリフです" to 400)
@@ -91,6 +132,12 @@ class TextLineTrackerTest {
     fun captionBoxEdgesAreStripped() {
         assertEquals("寝る時のことを考えると", TextSimilarity.clean("|寝る時のことを考えると|"))
         assertEquals("道の駅、都留", TextSimilarity.clean("｜道の駅、都留"))
+    }
+
+    @Test
+    fun multiRowTextIsStoredAsOneSentence() {
+        assertEquals("やっぱり温泉って秘策のイメージがあるじゃないですか", TextSimilarity.clean("やっぱり温泉って\n秘策のイメージがあるじゃないですか"))
+        assertEquals("Final Fantasy XIVの世界", TextSimilarity.clean("Final Fantasy\nXIVの世界"))
     }
 
     @Test

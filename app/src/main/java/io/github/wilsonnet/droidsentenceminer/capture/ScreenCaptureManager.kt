@@ -53,6 +53,14 @@ class ScreenCaptureManager(private val context: Context) {
     var isReady: Boolean = false
         private set
 
+    /**
+     * False while the app shared via "A single app" is not on screen (Android 14+); its frames
+     * are blank then, so auto OCR pauses instead of reading other apps.
+     */
+    @Volatile
+    var contentVisible: Boolean = true
+        private set
+
     /** The active projection, shared with the audio playback capture. */
     val activeProjection: MediaProjection? get() = projection
 
@@ -104,6 +112,10 @@ class ScreenCaptureManager(private val context: Context) {
                     isReady = false
                     release()
                     onProjectionStopped?.invoke()
+                }
+
+                override fun onCapturedContentVisibilityChanged(isVisible: Boolean) {
+                    contentVisible = isVisible
                 }
             },
             h,
@@ -170,6 +182,7 @@ class ScreenCaptureManager(private val context: Context) {
 
     fun release() {
         isReady = false
+        contentVisible = true
         runCatching { virtualDisplay?.release() }
         virtualDisplay = null
         runCatching { imageReader?.close() }

@@ -87,6 +87,15 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   wall-clock time; a line's clip is `[start − before, min(end, next.start) + after]`
   (`ClipWindow`), then `VoiceTrimmer`. Lines live in a separate Room DB (`textlog.db`) —
   never add tables to `dict.db`, it uses destructive migration and would wipe dictionaries.
+- **Text areas are per orientation** (`DsmPrefs.autoAreas(landscape)`, encoded by `TextArea`):
+  fractions drawn in portrait point at the wrong pixels once a video/game goes fullscreen
+  landscape (this truncated sentences before). `/set_region` writes the current orientation
+  (or `&orientation=landscape|portrait`). Auto OCR pauses (`AutoOcrController.paused`) while
+  `MainActivity` is resumed, the panel/area editor is open, or a single-app capture's app is not
+  visible (`MediaProjection.Callback.onCapturedContentVisibilityChanged`, API 34).
+- **Consensus text**: `TextLineTracker` keeps every read of the open line and emits `Settled`
+  with the medoid (`TextSimilarity.consensus`) at 3/5/8/13 reads and at line end; ML Kit errs
+  differently per read on stylized hardsubs, so this fixes most single-character errors.
 - **Samsung freezes cached apps**: with DSM in the background and no foreground service, the
   debug API stops answering. Bring `MainActivity` forward before calling it.
 - **Rotation keeps the projection**: `ScreenCaptureManager.onScreenSizeChanged()` resizes the

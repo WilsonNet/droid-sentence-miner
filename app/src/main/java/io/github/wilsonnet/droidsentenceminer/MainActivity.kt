@@ -40,6 +40,16 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    override fun onResume() {
+        super.onResume()
+        AppVisibility.mainResumed = true
+    }
+
+    override fun onPause() {
+        AppVisibility.mainResumed = false
+        super.onPause()
+    }
 }
 
 @Composable
