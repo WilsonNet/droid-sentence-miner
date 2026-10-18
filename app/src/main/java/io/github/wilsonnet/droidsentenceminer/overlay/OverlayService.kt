@@ -500,6 +500,7 @@ class OverlayService : Service() {
                     onDragEnd = {
                         liveParams?.let { p -> scope.launch { container.prefs.setLiveWindowPosition(p.x, p.y) } }
                     },
+                    onEditAreas = { showAreaSelector() },
                     onClose = {
                         liveDismissed = true
                         hideLiveWindow()

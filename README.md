@@ -107,11 +107,13 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 3. **Auto OCR (recommended)** — open the game, long-press the bubble → *Start auto OCR*. In the
    share dialog choose *A single app* → your game. If no text area exists for the current
    orientation the area editor opens: drag boxes over the dialogue/subtitle area (drag to move,
-   corners to resize, × to delete; drag the toolbar by ⠿ out of the way) and *Save* (later:
-   long-press → *Select text areas*). New lines
+   corners to resize, × to delete; drag the toolbar by ⠿ out of the way) and *Save*. To change
+   them later (e.g. a different video), tap ✎ in the *Live text* window or long-press the bubble →
+   *Auto OCR text areas*. New lines
    appear in the floating *Live text* window — tap one to look up words and mine it with its audio
    and screenshot. Everything is also on the *Texts* tab.
-4. **Manual scan** — tap the bubble, adjust the capture box and hit *Scan region*. Tap a
+4. **Manual scan (one-off)** — tap the bubble (or long-press → *Scan once: pick a region*), adjust
+   the capture box and hit *Scan region*. This box is separate from the auto OCR text areas. Tap a
    highlighted word for definitions, then *Anki*. Manual scans are logged on *Texts* too.
 5. **Audio** — on by default; grant the microphone permission when asked (Android requires it for
    playback capture). *Settings* has the buffer length, start/end offsets and silence trimming.

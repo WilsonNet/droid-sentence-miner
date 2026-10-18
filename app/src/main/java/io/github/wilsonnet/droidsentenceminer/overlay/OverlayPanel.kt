@@ -164,7 +164,7 @@ private fun MenuContent(state: OverlayPanelState, callbacks: OverlayCallbacks) {
             onClick = callbacks.onSelectAreas,
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Text("Select text areas")
+            Text("Auto OCR text areas")
         }
         FilledTonalButton(
             onClick = callbacks.onLatestLine,
@@ -181,13 +181,13 @@ private fun MenuContent(state: OverlayPanelState, callbacks: OverlayCallbacks) {
             onClick = callbacks.onScanRegion,
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Text("Scan a region")
+            Text("Scan once: pick a region")
         }
         FilledTonalButton(
             onClick = callbacks.onScanFullScreen,
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Text("Scan the full screen")
+            Text("Scan once: full screen")
         }
         TextButton(onClick = callbacks.onHideBubble, modifier = Modifier.fillMaxWidth()) {
             Text("Hide bubble")

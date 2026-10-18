@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DragIndicator
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -44,6 +45,7 @@ fun LiveTextWindow(
     onLineClick: (Long) -> Unit,
     onDrag: (Float, Float) -> Unit,
     onDragEnd: () -> Unit,
+    onEditAreas: () -> Unit,
     onClose: () -> Unit,
 ) {
     val lines by remember { dao.observeRecent(VISIBLE_LINES) }.collectAsState(initial = emptyList())
@@ -88,6 +90,15 @@ fun LiveTextWindow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
+            )
+            Icon(
+                Icons.Default.Edit,
+                contentDescription = "Auto OCR text areas",
+                tint = Color(0xFF9FB8AE),
+                modifier = Modifier
+                    .size(32.dp)
+                    .clickable(onClick = onEditAreas)
+                    .padding(6.dp),
             )
             Icon(
                 Icons.Default.Close,

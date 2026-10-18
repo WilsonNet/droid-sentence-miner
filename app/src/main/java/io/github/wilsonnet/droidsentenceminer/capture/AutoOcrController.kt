@@ -197,7 +197,7 @@ class AutoOcrController(
     companion object {
         private const val TAG = "DSM-AutoOcr"
         private const val STATIC_REGION_DISTANCE = 0.012
-        const val NO_AREA = "No text area for this orientation — long-press the bubble → Select text areas"
+        const val NO_AREA = "No text area for this orientation — tap ✎ or long-press the bubble → Auto OCR text areas"
         const val PAUSED = "Paused while Droid Sentence Miner is on screen"
     }
 }
