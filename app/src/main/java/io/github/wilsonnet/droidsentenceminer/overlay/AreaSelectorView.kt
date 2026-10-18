@@ -19,8 +19,8 @@ import kotlin.math.min
 /**
  * Full-screen editor for auto OCR text areas, drawn directly over the running game.
  * Drag on empty space to add a box, drag a box to move it, drag a corner to resize,
- * tap the × to delete. The toolbar sits at the top (dialogue boxes and subtitles are
- * usually at the bottom) and can be flipped down with ⇅.
+ * tap the × to delete. The compact toolbar can be dragged anywhere by its ⠿ handle so it
+ * never covers the text being boxed; the hint collapses once the first box is drawn.
  */
 @SuppressLint("ViewConstructor")
 class AreaSelectorView(
@@ -36,7 +36,6 @@ class AreaSelectorView(
     private var selected: Int = -1
 
     private val dimPaint = Paint().apply { color = Color.parseColor("#80000000") }
-    private val dimPath = android.graphics.Path().apply { fillType = android.graphics.Path.FillType.EVEN_ODD }
     private val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#4CD9B4")
         style = Paint.Style.STROKE
@@ -64,7 +63,7 @@ class AreaSelectorView(
     private var downY = 0f
     private val startBox = RectF()
     private val toolbar: LinearLayout
-    private var toolbarAtTop = true
+    private val hint: TextView
 
     init {
         setWillNotDraw(false)
@@ -73,51 +72,81 @@ class AreaSelectorView(
         toolbar = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(Color.parseColor("#E6101C18"))
-            setPadding(dp(12f).toInt(), dp(8f).toInt(), dp(12f).toInt(), dp(8f).toInt())
+            setPadding(dp(8f).toInt(), dp(6f).toInt(), dp(8f).toInt(), dp(6f).toInt())
         }
-        toolbar.addView(TextView(context).apply {
-            text = "Draw boxes over the game's text ($orientationLabel). Drag to move, corners to resize, × to delete."
+        hint = TextView(context).apply {
+            text = "Draw boxes over the game's text ($orientationLabel). Drag a box to move it, corners to resize, " +
+                "× to delete. Drag ⠿ to move this bar."
             setTextColor(Color.WHITE)
-            textSize = 13f
-        })
+            textSize = 12f
+            maxWidth = dp(360f).toInt()
+            setPadding(0, 0, 0, dp(4f).toInt())
+        }
+        toolbar.addView(hint)
         val row = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER
-            setPadding(0, dp(6f).toInt(), 0, 0)
+            gravity = Gravity.CENTER_VERTICAL
         }
+        row.addView(dragHandle())
         row.addView(button("Save", primary = true) { onSave(fractions()) })
         row.addView(button("Clear", primary = false) {
             boxes.clear()
             selected = -1
             invalidate()
         })
-        row.addView(button("⇅", primary = false, weight = 0.5f) { flipToolbar() })
         row.addView(button("Cancel", primary = false) { onCancel() })
         toolbar.addView(row)
-        addView(toolbar, toolbarParams())
+        addView(
+            toolbar,
+            LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT).apply {
+                gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
+                topMargin = dp(24f).toInt()
+            },
+        )
     }
 
-    private fun toolbarParams() = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply {
-        gravity = if (toolbarAtTop) Gravity.TOP else Gravity.BOTTOM
-        if (toolbarAtTop) topMargin = dp(24f).toInt() else bottomMargin = dp(16f).toInt()
+    /** Moves the whole toolbar with the finger, kept inside the screen. */
+    @SuppressLint("ClickableViewAccessibility")
+    private fun dragHandle() = TextView(context).apply {
+        text = "⠿"
+        textSize = 22f
+        setTextColor(Color.parseColor("#9FB8AE"))
+        gravity = Gravity.CENTER
+        setPadding(dp(10f).toInt(), dp(4f).toInt(), dp(12f).toInt(), dp(4f).toInt())
+        contentDescription = "Move toolbar"
+        var lastX = 0f
+        var lastY = 0f
+        setOnTouchListener { _, e ->
+            when (e.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    lastX = e.rawX
+                    lastY = e.rawY
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    val left = toolbar.left + toolbar.translationX + (e.rawX - lastX)
+                    val top = toolbar.top + toolbar.translationY + (e.rawY - lastY)
+                    val screen = this@AreaSelectorView
+                    toolbar.translationX = left.coerceIn(0f, (screen.width - toolbar.width).toFloat().coerceAtLeast(0f)) - toolbar.left
+                    toolbar.translationY = top.coerceIn(0f, (screen.height - toolbar.height).toFloat().coerceAtLeast(0f)) - toolbar.top
+                    lastX = e.rawX
+                    lastY = e.rawY
+                }
+            }
+            true
+        }
     }
 
-    private fun flipToolbar() {
-        toolbarAtTop = !toolbarAtTop
-        toolbar.layoutParams = toolbarParams()
-    }
-
-    private fun button(label: String, primary: Boolean, weight: Float = 1f, onClick: () -> Unit) = TextView(context).apply {
+    private fun button(label: String, primary: Boolean, onClick: () -> Unit) = TextView(context).apply {
         text = label
         textSize = 15f
         maxLines = 1
         gravity = Gravity.CENTER
         setTextColor(if (primary) Color.parseColor("#0B201A") else Color.WHITE)
         setBackgroundColor(if (primary) Color.parseColor("#4CD9B4") else Color.parseColor("#33FFFFFF"))
-        setPadding(dp(6f).toInt(), dp(10f).toInt(), dp(6f).toInt(), dp(10f).toInt())
+        setPadding(dp(14f).toInt(), dp(10f).toInt(), dp(14f).toInt(), dp(10f).toInt())
         isClickable = true
         setOnClickListener { onClick() }
-        layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, weight).apply {
+        layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
             marginStart = dp(4f).toInt()
             marginEnd = dp(4f).toInt()
         }
@@ -133,11 +162,11 @@ class AreaSelectorView(
     }
 
     override fun dispatchDraw(canvas: Canvas) {
-        // Dim everything except the boxes (even-odd fill punches them out).
-        dimPath.reset()
-        dimPath.addRect(0f, 0f, width.toFloat(), height.toFloat(), android.graphics.Path.Direction.CW)
-        boxes.forEach { dimPath.addRect(it, android.graphics.Path.Direction.CW) }
-        canvas.drawPath(dimPath, dimPaint)
+        // Dim everything except the boxes.
+        canvas.save()
+        boxes.forEach { canvas.clipOutRect(it) }
+        canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), dimPaint)
+        canvas.restore()
         boxes.forEachIndexed { i, box ->
             canvas.drawRect(box, if (i == selected) selectedPaint else borderPaint)
             canvas.drawText("${i + 1}", box.left + dp(4f), box.top + dp(14f), labelText)
@@ -177,6 +206,7 @@ class AreaSelectorView(
                         boxes += RectF(x, y, x, y)
                         selected = boxes.lastIndex
                         mode = Mode.CREATE
+                        hint.visibility = GONE
                     }
                 }
                 startBox.set(boxes[selected])

@@ -55,7 +55,11 @@ with [Yomitan](https://github.com/yomidevs/yomitan) dictionary compatibility.
   session (the Android equivalent of GSM's loopback capture) into the replay buffer, with a
   waveform **audio editor** to trim the exact line before mining.
 - **Mining history** — recent cards with a status showing whether they made it into Anki.
-- **Text selection lookup** — other apps can share selected text via `ACTION_PROCESS_TEXT`.
+- **Text selection lookup** — other apps can send selected text via `ACTION_PROCESS_TEXT`, including
+  Samsung's text selection on screenshots/images and Circle to Search. A selected word is matched to
+  the newest logged line containing it, so the card still gets the full sentence, screenshot and
+  audio; a selected sentence is logged as a new line. Handy for text auto OCR can't read (vertical
+  or handwritten-style), using Google's cloud OCR by hand.
 
 ## Requirements
 
@@ -103,7 +107,8 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 3. **Auto OCR (recommended)** — open the game, long-press the bubble → *Start auto OCR*. In the
    share dialog choose *A single app* → your game. If no text area exists for the current
    orientation the area editor opens: drag boxes over the dialogue/subtitle area (drag to move,
-   corners to resize, × to delete) and *Save* (later: long-press → *Select text areas*). New lines
+   corners to resize, × to delete; drag the toolbar by ⠿ out of the way) and *Save* (later:
+   long-press → *Select text areas*). New lines
    appear in the floating *Live text* window — tap one to look up words and mine it with its audio
    and screenshot. Everything is also on the *Texts* tab.
 4. **Manual scan** — tap the bubble, adjust the capture box and hit *Scan region*. Tap a

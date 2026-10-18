@@ -52,6 +52,26 @@ class TextLog(
 
     suspend fun latest(): TextLineEntity? = withContext(Dispatchers.IO) { dao.recent(1).firstOrNull() }
 
+    /**
+     * Text selected in another app (e.g. Samsung's text extraction or Circle to Search) and sent
+     * to DSM: a word is matched to the newest logged line containing it, so mining keeps that
+     * line's sentence, screenshot and audio; anything else is logged as a new manual line.
+     */
+    suspend fun lineForSharedText(text: String): TextLineEntity = withContext(Dispatchers.IO) {
+        val cleaned = TextSimilarity.clean(text)
+        val compact = cleaned.filterNot { it.isWhitespace() }
+        dao.recent(SHARED_MATCH_LINES).firstOrNull { line ->
+            val lineText = line.text.filterNot { it.isWhitespace() }
+            // An earlier share of the same bare word is not a sentence.
+            if (lineText == compact && line.source == TextLineEntity.SOURCE_MANUAL) return@firstOrNull false
+            lineText.contains(compact) || (compact.length > 12 && TextSimilarity.ratio(lineText, compact) > 0.8)
+        } ?: run {
+            val now = System.currentTimeMillis()
+            val id = dao.insert(TextLineEntity(text = cleaned, startMs = now, endMs = now, source = TextLineEntity.SOURCE_MANUAL))
+            dao.get(id)!!
+        }
+    }
+
     suspend fun delete(line: TextLineEntity) = withContext(Dispatchers.IO) {
         line.screenshotPath?.let { File(it).delete() }
         dao.delete(line.id)
@@ -126,6 +146,7 @@ class TextLog(
     companion object {
         const val SAMPLE_RATE = 24_000
         const val MANUAL_LOOKBACK_MS = 6_000L
+        private const val SHARED_MATCH_LINES = 300
         private const val MAX_SCREENSHOT_WIDTH = 1280
         private const val MAX_SCREENSHOTS = 400
     }

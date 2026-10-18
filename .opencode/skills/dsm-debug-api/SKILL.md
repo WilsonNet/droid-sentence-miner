@@ -47,7 +47,7 @@ All GET, all JSON (except `frame.png`). Regions are screen fractions unless note
 | `/request_projection` | Ask for MediaProjection consent (shows system dialog on device) |
 | `/scan?l=&t=&r=&b=` | Full pipeline: grab frame → crop → OCR → dictionary lookup. Omit the region to reuse the saved one |
 | `/frame.png?l=&t=&r=&b=` | PNG of what MediaProjection actually sees (omit region for the raw full frame) |
-| `/ocr?file=/sdcard/...&twoPass=1&noise=1&l=&t=&r=&b=` | OCR an image file (optionally cropped to a region); returns text, per-line boxes + confidences, and dictionary matches |
+| `/ocr?file=/sdcard/...&engine=meiki\|mlkit&twoPass=1&noise=1&l=&t=&r=&b=` | OCR an image file (optionally cropped) with the chosen engine; returns text, engine, per-line boxes + confidences, and dictionary matches |
 | `/lookup?word=<urlencoded>` | Dictionary lookup summary (reading, term count) |
 | `/mine?word=&sentence=` | Look a word up and add a card via the configured Anki backend (AnkiDroid/AnkiConnect) |
 | `/dicts` | Installed dictionaries with term/kanji counts and zip paths |
@@ -56,6 +56,9 @@ All GET, all JSON (except `frame.png`). Regions are screen fractions unless note
 | `/anki_meta` | AnkiDroid decks and note types as id → name maps |
 | `/startoverlay`, `/stopoverlay` | Start/stop the floating overlay service |
 | `/autoocr?on=1` / `?on=0` | Start/stop auto OCR on the saved region (starts the service and asks for consent if needed) |
+| `/select_areas` | Open the text-area editor overlay over whatever is on screen |
+| `/install_ocr_models` | Download the meikiocr models (blocking; ~31 MB) |
+| `/add_line?text=&ago=&dur=` | Log a synthetic line in the past (tests clip/mining without OCR) |
 | `/set_region?l=&t=&r=&b=&orientation=` | Save the auto OCR text area for the current (or given `landscape`/`portrait`) orientation |
 | `/lines?limit=50` | Text log: id, text, start/end ms, source, screenshot path, clip bounds, `hasAudio` |
 | `/clip.wav?id=&trim=0\|1` | The line's voice clip cut from the replay buffer (raw window or VAD-trimmed) |

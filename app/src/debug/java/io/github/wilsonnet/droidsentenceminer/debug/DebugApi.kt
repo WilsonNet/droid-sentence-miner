@@ -150,6 +150,10 @@ object DebugApi {
             }
             "/mine_line" -> respondApi(socket) { mineLine(params) }
             "/add_line" -> respondApi(socket) { addLine(params) }
+            "/select_areas" -> {
+                OverlayService.selectAreas(app)
+                respondJson(socket, JSONObject().put("ok", true))
+            }
             "/install_ocr_models" -> respondApi(socket) {
                 val error = runBlocking { io.github.wilsonnet.droidsentenceminer.ocr.MeikiModels.download(app) }
                 JSONObject().put("ok", error == null).put("error", error)

@@ -64,8 +64,11 @@ class ProcessTextActivity : ComponentActivity() {
     private fun SelectionPopup(text: String, container: AppContainer, onClose: () -> Unit) {
         var matches by remember { mutableStateOf<List<ScannedWord>?>(null) }
         var selected by remember { mutableStateOf<String?>(null) }
+        var line by remember { mutableStateOf<io.github.wilsonnet.droidsentenceminer.textlog.TextLineEntity?>(null) }
 
         androidx.compose.runtime.LaunchedEffect(text) {
+            // Ties the selection to the text log so the card gets a full sentence and its audio.
+            line = container.textLog.lineForSharedText(text.trim().take(400))
             val trimmed = text.trim().take(400)
             if (trimmed.length <= 12) {
                 selected = trimmed
@@ -92,7 +95,7 @@ class ProcessTextActivity : ComponentActivity() {
                 ) {
                     Text("Droid Sentence Miner", style = MaterialTheme.typography.titleMedium)
                     Text(
-                        text.trim().take(160),
+                        (line?.text ?: text.trim()).take(160),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier
@@ -120,11 +123,13 @@ class ProcessTextActivity : ComponentActivity() {
         }
 
         selected?.let { word ->
+            val sentenceLine = line
             WordLookupDialog(
                 word = word,
-                sentence = text,
+                sentence = sentenceLine?.text ?: text,
                 image = null,
                 onDismiss = { selected = null },
+                onMine = sentenceLine?.let { l -> { details -> container.miner.mineLine(l, word, details) } },
             )
         }
     }

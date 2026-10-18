@@ -94,7 +94,7 @@ curl -s "localhost:9099/mine?word=%E3%81%AA%E3%81%84&sentence=..."   # Anki card
 Endpoints: `/state`, `/scan`, `/frame.png`, `/ocr` (`l,t,r,b` crops the file first), `/lookup`, `/mine`, `/dicts`,
 `/autoocr?on=1|0`, `/lines?limit=`, `/clip.wav?id=&trim=0|1`, `/line_shot.jpg?id=`, `/mine_line?id=&word=`,
 `/set_region?l=&t=&r=&b=&orientation=`, `/clear_lines`, `/add_line?text=&ago=&dur=`,
-`/install_ocr_models` (meikiocr download), `/ocr?engine=meiki|mlkit`,
+`/install_ocr_models` (meikiocr download), `/ocr?engine=meiki|mlkit`, `/select_areas` (opens the area editor),
 `/install_dict?id=jitendex` (background install; progress in `/state.dictInstall`),
 `/anki_notes?word=` (field-level card verification via the AnkiDroid provider),
 `/anki_meta` (decks + note types), `/startoverlay`, `/stopoverlay`, `/request_projection`.
@@ -125,6 +125,10 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   (or `&orientation=landscape|portrait`). Auto OCR pauses (`AutoOcrController.paused`) while
   `MainActivity` is resumed, the panel/area editor is open, or a single-app capture's app is not
   visible (`MediaProjection.Callback.onCapturedContentVisibilityChanged`, API 34).
+- **Shared text selections** (`ProcessTextActivity` → `TextLog.lineForSharedText`): a word is
+  matched to the newest of the last 300 lines containing it (earlier bare-word shares skipped),
+  otherwise logged as a manual line, so Galaxy AI / Circle to Search selections mine with sentence
+  + audio. Those engines have no API, so they can't drive auto OCR.
 - **Consensus text**: `TextLineTracker` keeps every read of the open line and emits `Settled`
   with the medoid (`TextSimilarity.consensus`) at 3/5/8/13 reads and at line end; ML Kit errs
   differently per read on stylized hardsubs, so this fixes most single-character errors.
