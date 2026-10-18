@@ -27,6 +27,7 @@ class CardMiner(
     private val ankiClient: AnkiClient,
     private val prefs: DsmPrefs,
     private val textLog: TextLog,
+    private val wordAudioFetcher: WordAudio = WordAudio(),
 ) {
 
     suspend fun buildCard(
@@ -41,8 +42,10 @@ class CardMiner(
 
         val sb = StringBuilder()
         var currentDictId = -1L
-        for (term in resolved.terms) {
-            if (term.dictId != currentDictId) {
+        val firstOnly = prefs.glossaryFirstDictionary.first()
+        val terms = if (firstOnly) resolved.terms.filter { it.dictId == resolved.terms.firstOrNull()?.dictId } else resolved.terms
+        for (term in terms) {
+            if (!firstOnly && term.dictId != currentDictId) {
                 currentDictId = term.dictId
                 sb.append("<div class=\"gloss-dictionary\">")
                 sb.append(GlossaryHtml.escape(term.dictionaryTitle))
@@ -58,6 +61,12 @@ class CardMiner(
         }
 
         val reading = resolved.reading.orEmpty()
+        val expression = resolved.baseForm.ifBlank { word }
+        val wordAudio = if (prefs.wordAudio.first()) {
+            wordAudioFetcher.fetch(expression, reading, prefs.wordAudioCustomUrl.first())
+        } else {
+            null
+        }
         val tags = snapshot.ankiTags.split(Regex("[,\\s]+")).filter { it.isNotBlank() }
 
         val imageBytes = image?.takeIf { snapshot.ankiIncludeImage }?.let { bitmap ->
@@ -70,13 +79,15 @@ class CardMiner(
         AnkiCard(
             expression = resolved.baseForm.ifBlank { word },
             reading = reading,
-            meaningHtml = CardHtml.meaning(sb.toString(), CardHtml.frequencyLine(resolved)),
+            meaningHtml = CardHtml.meaning(sb.toString(), CardHtml.frequencyLine(resolved).takeUnless { firstOnly }),
             sentence = sentence,
             sentenceHtml = CardHtml.highlightSentence(sentence, resolved.baseForm.ifBlank { word }),
             imageBytes = imageBytes,
             imageName = "dsm_${sanitizeForFilename(resolved.baseForm.ifBlank { word })}.jpg",
             audioBytes = audio?.bytes,
             audioName = audio?.let { "dsm_${sanitizeForFilename(resolved.baseForm.ifBlank { word })}.${it.extension}" },
+            wordAudioBytes = wordAudio?.bytes,
+            wordAudioName = wordAudio?.let { "dsm_${sanitizeForFilename(expression)}_pron.${it.extension}" },
             sourceTitle = "Droid Sentence Miner (screen OCR)",
             tags = tags,
         )

@@ -49,8 +49,15 @@ with [Yomitan](https://github.com/yomidevs/yomitan) dictionary compatibility.
 - **Anki mining** — two backends:
   - **AnkiDroid API** (no network needed; cards, images and audio via the official API), and
   - **AnkiConnect** (desktop Anki with the AnkiConnect add-on; card + media upload over HTTP).
-  Cards include Expression, Reading, Meaning (rendered glossary), Sentence (target word bolded),
-  Image (captured screenshot), Audio (sentence voice line) and Source.
+  Cards include Expression, Reading, Meaning (rendered glossary), Sentence, Image (captured
+  screenshot), Audio (sentence voice line), **Word audio** and Source. Existing note types are
+  filled by field name the way Yomitan/GSM fill them — e.g. Anime Cards: Word, Reading, Glossary,
+  Context Sentence (Sentence stays empty so it stays a word card), Word Audio, Audio, Picture.
+- **Word audio like Yomitan** — the word's pronunciation is fetched from the same sources Yomitan
+  uses for Japanese, in the same order: JapanesePod101 (placeholder clip rejected by hash),
+  JapanesePod101 dictionary search, Jisho; plus an optional custom URL (`{term}`/`{reading}`,
+  e.g. a local audio server) tried first. Option to put only the first dictionary on the card
+  (Yomitan's `{glossary-first}`).
 - **Sentence audio** (Android 10+) — captures playback audio through the existing MediaProjection
   session (the Android equivalent of GSM's loopback capture) into the replay buffer, with a
   waveform **audio editor** to trim the exact line before mining.
@@ -86,7 +93,7 @@ android sdk install platform-tools platforms/android-36 build-tools/35.0.0 emula
 echo "sdk.dir=$ANDROID_HOME" > local.properties
 
 # 3. Build & test
-./gradlew testDebugUnitTest          # 102 JVM unit tests
+./gradlew testDebugUnitTest          # 112 JVM unit tests
 ./gradlew connectedDebugAndroidTest  # 4 on-device tests (VAD + AAC encoding)
 ./gradlew assembleDebug              # app/build/outputs/apk/debug/app-debug.apk
 
@@ -204,7 +211,7 @@ Glossaries may be strings, arrays, image definitions, deinflection entries or st
   recipe): every subtitle cue in the run was logged (61/61, 56 exact, mean character accuracy
   0.99), line start times within ±300 ms (p90) of the cue, and every voice clip located in the
   original audio at correlation ≥0.97, starting 160–1080 ms (median ~400 ms) before the subtitle.
-- 102 JVM unit tests: meikiocr decoding, OCR text fixes (一→ー), text areas, line consensus, replay buffer, voice trimming, line tracking, clip windows, subtitle-row
+- 112 JVM unit tests: word audio sources, Anki field mapping, meikiocr decoding, OCR text fixes (一→ー), text areas, line consensus, replay buffer, voice trimming, line tracking, clip windows, subtitle-row
   filtering, deinflector (conjugations across godan/ichidan/suru/kuru/adjectives),
   glossary parsing/rendering, OCR post-processing (merge, furigana filter, normalization),
   VAD segmentation, PCM utilities, Yomitan index parsing.
@@ -227,6 +234,8 @@ Glossaries may be strings, arrays, image definitions, deinflection entries or st
   proper MIME type/extension so the file name matches the content.
 - Vertical text (meikiocr ships a vertical recognizer; not wired up yet) and furigana-aware
   reading for manga-style layouts.
+- Pitch-accent graph for the Anime Cards "Graph" field (from a Yomitan pitch dictionary, as Yomitan
+  renders it).
 - Hotkey toggle for the live/lookup overlay (gamepad button or volume key via an accessibility
   service), as meikidroid does — handy on Android handhelds.
 - Faster auto OCR on low-end devices: detector only when the area changes, smaller detector option.

@@ -125,6 +125,20 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   (or `&orientation=landscape|portrait`). Auto OCR pauses (`AutoOcrController.paused`) while
   `MainActivity` is resumed, the panel/area editor is open, or a single-app capture's app is not
   visible (`MediaProjection.Callback.onCapturedContentVisibilityChanged`, API 34).
+- **Anki field mapping** (`AnkiFieldMapper`): aliases are in *preference* order, not field
+  order. Anime Cards (the user's note type: Word, Graph, Reading, Glossary, Context Sentence, Word
+  Audio, Audio, Picture, Sentence): its template shows `{{Sentence}}` on the front when filled,
+  turning a word card into a sentence card, so the sentence goes to *Context Sentence* and
+  *Sentence* stays empty (matches the user's 5k Yomitan/GSM notes). "Audio" + "Sentence Audio" ⇒
+  Audio is word audio; no word-audio field ⇒ the `[sound:]` is appended to Reading. Foreign note
+  types get the sentence as plain text; the glossary is wrapped in `div.yomitan-glossary`.
+  Inspect a deck read-only with `/anki_sample?model=` and `/anki_templates?model=`, and render a
+  card without adding it with `/preview_card?word=&line=`.
+- **Word audio** (`anki/WordAudio.kt`): Yomitan's Japanese chain — jpod101 direct
+  (`audiomp3.php`, kana-only words query by kana; reject SHA-256 `ae6398b5…` placeholder) →
+  JapanesePod101 `dictionary_post` search (split rows on the `dc-result-row` *class*, not the
+  substring, or `dc-result-row__checkbox` breaks parsing) → Jisho `audio_{term}:{reading}` →
+  optional custom URL first.
 - **Shared text selections** (`ProcessTextActivity` → `TextLog.lineForSharedText`): a word is
   matched to the newest of the last 300 lines containing it (earlier bare-word shares skipped),
   otherwise logged as a manual line, so Galaxy AI / Circle to Search selections mine with sentence

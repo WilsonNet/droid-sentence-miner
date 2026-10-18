@@ -31,6 +31,9 @@ class DsmPrefs(private val context: Context) {
         val ocrEngine = stringPreferencesKey("ocr_engine")
         val audioEnabled = booleanPreferencesKey("audio_enabled")
         val audioTrim = booleanPreferencesKey("audio_trim")
+        val wordAudio = booleanPreferencesKey("word_audio")
+        val glossaryFirstDictionary = booleanPreferencesKey("glossary_first_dictionary")
+        val wordAudioCustomUrl = stringPreferencesKey("word_audio_custom_url")
         val audioBufferSeconds = intPreferencesKey("audio_buffer_seconds")
         val clipBeforeMs = intPreferencesKey("clip_before_ms")
         val clipAfterMs = intPreferencesKey("clip_after_ms")
@@ -69,6 +72,13 @@ class DsmPrefs(private val context: Context) {
     val audioEnabled: Flow<Boolean> = context.dataStore.data.map { it[Keys.audioEnabled] ?: true }
     // Off by default: energy VAD can't separate voice from loud BGM/ambience reliably.
     val audioTrim: Flow<Boolean> = context.dataStore.data.map { it[Keys.audioTrim] ?: false }
+    val wordAudio: Flow<Boolean> = context.dataStore.data.map { it[Keys.wordAudio] ?: true }
+
+    /** Like Yomitan's {glossary-first}: only the highest-priority dictionary on the card. */
+    val glossaryFirstDictionary: Flow<Boolean> = context.dataStore.data.map { it[Keys.glossaryFirstDictionary] ?: false }
+
+    /** Yomitan-style custom audio URL with {term} and {reading}; tried before the built-in sources. */
+    val wordAudioCustomUrl: Flow<String> = context.dataStore.data.map { it[Keys.wordAudioCustomUrl] ?: "" }
     val audioBufferSeconds: Flow<Int> = context.dataStore.data.map { it[Keys.audioBufferSeconds] ?: DEFAULT_AUDIO_BUFFER_SECONDS }
     val clipBeforeMs: Flow<Int> = context.dataStore.data.map { it[Keys.clipBeforeMs] ?: 500 }
     val clipAfterMs: Flow<Int> = context.dataStore.data.map { it[Keys.clipAfterMs] ?: 500 }
@@ -129,6 +139,9 @@ class DsmPrefs(private val context: Context) {
     suspend fun setOcrEngine(value: String) = edit { it[Keys.ocrEngine] = value }
     suspend fun setAudioEnabled(value: Boolean) = edit { it[Keys.audioEnabled] = value }
     suspend fun setAudioTrim(value: Boolean) = edit { it[Keys.audioTrim] = value }
+    suspend fun setWordAudio(value: Boolean) = edit { it[Keys.wordAudio] = value }
+    suspend fun setGlossaryFirstDictionary(value: Boolean) = edit { it[Keys.glossaryFirstDictionary] = value }
+    suspend fun setWordAudioCustomUrl(value: String) = edit { it[Keys.wordAudioCustomUrl] = value.trim() }
     suspend fun setAudioBufferSeconds(value: Int) = edit { it[Keys.audioBufferSeconds] = value }
     suspend fun setClipBeforeMs(value: Int) = edit { it[Keys.clipBeforeMs] = value }
     suspend fun setClipAfterMs(value: Int) = edit { it[Keys.clipAfterMs] = value }

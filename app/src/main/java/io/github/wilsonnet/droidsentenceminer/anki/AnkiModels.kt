@@ -14,6 +14,9 @@ data class AnkiCard(
     val imageName: String? = null,
     val audioBytes: ByteArray? = null,
     val audioName: String? = null,
+    /** Pronunciation of the word itself (JapanesePod101/Jisho), separate from the sentence clip. */
+    val wordAudioBytes: ByteArray? = null,
+    val wordAudioName: String? = null,
     val sourceTitle: String? = null,
     val tags: List<String> = emptyList(),
 ) {
@@ -48,11 +51,16 @@ object CardFields {
     const val IMAGE = "Image"
     const val AUDIO = "Audio"
     const val SOURCE = "Source"
+    const val WORD_AUDIO = "WordAudio"
 
-    val ORDER = listOf(EXPRESSION, READING, MEANING, SENTENCE, IMAGE, AUDIO, SOURCE)
+    val ORDER = listOf(EXPRESSION, READING, MEANING, SENTENCE, IMAGE, AUDIO, SOURCE, WORD_AUDIO)
 }
 
 object CardHtml {
+    fun sentenceFor(model: String, card: AnkiCard): String =
+        if (model == io.github.wilsonnet.droidsentenceminer.core.DsmPrefs.DEFAULT_MODEL) card.sentenceHtml
+        else GlossaryHtml.escape(card.sentence)
+
     /** Bold the target word inside the OCR sentence. */
     fun highlightSentence(sentence: String, word: String): String {
         val escaped = GlossaryHtml.escape(sentence)
@@ -65,12 +73,14 @@ object CardHtml {
             escaped.substring(index + escapedWord.length)
     }
 
+    /** Wrapped like Yomitan's glossary so note types styled for Yomitan cards render it the same. */
     fun meaning(entriesHtml: String, frequencyHtml: String? = null): String {
-        val sb = StringBuilder()
+        val sb = StringBuilder("<div style=\"text-align: left;\" class=\"yomitan-glossary\">")
         if (!frequencyHtml.isNullOrBlank()) {
             sb.append("<div class=\"frequency\">").append(frequencyHtml).append("</div>")
         }
         sb.append(entriesHtml)
+        sb.append("</div>")
         return sb.toString()
     }
 

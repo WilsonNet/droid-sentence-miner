@@ -150,6 +150,96 @@ object DebugApi {
             }
             "/mine_line" -> respondApi(socket) { mineLine(params) }
             "/add_line" -> respondApi(socket) { addLine(params) }
+            "/preview_card" -> respondApi(socket) {
+                // Builds the card and maps it onto the configured note type without adding it.
+                val container = AppContainer.from(app)
+                val word = params["word"] ?: return@respondApi errorJson("missing 'word'")
+                runBlocking {
+                    val line = params["line"]?.toLongOrNull()?.let { container.textLog.get(it) }
+                    val sentence = line?.text ?: params["sentence"].orEmpty()
+                    val card = container.miner.buildCard(word, sentence, details = container.lookup.lookup(word))
+                    val model = container.prefs.ankiModel.first()
+                    val api = AddContentApi(app)
+                    val modelId = api.modelList?.entries?.firstOrNull { it.value == model }?.key
+                    val fieldNames = modelId?.let { api.getFieldList(it)?.toList() } ?: io.github.wilsonnet.droidsentenceminer.anki.CardFields.ORDER
+                    val values = mapOf(
+                        io.github.wilsonnet.droidsentenceminer.anki.CardFields.EXPRESSION to card.expression,
+                        io.github.wilsonnet.droidsentenceminer.anki.CardFields.READING to card.reading,
+                        io.github.wilsonnet.droidsentenceminer.anki.CardFields.MEANING to card.meaningHtml,
+                        io.github.wilsonnet.droidsentenceminer.anki.CardFields.SENTENCE to io.github.wilsonnet.droidsentenceminer.anki.CardHtml.sentenceFor(model, card),
+                        io.github.wilsonnet.droidsentenceminer.anki.CardFields.IMAGE to "<img src=\"(screenshot)\">",
+                        io.github.wilsonnet.droidsentenceminer.anki.CardFields.AUDIO to "[sound:(sentence clip)]",
+                        io.github.wilsonnet.droidsentenceminer.anki.CardFields.SOURCE to (card.sourceTitle ?: ""),
+                        io.github.wilsonnet.droidsentenceminer.anki.CardFields.WORD_AUDIO to (card.wordAudioBytes?.let { "[sound:${card.wordAudioName}] (${it.size} bytes)" } ?: ""),
+                    )
+                    val mapped = io.github.wilsonnet.droidsentenceminer.anki.AnkiFieldMapper.mapToNamedFields(fieldNames, values)
+                    val fields = JSONObject()
+                    fieldNames.forEach { fields.put(it, mapped[it] ?: "") }
+                    JSONObject().put("ok", true).put("model", model).put("deck", container.prefs.ankiDeck.first()).put("fields", fields)
+                }
+            }
+            "/anki_sample" -> respondApi(socket) {
+                // Read-only: newest notes of a note type, to see how the user fills its fields.
+                val name = params["model"] ?: return@respondApi errorJson("missing 'model'")
+                val limit = params["limit"]?.toIntOrNull() ?: 10
+                val api = AddContentApi(app)
+                val id = api.modelList?.entries?.firstOrNull { it.value == name }?.key
+                    ?: return@respondApi errorJson("no model $name")
+                val fieldNames = api.getFieldList(id)?.toList().orEmpty()
+                val out = JSONArray()
+                app.contentResolver.query(
+                    com.ichi2.anki.FlashCardsContract.Note.CONTENT_URI,
+                    arrayOf(com.ichi2.anki.FlashCardsContract.Note._ID, com.ichi2.anki.FlashCardsContract.Note.FLDS, com.ichi2.anki.FlashCardsContract.Note.TAGS),
+                    "mid:$id",
+                    null,
+                    null,
+                )?.use { c ->
+                    val rows = ArrayList<JSONObject>()
+                    while (c.moveToNext()) {
+                        val values = c.getString(1).split('\u001f')
+                        val fields = JSONObject()
+                        fieldNames.forEachIndexed { i, f -> fields.put(f, values.getOrNull(i) ?: "") }
+                        rows += JSONObject().put("id", c.getLong(0)).put("tags", c.getString(2)).put("fields", fields)
+                    }
+                    rows.sortedByDescending { it.getLong("id") }.take(limit).forEach { out.put(it) }
+                    JSONObject().put("ok", true).put("total", rows.size).put("notes", out)
+                } ?: errorJson("query failed")
+            }
+            "/anki_templates" -> respondApi(socket) {
+                // Read-only: card templates of a note type (which fields the card actually shows).
+                val name = params["model"] ?: return@respondApi errorJson("missing 'model'")
+                val api = AddContentApi(app)
+                val id = api.modelList?.entries?.firstOrNull { it.value == name }?.key
+                    ?: return@respondApi errorJson("no model $name")
+                val uri = android.net.Uri.parse("content://com.ichi2.anki.flashcards/models/$id/templates")
+                val out = JSONArray()
+                app.contentResolver.query(uri, null, null, null, null)?.use { c ->
+                    while (c.moveToNext()) {
+                        val row = JSONObject()
+                        for (i in 0 until c.columnCount) row.put(c.getColumnName(i), c.getString(i))
+                        out.put(row)
+                    }
+                }
+                JSONObject().put("ok", true).put("templates", out)
+            }
+            "/set_anki" -> respondApi(socket) {
+                val prefs = AppContainer.from(app).prefs
+                runBlocking {
+                    params["provider"]?.let { prefs.setAnkiProvider(it) }
+                    params["deck"]?.let { prefs.setAnkiDeck(it) }
+                    params["model"]?.let { prefs.setAnkiModel(it) }
+                    params["firstdict"]?.let { prefs.setGlossaryFirstDictionary(it == "1" || it == "true") }
+                    JSONObject().put("ok", true).put("provider", prefs.ankiProvider.first())
+                        .put("deck", prefs.ankiDeck.first()).put("model", prefs.ankiModel.first())
+                }
+            }
+            "/word_audio" -> respondApi(socket) {
+                val term = params["term"] ?: return@respondApi errorJson("missing 'term'")
+                val clip = runBlocking {
+                    io.github.wilsonnet.droidsentenceminer.anki.WordAudio().fetch(term, params["reading"] ?: term, params["custom"])
+                }
+                JSONObject().put("ok", clip != null).put("source", clip?.source).put("bytes", clip?.bytes?.size).put("ext", clip?.extension)
+            }
             "/select_areas" -> {
                 OverlayService.selectAreas(app)
                 respondJson(socket, JSONObject().put("ok", true))

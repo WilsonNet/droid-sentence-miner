@@ -27,7 +27,7 @@ class AnkiFieldMapperTest {
         assertEquals("けいしょう", mapped[2])
         assertEquals("inheritance, succession", mapped[3])
         assertEquals("フリーダは…継承した", mapped[4])
-        assertEquals("", mapped[5]) // Word Audio needs dictionary audio
+        assertEquals("", mapped[5]) // Word Audio: none in this value set
         assertEquals("[sound:x.mp3]", mapped[6])
         assertEquals("<img src=x.webp>", mapped[7])
         assertEquals("", mapped[8])
@@ -71,5 +71,42 @@ class AnkiFieldMapperTest {
         assertEquals("[sound:x.mp3]", named["Audio"])
         assertEquals("<img src=x.webp>", named["Picture"])
         assertEquals(false, named.containsKey("Unknown Field"))
+    }
+
+    @Test
+    fun animeCardsStyleAudioIsWordAudioWhenSentenceAudioExists() {
+        val fields = listOf("Front", "Back", "Audio", "Picture", "Reading", "Sentence", "Sentence Audio")
+        val mapping = AnkiFieldMapper.canonicalToModelField(fields)
+        assertEquals("Sentence Audio", mapping[CardFields.AUDIO])
+        assertEquals("Audio", mapping[CardFields.WORD_AUDIO])
+    }
+
+    @Test
+    fun dedicatedWordAudioFieldIsUsed() {
+        val mapping = AnkiFieldMapper.canonicalToModelField(listOf("Expression", "ExpressionAudio", "SentenceAudio"))
+        assertEquals("ExpressionAudio", mapping[CardFields.WORD_AUDIO])
+        assertEquals("SentenceAudio", mapping[CardFields.AUDIO])
+    }
+
+    @Test
+    fun wordAudioFallsBackIntoReadingWithoutAField() {
+        val fields = listOf("Expression", "Reading", "Meaning", "Sentence", "Image", "Audio", "Source")
+        val values = mapOf(CardFields.READING to "こし", CardFields.WORD_AUDIO to "[sound:w.mp3]", CardFields.AUDIO to "[sound:s.m4a]")
+        val array = AnkiFieldMapper.mapToArray(fields, values)
+        assertEquals("こし [sound:w.mp3]", array[1])
+        assertEquals("[sound:s.m4a]", array[5])
+    }
+
+    @Test
+    fun userAnimeCardsLayoutMapsEveryField() {
+        val fields = listOf("Word", "Graph", "Reading", "Glossary", "Context Sentence", "Word Audio", "Audio", "Picture", "Sentence")
+        val mapping = AnkiFieldMapper.canonicalToModelField(fields)
+        assertEquals("Word", mapping[CardFields.EXPRESSION])
+        assertEquals("Reading", mapping[CardFields.READING])
+        assertEquals("Glossary", mapping[CardFields.MEANING])
+        assertEquals("Context Sentence", mapping[CardFields.SENTENCE])
+        assertEquals("Word Audio", mapping[CardFields.WORD_AUDIO])
+        assertEquals("Audio", mapping[CardFields.AUDIO])
+        assertEquals("Picture", mapping[CardFields.IMAGE])
     }
 }

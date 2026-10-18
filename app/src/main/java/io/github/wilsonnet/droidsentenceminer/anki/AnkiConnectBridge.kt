@@ -122,15 +122,21 @@ class AnkiConnectBridge(
         val audioField = card.audioBytes?.let { bytes ->
             storeMedia(card.audioName ?: "dsm_audio.mp3", bytes)?.let { "[sound:$it]" }
         }
+        val wordAudioField = card.wordAudioBytes?.let { bytes ->
+            storeMedia(card.wordAudioName ?: "dsm_word.mp3", bytes)?.let { "[sound:$it]" }
+        }
 
         val valueMap = mapOf(
             CardFields.EXPRESSION to card.expression,
             CardFields.READING to card.reading,
             CardFields.MEANING to card.meaningHtml,
-            CardFields.SENTENCE to card.sentenceHtml,
+            // Our note type bolds the word; other note types (Anime Cards, Lapis...) get the sentence as
+                // plain text like Yomitan's {sentence}.
+                CardFields.SENTENCE to CardHtml.sentenceFor(model, card),
             CardFields.IMAGE to (imageField ?: ""),
             CardFields.AUDIO to (audioField ?: ""),
             CardFields.SOURCE to (card.sourceTitle ?: ""),
+            CardFields.WORD_AUDIO to (wordAudioField ?: ""),
         )
         val modelFields = modelFieldNames(model) ?: CardFields.ORDER
         val mappedFields = AnkiFieldMapper.mapToNamedFields(modelFields, valueMap)

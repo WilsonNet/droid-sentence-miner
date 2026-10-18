@@ -68,6 +68,10 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
     var meikiProgress by remember { mutableStateOf<Int?>(null) }
     var meikiError by remember { mutableStateOf<String?>(null) }
     val audioTrim by container.prefs.audioTrim.collectAsState(initial = false)
+    val wordAudio by container.prefs.wordAudio.collectAsState(initial = true)
+    val firstDict by container.prefs.glossaryFirstDictionary.collectAsState(initial = false)
+    val wordAudioUrl by container.prefs.wordAudioCustomUrl.collectAsState(initial = "")
+    var wordAudioUrlDraft by remember(wordAudioUrl) { mutableStateOf(wordAudioUrl) }
     val bufferSeconds by container.prefs.audioBufferSeconds.collectAsState(initial = 300)
     val clipBefore by container.prefs.clipBeforeMs.collectAsState(initial = 500)
     val clipAfter by container.prefs.clipAfterMs.collectAsState(initial = 500)
@@ -183,6 +187,18 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
 
         Card {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("Cards", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                SettingSwitch(
+                    title = "Glossary: first dictionary only",
+                    description = "Put only your highest-priority dictionary on the card (Yomitan's {glossary-first}), " +
+                        "e.g. a monolingual dictionary ordered first in the Dicts tab.",
+                    checked = firstDict,
+                ) { value -> scope.launch { container.prefs.setGlossaryFirstDictionary(value) } }
+            }
+        }
+
+        Card {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Sentence audio", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 SettingSwitch(
                     title = "Capture game audio",
@@ -197,6 +213,30 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
                         audioEnabled = value
                         scope.launch { container.prefs.setAudioEnabled(value) }
                     }
+                }
+                SettingSwitch(
+                    title = "Word audio",
+                    description = "Add the word's pronunciation to the card like Yomitan: JapanesePod101, then " +
+                        "JapanesePod101 search, then Jisho. Needs internet when mining.",
+                    checked = wordAudio,
+                ) { value -> scope.launch { container.prefs.setWordAudio(value) } }
+                if (wordAudio) {
+                    androidx.compose.material3.OutlinedTextField(
+                        value = wordAudioUrlDraft,
+                        onValueChange = { wordAudioUrlDraft = it },
+                        label = { Text("Custom audio URL (optional)") },
+                        placeholder = { Text("http://127.0.0.1:5050/?term={term}&reading={reading}") },
+                        supportingText = { Text("Tried first, e.g. a local audio server. {term} and {reading} are replaced.") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        trailingIcon = {
+                            if (wordAudioUrlDraft != wordAudioUrl) {
+                                androidx.compose.material3.TextButton(onClick = {
+                                    scope.launch { container.prefs.setWordAudioCustomUrl(wordAudioUrlDraft) }
+                                }) { Text("Save") }
+                            }
+                        },
+                    )
                 }
                 SettingSlider(
                     title = "Replay buffer",

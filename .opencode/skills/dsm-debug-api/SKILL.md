@@ -56,6 +56,11 @@ All GET, all JSON (except `frame.png`). Regions are screen fractions unless note
 | `/anki_meta` | AnkiDroid decks and note types as id → name maps |
 | `/startoverlay`, `/stopoverlay` | Start/stop the floating overlay service |
 | `/autoocr?on=1` / `?on=0` | Start/stop auto OCR on the saved region (starts the service and asks for consent if needed) |
+| `/set_anki?provider=&deck=&model=&firstdict=1` | Set the Anki backend, target deck, note type, first-dictionary glossary |
+| `/word_audio?term=&reading=&custom=` | Fetch word audio like a card would; returns which source answered |
+| `/anki_sample?model=&limit=` | Read-only: newest notes of a note type with every field (see how the user fills it) |
+| `/anki_templates?model=` | Read-only: card templates (which fields the card shows) |
+| `/preview_card?word=&line=` or `&sentence=` | Build a card and map it onto the configured note type **without** adding it |
 | `/select_areas` | Open the text-area editor overlay over whatever is on screen |
 | `/install_ocr_models` | Download the meikiocr models (blocking; ~31 MB) |
 | `/add_line?text=&ago=&dur=` | Log a synthetic line in the past (tests clip/mining without OCR) |

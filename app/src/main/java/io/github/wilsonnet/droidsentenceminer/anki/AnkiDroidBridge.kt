@@ -100,15 +100,21 @@ class AnkiDroidBridge(private val context: Context) : AnkiBridge {
             val audioHtml = card.audioBytes?.let { bytes ->
                 addMedia(bytes, card.audioName ?: "dsm_audio.mp3", "audio")
             }
+            val wordAudioHtml = card.wordAudioBytes?.let { bytes ->
+                addMedia(bytes, card.wordAudioName ?: "dsm_word.mp3", "audio")
+            }
 
             val values = mapOf(
                 CardFields.EXPRESSION to card.expression,
                 CardFields.READING to card.reading,
                 CardFields.MEANING to card.meaningHtml,
-                CardFields.SENTENCE to card.sentenceHtml,
+                // Our note type bolds the word; other note types (Anime Cards, Lapis...) get the sentence as
+                // plain text like Yomitan's {sentence}.
+                CardFields.SENTENCE to CardHtml.sentenceFor(model, card),
                 CardFields.IMAGE to (imageHtml ?: ""),
                 CardFields.AUDIO to (audioHtml ?: ""),
                 CardFields.SOURCE to (card.sourceTitle ?: ""),
+                CardFields.WORD_AUDIO to (wordAudioHtml ?: ""),
             )
             val fieldNames = api.getFieldList(modelId)?.toList() ?: CardFields.ORDER
             val fields = AnkiFieldMapper.mapToArray(fieldNames, values)
@@ -191,7 +197,7 @@ class AnkiDroidBridge(private val context: Context) : AnkiBridge {
 object Templates {
     const val FRONT = """
 <div class="expression">{{Expression}}</div>
-<div class="reading">{{Reading}}</div>
+<div class="reading">{{Reading}} {{WordAudio}}</div>
 """
 
     const val BACK = """
