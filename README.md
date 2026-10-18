@@ -35,9 +35,11 @@ with [Yomitan](https://github.com/yomidevs/yomitan) dictionary compatibility.
 - **Floating popup overlay** — a draggable bubble that lets you select any screen region, OCR it,
   and look up words without leaving the game. Long-press opens a menu; the notification stays
   available as a shortcut.
-- **Japanese OCR** — on-device ML Kit text recognition with a GameSentenceMiner-style two-pass
-  pipeline: detect, merge lines, filter furigana/UI noise, then re-read each line at higher
-  resolution and keep the better result.
+- **Japanese OCR trained on games** — on-device [meikiocr](https://github.com/rtr46/meikiocr)
+  (ONNX Runtime), a detector + recognizer trained on Japanese video-game text: 3–19× fewer
+  character errors than ML Kit on stylized, outlined game/subtitle fonts (small kana, dakuten).
+  One-time 31 MB model download; ML Kit (with a GameSentenceMiner-style two-pass pipeline) is
+  built in as the fallback/alternative engine.
 - **Yomitan dictionaries** — import any Yomitan/Yomichan format 3 `.zip` (Jitendex, JMdict,
   KANJIDIC, frequency dictionaries) or install Jitendex/JMdict/KANJIDIC with one tap.
   Term, kanji, tag, term-meta and kanji-meta banks are all parsed, including structured-content
@@ -80,7 +82,7 @@ android sdk install platform-tools platforms/android-36 build-tools/35.0.0 emula
 echo "sdk.dir=$ANDROID_HOME" > local.properties
 
 # 3. Build & test
-./gradlew testDebugUnitTest          # 87 JVM unit tests
+./gradlew testDebugUnitTest          # 102 JVM unit tests
 ./gradlew connectedDebugAndroidTest  # 4 on-device tests (VAD + AAC encoding)
 ./gradlew assembleDebug              # app/build/outputs/apk/debug/app-debug.apk
 
@@ -90,8 +92,8 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 ## Usage
 
-1. **Dictionaries** — open the *Dictionaries* tab and install **Jitendex** with one tap (or import
-   any Yomitan `.zip`).
+1. **Dictionaries** — open the *Dicts* tab and install **Jitendex** with one tap (or import
+   any Yomitan `.zip`). In *Settings → OCR*, tap *Download meikiocr models* (31 MB).
 2. **Anki** — in the *Anki* tab pick a backend:
    - *AnkiDroid*: install AnkiDroid, grant the API permission from the tab, and enable
      *Settings → Advanced → AnkiDroid API* inside AnkiDroid.
@@ -132,9 +134,12 @@ MediaProjection ──► ScreenCaptureManager ──► AutoOcrController ─�
                  CardMiner ──► AnkiDroid API or AnkiConnect
 ```
 
-- **OCR**: ML Kit bundled Japanese model. Pass 1 recognizes the capture region; lines are merged,
-  furigana-sized kana lines and non-Japanese UI lines are dropped, text is NFKC-normalized; pass 2
-  crops each line, upscales it and re-runs recognition, keeping the better Japanese reading.
+- **OCR**: meikiocr by default — a D-FINE text-line detector (960×544) finds lines, and a
+  recognizer that treats recognition as *character detection* reads each 960×32 line; characters
+  are de-duplicated by overlap and read left to right (`MeikiOcr`, `MeikiDecoder`). With ML Kit
+  instead: pass 1 recognizes the region, pass 2 re-reads each line upscaled and keeps the better
+  reading. Either way rows are merged, furigana and off-size background text are dropped, and auto
+  OCR stores the consensus of all reads of a line.
 - **Matching**: `JapaneseDeinflector` expands every substring of the OCR text into dictionary-form
   candidates (Yomitan/Jiten rules), a single batched SQL query resolves them, and longest-match-wins
   builds the clickable word list. Grammar-only single-kana matches are filtered as noise.
@@ -174,12 +179,25 @@ Glossaries may be strings, arrays, image definitions, deinflection entries or st
 
 ## Validation
 
+- OCR accuracy, same crops for both engines (character error rate / exact lines; Galaxy S24+;
+  recipe and scripts in `.opencode/skills/dsm-ocr-eval` and `tools/ocr-eval`):
+
+  | Test set | ML Kit | meikiocr |
+  | --- | --- | --- |
+  | Hardsub travel vlog, 229 frames, hand-checked ground truth | 9.6 % / 48 % | 3.0 % / 81 % |
+  | Real subtitles burned on footage, bold outlined, 102 frames | 4.6 % / 60 % | 0.24 % / 97 % |
+  | Same, boxed (YouTube-like), 102 frames | 0.65 % / 92 % | 0.16 % / 98 % |
+
+  ~150 ms per subtitle-band crop on the phone. Live auto OCR on the hardsub vlog with meikiocr:
+  84 lines, 0 duplicates, 82 % exact, 1.9 % CER (several "errors" are meikiocr fixing the
+  creator's own typos). Auto OCR with soft subs: 54/54 lines, 0 junk, 0 duplicates.
+
 - Auto OCR end-to-end on a Galaxy S24+ (Android 16) against a YouTube video with Japanese soft
   subtitles, compared with the subtitle file and the original audio (see AGENTS.md for the
   recipe): every subtitle cue in the run was logged (61/61, 56 exact, mean character accuracy
   0.99), line start times within ±300 ms (p90) of the cue, and every voice clip located in the
   original audio at correlation ≥0.97, starting 160–1080 ms (median ~400 ms) before the subtitle.
-- 87 JVM unit tests: replay buffer, voice trimming, line tracking, clip windows, subtitle-row
+- 102 JVM unit tests: meikiocr decoding, OCR text fixes (一→ー), text areas, line consensus, replay buffer, voice trimming, line tracking, clip windows, subtitle-row
   filtering, deinflector (conjugations across godan/ichidan/suru/kuru/adjectives),
   glossary parsing/rendering, OCR post-processing (merge, furigana filter, normalization),
   VAD segmentation, PCM utilities, Yomitan index parsing.
@@ -200,9 +218,13 @@ Glossaries may be strings, arrays, image definitions, deinflection entries or st
   frame-injection test path.
 - AnkiDroid media naming: the API stores our AAC clip as `…m4a_<n>.mp3`. It plays, but pass the
   proper MIME type/extension so the file name matches the content.
+- Vertical text (meikiocr ships a vertical recognizer; not wired up yet) and furigana-aware
+  reading for manga-style layouts.
+- Hotkey toggle for the live/lookup overlay (gamepad button or volume key via an accessibility
+  service), as meikidroid does — handy on Android handhelds.
+- Faster auto OCR on low-end devices: detector only when the area changes, smaller detector option.
 - Optional ASR engines (e.g. whisper.cpp or Moonshine via JNI) as an alternative/complement to OCR
   for games with hard-to-read fonts.
-- Manga-style OCR models (manga-ocr) behind the existing `OcrEngine` abstraction.
 - Per-dictionary frequency display modes and pitch-accent graphs.
 - Quick Settings tile and share-sheet mining.
 
@@ -219,12 +241,19 @@ This project stands on the shoulders of these projects — thank you:
   `JapaneseDeinflector.kt` is adapted from this project (which in turn credits Jiten). Also a great
   reference for Android Yomitan-dictionary parsing.
 - **[Jiten](https://github.com/Sirush/Jiten)** — deinflection rule data used by the deinflector.
-- **[ML Kit](https://developers.google.com/ml-kit)** (Google) — on-device Japanese text recognition.
+- **[meikiocr](https://github.com/rtr46/meikiocr)** by rtr46 (code Apache-2.0, models
+  [meiki.text.detect.v0](https://huggingface.co/rtr46/meiki.text.detect.v0) and
+  [meiki.txt.recognition.v0](https://huggingface.co/rtr46/meiki.txt.recognition.v0), LGPL-3.0) —
+  the default OCR engine; the models are downloaded from Hugging Face at runtime and the
+  pre/post-processing in `MeikiDecoder.kt` is ported from its reference pipeline.
+- **[meikidroid](https://github.com/rtr46/meikidroid)** by rtr46 — Android game OCR overlay that
+  served as a reference for the region-capture + overlay workflow and the hotkey idea.
+- **[ONNX Runtime](https://onnxruntime.ai/)** (MIT) — runs meikiocr on device.
+- **[ML Kit](https://developers.google.com/ml-kit)** (Google) — on-device Japanese text recognition (alternative engine).
 - **[AnkiDroid](https://github.com/ankidroid/Anki-Android)** (GPL-3.0) — the AnkiDroid API used for
   card creation.
 - **[AnkiConnect](https://foosoft.net/projects/anki-connect/)** — the HTTP API used for desktop Anki.
-- **[OwOCR](https://github.com/AuroraWright/owocr)** and **[MeikiOCR](https://github.com/rtr46/meikiocr)**
-  — two-pass OCR concepts used by GSM.
+- **[OwOCR](https://github.com/AuroraWright/owocr)** — two-pass OCR concepts used by GSM.
 - **[Aozora Bunko](https://www.aozora.gr.jp/)** — the bundled sample image uses a passage from
   走れメロス by 太宰治 (public domain), with ruby markup, which doubles as a furigana-filter test case.
 - **[Jitendex](https://jitendex.org/)** and **[jmDict for Yomitan](https://github.com/yomidevs/jmdict-yomitan)**
