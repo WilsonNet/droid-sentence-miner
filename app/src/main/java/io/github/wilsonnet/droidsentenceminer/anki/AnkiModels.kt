@@ -17,6 +17,8 @@ data class AnkiCard(
     /** Pronunciation of the word itself (JapanesePod101/Jisho), separate from the sentence clip. */
     val wordAudioBytes: ByteArray? = null,
     val wordAudioName: String? = null,
+    /** Yomitan-style pitch accent SVG(s) for the reading; empty without a pitch dictionary. */
+    val pitchGraphHtml: String = "",
     val sourceTitle: String? = null,
     val tags: List<String> = emptyList(),
 ) {
@@ -52,8 +54,9 @@ object CardFields {
     const val AUDIO = "Audio"
     const val SOURCE = "Source"
     const val WORD_AUDIO = "WordAudio"
+    const val PITCH_GRAPH = "PitchGraph"
 
-    val ORDER = listOf(EXPRESSION, READING, MEANING, SENTENCE, IMAGE, AUDIO, SOURCE, WORD_AUDIO)
+    val ORDER = listOf(EXPRESSION, READING, MEANING, SENTENCE, IMAGE, AUDIO, SOURCE, WORD_AUDIO, PITCH_GRAPH)
 }
 
 object CardHtml {

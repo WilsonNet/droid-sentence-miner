@@ -115,6 +115,7 @@ class AnkiDroidBridge(private val context: Context) : AnkiBridge {
                 CardFields.AUDIO to (audioHtml ?: ""),
                 CardFields.SOURCE to (card.sourceTitle ?: ""),
                 CardFields.WORD_AUDIO to (wordAudioHtml ?: ""),
+                CardFields.PITCH_GRAPH to card.pitchGraphHtml,
             )
             val fieldNames = api.getFieldList(modelId)?.toList() ?: CardFields.ORDER
             val fields = AnkiFieldMapper.mapToArray(fieldNames, values)
@@ -198,6 +199,7 @@ object Templates {
     const val FRONT = """
 <div class="expression">{{Expression}}</div>
 <div class="reading">{{Reading}} {{WordAudio}}</div>
+<div class="pitch">{{PitchGraph}}</div>
 """
 
     const val BACK = """

@@ -58,6 +58,10 @@ with [Yomitan](https://github.com/yomidevs/yomitan) dictionary compatibility.
   JapanesePod101 dictionary search, Jisho; plus an optional custom URL (`{term}`/`{reading}`,
   e.g. a local audio server) tried first. Option to put only the first dictionary on the card
   (Yomitan's `{glossary-first}`).
+- **Pitch accent graph** — the same SVG Yomitan's `{pitch-accent-graphs}` writes (byte-identical to
+  the user's existing Yomitan cards), filled into a pitch/graph field such as Anime Cards' *Graph*.
+  Uses any installed Yomitan pitch dictionary, or the free Kanjium pitch accents (124k words,
+  one-click install from *Dicts* or the Home setup card).
 - **Sentence audio** (Android 10+) — captures playback audio through the existing MediaProjection
   session (the Android equivalent of GSM's loopback capture) into the replay buffer, with a
   waveform **audio editor** to trim the exact line before mining.
@@ -93,7 +97,7 @@ android sdk install platform-tools platforms/android-36 build-tools/35.0.0 emula
 echo "sdk.dir=$ANDROID_HOME" > local.properties
 
 # 3. Build & test
-./gradlew testDebugUnitTest          # 112 JVM unit tests
+./gradlew testDebugUnitTest          # 118 JVM unit tests
 ./gradlew connectedDebugAndroidTest  # 4 on-device tests (VAD + AAC encoding)
 ./gradlew assembleDebug              # app/build/outputs/apk/debug/app-debug.apk
 
@@ -103,8 +107,9 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 ## Usage
 
-1. **Dictionaries** — open the *Dicts* tab and install **Jitendex** with one tap (or import
-   any Yomitan `.zip`). In *Settings → OCR*, tap *Download meikiocr models* (31 MB).
+1. **Dictionaries** — open the *Dicts* tab and install **Jitendex** and **Kanjium pitch accents**
+   with one tap each (or import any Yomitan `.zip`, e.g. a monolingual dictionary; drag it first
+   if you want only it on cards). In *Settings → OCR*, tap *Download meikiocr models* (31 MB).
 2. **Anki** — in the *Anki* tab pick a backend:
    - *AnkiDroid*: install AnkiDroid, grant the API permission from the tab, and enable
      *Settings → Advanced → AnkiDroid API* inside AnkiDroid.
@@ -211,7 +216,7 @@ Glossaries may be strings, arrays, image definitions, deinflection entries or st
   recipe): every subtitle cue in the run was logged (61/61, 56 exact, mean character accuracy
   0.99), line start times within ±300 ms (p90) of the cue, and every voice clip located in the
   original audio at correlation ≥0.97, starting 160–1080 ms (median ~400 ms) before the subtitle.
-- 112 JVM unit tests: word audio sources, Anki field mapping, meikiocr decoding, OCR text fixes (一→ー), text areas, line consensus, replay buffer, voice trimming, line tracking, clip windows, subtitle-row
+- 118 JVM unit tests: pitch graphs (byte-identical to Yomitan), word audio sources, Anki field mapping, meikiocr decoding, OCR text fixes (一→ー), text areas, line consensus, replay buffer, voice trimming, line tracking, clip windows, subtitle-row
   filtering, deinflector (conjugations across godan/ichidan/suru/kuru/adjectives),
   glossary parsing/rendering, OCR post-processing (merge, furigana filter, normalization),
   VAD segmentation, PCM utilities, Yomitan index parsing.
@@ -234,8 +239,7 @@ Glossaries may be strings, arrays, image definitions, deinflection entries or st
   proper MIME type/extension so the file name matches the content.
 - Vertical text (meikiocr ships a vertical recognizer; not wired up yet) and furigana-aware
   reading for manga-style layouts.
-- Pitch-accent graph for the Anime Cards "Graph" field (from a Yomitan pitch dictionary, as Yomitan
-  renders it).
+- Pitch accent in the lookup popup (the card already gets the graph); jidoujisho-style graph option.
 - Hotkey toggle for the live/lookup overlay (gamepad button or volume key via an accessibility
   service), as meikidroid does — handy on Android handhelds.
 - Faster auto OCR on low-end devices: detector only when the area changes, smaller detector option.
@@ -272,6 +276,9 @@ This project stands on the shoulders of these projects — thank you:
 - **[OwOCR](https://github.com/AuroraWright/owocr)** — two-pass OCR concepts used by GSM.
 - **[Aozora Bunko](https://www.aozora.gr.jp/)** — the bundled sample image uses a passage from
   走れメロス by 太宰治 (public domain), with ruby markup, which doubles as a furigana-filter test case.
+- **[Kanjium](https://github.com/mifunetoshiro/kanjium)** (CC BY-SA 4.0) — the one-click pitch accent
+  data. "The pitch accent notation, verb particle data, phonetics, homonyms and other additions or
+  modifications to EDICT, KANJIDIC or KRADFILE were provided by Uros O. through his free database."
 - **[Jitendex](https://jitendex.org/)** and **[jmDict for Yomitan](https://github.com/yomidevs/jmdict-yomitan)**
   — the one-click recommended dictionaries (installed from their official releases).
 

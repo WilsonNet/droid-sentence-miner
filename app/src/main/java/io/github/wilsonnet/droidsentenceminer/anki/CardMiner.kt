@@ -9,6 +9,7 @@ import io.github.wilsonnet.droidsentenceminer.dict.DictArchive
 import io.github.wilsonnet.droidsentenceminer.dict.DictDatabase
 import io.github.wilsonnet.droidsentenceminer.dict.GlossaryHtml
 import io.github.wilsonnet.droidsentenceminer.dict.GlossaryParser
+import io.github.wilsonnet.droidsentenceminer.dict.PitchAccent
 import io.github.wilsonnet.droidsentenceminer.dict.TermLookup
 import io.github.wilsonnet.droidsentenceminer.textlog.TextLineEntity
 import io.github.wilsonnet.droidsentenceminer.textlog.TextLog
@@ -62,6 +63,10 @@ class CardMiner(
 
         val reading = resolved.reading.orEmpty()
         val expression = resolved.baseForm.ifBlank { word }
+        val pitchGraph = PitchAccent.ankiGraphs(
+            reading.ifBlank { expression },
+            resolved.frequencies.filter { it.mode == "pitch" && it.expression == expression }.mapNotNull { PitchAccent.parse(it.dataJson) },
+        )
         val wordAudio = if (prefs.wordAudio.first()) {
             wordAudioFetcher.fetch(expression, reading, prefs.wordAudioCustomUrl.first())
         } else {
@@ -86,6 +91,7 @@ class CardMiner(
             imageName = "dsm_${sanitizeForFilename(resolved.baseForm.ifBlank { word })}.jpg",
             audioBytes = audio?.bytes,
             audioName = audio?.let { "dsm_${sanitizeForFilename(resolved.baseForm.ifBlank { word })}.${it.extension}" },
+            pitchGraphHtml = pitchGraph,
             wordAudioBytes = wordAudio?.bytes,
             wordAudioName = wordAudio?.let { "dsm_${sanitizeForFilename(expression)}_pron.${it.extension}" },
             sourceTitle = "Droid Sentence Miner (screen OCR)",

@@ -304,7 +304,10 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
                         "• meikiocr by rtr46 — game-trained OCR models (LGPL-3.0), downloaded at runtime\n" +
                         "• meikidroid by rtr46 — Android game OCR overlay reference\n" +
                         "• ONNX Runtime by Microsoft — on-device model inference\n" +
-                        "• OwOCR — OCR two-pass concepts used by GSM",
+                        "• OwOCR — OCR two-pass concepts used by GSM\n" +
+                        "• Kanjium (CC BY-SA 4.0) — pitch accents. The pitch accent notation, verb particle data, " +
+                        "phonetics, homonyms and other additions or modifications to EDICT, KANJIDIC or KRADFILE " +
+                        "were provided by Uros O. through his free database.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

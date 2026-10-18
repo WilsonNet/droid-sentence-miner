@@ -134,6 +134,11 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   types get the sentence as plain text; the glossary is wrapped in `div.yomitan-glossary`.
   Inspect a deck read-only with `/anki_sample?model=` and `/anki_templates?model=`, and render a
   card without adding it with `/preview_card?word=&line=`.
+- **Pitch graph** (`dict/PitchAccent.kt`): port of Yomitan's `createPronunciationGraph` with the
+  inline styles Yomitan bakes into Anki fields; unit-tested byte-for-byte against SVGs from the
+  user's own cards. Pitch comes from `term_meta` rows with mode `pitch` (any Yomitan pitch dict) —
+  Kanjium's `accents.txt` is converted into such rows by `YomitanImporter.importKanjiumAccents`
+  (`RecommendedDictionary.Kind.KANJIUM_ACCENTS`). `/lookup?word=` now lists meta rows.
 - **Word audio** (`anki/WordAudio.kt`): Yomitan's Japanese chain — jpod101 direct
   (`audiomp3.php`, kana-only words query by kana; reject SHA-256 `ae6398b5…` placeholder) →
   JapanesePod101 `dictionary_post` search (split rows on the `dc-result-row` *class*, not the

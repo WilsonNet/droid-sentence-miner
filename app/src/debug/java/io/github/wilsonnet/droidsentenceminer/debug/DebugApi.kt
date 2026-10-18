@@ -171,6 +171,7 @@ object DebugApi {
                         io.github.wilsonnet.droidsentenceminer.anki.CardFields.AUDIO to "[sound:(sentence clip)]",
                         io.github.wilsonnet.droidsentenceminer.anki.CardFields.SOURCE to (card.sourceTitle ?: ""),
                         io.github.wilsonnet.droidsentenceminer.anki.CardFields.WORD_AUDIO to (card.wordAudioBytes?.let { "[sound:${card.wordAudioName}] (${it.size} bytes)" } ?: ""),
+                        io.github.wilsonnet.droidsentenceminer.anki.CardFields.PITCH_GRAPH to card.pitchGraphHtml,
                     )
                     val mapped = io.github.wilsonnet.droidsentenceminer.anki.AnkiFieldMapper.mapToNamedFields(fieldNames, values)
                     val fields = JSONObject()
@@ -417,6 +418,8 @@ object DebugApi {
             .put("word", word)
             .put("reading", details.reading.orEmpty())
             .put("termCount", details.terms.size)
+            .put("baseForm", details.baseForm)
+            .put("meta", JSONArray(details.frequencies.map { "${it.dictionaryTitle}|${it.mode}|${it.expression}|${it.dataJson.take(120)}" }))
     }
 
     private fun mine(params: Map<String, String>): JSONObject {
@@ -476,7 +479,7 @@ object DebugApi {
                     }
                     install.stage = "importing"
                     install.progress = 0
-                    container.importer.import(zipFile) { progress ->
+                    container.importer.importRecommended(recommended, zipFile) { progress ->
                         install.stage = progress.stage
                         install.progress = if (progress.total != null && progress.total > 0) {
                             (progress.current * 100 / progress.total).toInt()

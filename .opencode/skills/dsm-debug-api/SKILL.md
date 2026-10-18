@@ -48,10 +48,10 @@ All GET, all JSON (except `frame.png`). Regions are screen fractions unless note
 | `/scan?l=&t=&r=&b=` | Full pipeline: grab frame → crop → OCR → dictionary lookup. Omit the region to reuse the saved one |
 | `/frame.png?l=&t=&r=&b=` | PNG of what MediaProjection actually sees (omit region for the raw full frame) |
 | `/ocr?file=/sdcard/...&engine=meiki\|mlkit&twoPass=1&noise=1&l=&t=&r=&b=` | OCR an image file (optionally cropped) with the chosen engine; returns text, engine, per-line boxes + confidences, and dictionary matches |
-| `/lookup?word=<urlencoded>` | Dictionary lookup summary (reading, term count) |
+| `/lookup?word=<urlencoded>` | Dictionary lookup summary (reading, term count, base form, term_meta rows incl. pitch) |
 | `/mine?word=&sentence=` | Look a word up and add a card via the configured Anki backend (AnkiDroid/AnkiConnect) |
 | `/dicts` | Installed dictionaries with term/kanji counts and zip paths |
-| `/install_dict?id=jitendex` | Download + import a recommended dictionary in the background (`/state.dictInstall` shows progress; ids: jitendex, jmdict, kanjidic) |
+| `/install_dict?id=jitendex` | Download + import a recommended dictionary in the background (`/state.dictInstall` shows progress; ids: jitendex, jmdict, kanjidic, kanjium) |
 | `/anki_notes?word=&model=` | Find notes by first field via the AnkiDroid provider; returns every field name → value, plus tags. Defaults to the configured model |
 | `/anki_meta` | AnkiDroid decks and note types as id → name maps |
 | `/startoverlay`, `/stopoverlay` | Start/stop the floating overlay service |

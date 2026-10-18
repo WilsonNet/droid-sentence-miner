@@ -76,7 +76,7 @@ fun DictionaryScreen(modifier: Modifier = Modifier) {
                 }
                 progressText = "Importing ${dictionary.name}…"
                 val entity = withContext(Dispatchers.IO) {
-                    container.importer.import(zipFile) { progress ->
+                    container.importer.importRecommended(dictionary, zipFile) { progress ->
                         progressText = "Importing ${progress.title ?: dictionary.name}… ${progress.current}"
                     }
                 }

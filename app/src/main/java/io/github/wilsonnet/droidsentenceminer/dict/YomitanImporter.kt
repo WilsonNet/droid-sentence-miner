@@ -62,6 +62,66 @@ class YomitanImporter(
     }
 
     /** Imports a dictionary zip already on disk (used by the recommended-dictionary downloader). */
+    /** Installs a recommended dictionary file of either supported kind. */
+    suspend fun importRecommended(
+        dictionary: RecommendedDictionary,
+        file: File,
+        onProgress: (Progress) -> Unit = {},
+    ): DictionaryEntity = when (dictionary.kind) {
+        RecommendedDictionary.Kind.YOMITAN_ZIP -> import(file, onProgress)
+        RecommendedDictionary.Kind.KANJIUM_ACCENTS -> importKanjiumAccents(file, onProgress)
+    }
+
+    /**
+     * Kanjium's `accents.txt` becomes an ordinary pitch dictionary: one Yomitan-format `term_meta`
+     * "pitch" row per word, so lookups and card graphs treat it like any imported pitch dictionary.
+     */
+    suspend fun importKanjiumAccents(file: File, onProgress: (Progress) -> Unit = {}): DictionaryEntity = withContext(Dispatchers.IO) {
+        val title = RecommendedDictionaries.KANJIUM_TITLE
+        db.dictionaryDao().findByTitle(title)?.let { old ->
+            db.metaDao().deleteTermMetaByDict(old.id)
+            db.dictionaryDao().delete(old.id)
+        }
+        val dictId = db.dictionaryDao().insert(
+            DictionaryEntity(
+                title = title,
+                revision = "kanjium-master",
+                author = "Uros O. (mifunetoshiro/kanjium)",
+                description = "Pitch accent mora positions from the Kanjium database.",
+                attribution = "The pitch accent notation, verb particle data, phonetics, homonyms and other additions " +
+                    "or modifications to EDICT, KANJIDIC or KRADFILE were provided by Uros O. through his free " +
+                    "database. CC BY-SA 4.0.",
+                sourceLanguage = "ja",
+                priority = (db.dictionaryDao().maxPriority() ?: -1) + 1,
+            ),
+        )
+        try {
+            val batch = ArrayList<TermMetaEntity>(2000)
+            var count = 0L
+            file.bufferedReader().useLines { lines ->
+                for (line in lines) {
+                    val (term, data) = PitchAccent.fromKanjiumLine(line) ?: continue
+                    batch += TermMetaEntity(dictId = dictId, expression = term, mode = "pitch", dataJson = data)
+                    if (batch.size >= 2000) {
+                        db.metaDao().insertTermMeta(batch)
+                        count += batch.size
+                        batch.clear()
+                        onProgress(Progress(title, "Importing pitch accents", count))
+                    }
+                }
+            }
+            db.metaDao().insertTermMeta(batch)
+            count += batch.size
+            db.dictionaryDao().updateCounts(dictId, count, 0)
+            onProgress(Progress(title, "Done", count, count, done = true))
+            db.dictionaryDao().getAll().first { it.id == dictId }
+        } catch (e: Throwable) {
+            db.metaDao().deleteTermMetaByDict(dictId)
+            db.dictionaryDao().delete(dictId)
+            throw e
+        }
+    }
+
     suspend fun import(file: File, onProgress: (Progress) -> Unit = {}): DictionaryEntity = withContext(Dispatchers.IO) {
         val tempZip = newTempZip()
         try {

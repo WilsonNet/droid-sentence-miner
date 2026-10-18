@@ -20,6 +20,7 @@ object AnkiFieldMapper {
         CardFields.IMAGE to listOf("image", "picture", "snapshot", "screenshot", "photo"),
         CardFields.AUDIO to listOf("audio", "sentenceaudio", "voice", "sound", "audioclip"),
         CardFields.SOURCE to listOf("source", "origin", "title", "url"),
+        CardFields.PITCH_GRAPH to listOf("pitchgraph", "graph", "pitchaccentgraph", "pitchaccentgraphs", "pitchaccent", "pitch", "pitchaccents"),
         CardFields.WORD_AUDIO to listOf("wordaudio", "expressionaudio", "vocabaudio", "vocabularyaudio", "termaudio", "audioword"),
     )
 

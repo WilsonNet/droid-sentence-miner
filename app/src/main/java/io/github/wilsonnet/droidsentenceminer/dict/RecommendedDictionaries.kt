@@ -15,14 +15,22 @@ data class RecommendedDictionary(
     val description: String,
     val url: String,
     val approximateSizeMb: Double,
-)
+    val kind: Kind = Kind.YOMITAN_ZIP,
+) {
+    enum class Kind {
+        YOMITAN_ZIP,
+
+        /** Kanjium `accents.txt` (term, reading, downstep positions), converted to Yomitan pitch metadata. */
+        KANJIUM_ACCENTS,
+    }
+}
 
 object RecommendedDictionaries {
     val ALL = listOf(
         RecommendedDictionary(
             id = "jitendex",
             name = "Jitendex",
-            description = "Japanese → English. The best free Yomitan dictionary: rich formatting, examples, pitch accent. Recommended.",
+            description = "Japanese → English. The best free Yomitan dictionary: rich formatting and examples. Recommended.",
             url = "https://github.com/stephenmk/stephenmk.github.io/releases/latest/download/jitendex-yomitan.zip",
             approximateSizeMb = 37.0,
         ),
@@ -40,7 +48,19 @@ object RecommendedDictionaries {
             url = "https://github.com/yomidevs/jmdict-yomitan/releases/latest/download/KANJIDIC_english.zip",
             approximateSizeMb = 0.7,
         ),
+        RecommendedDictionary(
+            id = PITCH_ID,
+            name = "Kanjium pitch accents",
+            description = "Pitch accent for 124,000 words (CC BY-SA 4.0), drawn into the card's pitch graph " +
+                "field (e.g. Anime Cards \"Graph\") like Yomitan does.",
+            url = "https://raw.githubusercontent.com/mifunetoshiro/kanjium/master/data/source_files/raw/accents.txt",
+            approximateSizeMb = 3.2,
+            kind = RecommendedDictionary.Kind.KANJIUM_ACCENTS,
+        ),
     )
+
+    const val PITCH_ID = "kanjium"
+    const val KANJIUM_TITLE = "Kanjium Pitch Accents"
 }
 
 /** Streams dictionary downloads to disk with progress reporting. */

@@ -105,6 +105,8 @@ fun HomeScreen(modifier: Modifier = Modifier) {
         ActivityResultContracts.RequestPermission(),
     ) { granted -> hasNotifications = granted }
 
+    var pitchStatus by remember { mutableStateOf<String?>(null) }
+
     // ---- OCR test state
     var testing by remember { mutableStateOf(false) }
     var testText by remember { mutableStateOf<String?>(null) }
@@ -169,6 +171,35 @@ fun HomeScreen(modifier: Modifier = Modifier) {
                 StatusLine("Overlay permission", hasOverlay)
                 StatusLine("Notifications", hasNotifications)
                 StatusLine("Dictionaries installed", dictionaries.isNotEmpty(), "${dictionaries.size}")
+                val hasPitch = dictionaries.any {
+                    it.title == io.github.wilsonnet.droidsentenceminer.dict.RecommendedDictionaries.KANJIUM_TITLE ||
+                        it.title.contains("pitch", ignoreCase = true) || it.title.contains("NHK")
+                }
+                StatusLine("Pitch accent dictionary", hasPitch)
+                if (!hasPitch) {
+                    val status = pitchStatus
+                    if (status != null) {
+                        Text(status, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                    } else {
+                        OutlinedButton(onClick = {
+                            val dict = io.github.wilsonnet.droidsentenceminer.dict.RecommendedDictionaries.ALL
+                                .first { it.id == io.github.wilsonnet.droidsentenceminer.dict.RecommendedDictionaries.PITCH_ID }
+                            pitchStatus = "Downloading pitch accents…"
+                            scope.launch {
+                                pitchStatus = try {
+                                    val file = java.io.File(context.cacheDir, "recommended-${dict.id}")
+                                    container.dictDownloader.download(dict.url, file) { _, _ -> }
+                                    pitchStatus = "Importing pitch accents…"
+                                    withContext(Dispatchers.IO) { container.importer.importRecommended(dict, file) }
+                                    file.delete()
+                                    null
+                                } catch (e: Exception) {
+                                    "Pitch accent install failed: ${e.message}"
+                                }
+                            }
+                        }) { Text("Install pitch accents (3 MB, for the card pitch graph)") }
+                    }
+                }
                 StatusLine("Overlay running", running)
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
