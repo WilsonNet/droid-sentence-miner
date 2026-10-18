@@ -28,6 +28,7 @@ class DsmPrefs(private val context: Context) {
 
         val ocrTwoPass = booleanPreferencesKey("ocr_two_pass")
         val ocrDropNoise = booleanPreferencesKey("ocr_drop_noise")
+        val ocrEngine = stringPreferencesKey("ocr_engine")
         val audioEnabled = booleanPreferencesKey("audio_enabled")
         val audioTrim = booleanPreferencesKey("audio_trim")
         val audioBufferSeconds = intPreferencesKey("audio_buffer_seconds")
@@ -62,6 +63,9 @@ class DsmPrefs(private val context: Context) {
 
     val ocrTwoPass: Flow<Boolean> = context.dataStore.data.map { it[Keys.ocrTwoPass] ?: true }
     val ocrDropNoise: Flow<Boolean> = context.dataStore.data.map { it[Keys.ocrDropNoise] ?: true }
+
+    /** [ENGINE_MEIKI] (game-trained, needs a model download) or [ENGINE_MLKIT]. */
+    val ocrEngine: Flow<String> = context.dataStore.data.map { it[Keys.ocrEngine] ?: ENGINE_MEIKI }
     val audioEnabled: Flow<Boolean> = context.dataStore.data.map { it[Keys.audioEnabled] ?: true }
     // Off by default: energy VAD can't separate voice from loud BGM/ambience reliably.
     val audioTrim: Flow<Boolean> = context.dataStore.data.map { it[Keys.audioTrim] ?: false }
@@ -122,6 +126,7 @@ class DsmPrefs(private val context: Context) {
 
     suspend fun setOcrTwoPass(value: Boolean) = edit { it[Keys.ocrTwoPass] = value }
     suspend fun setOcrDropNoise(value: Boolean) = edit { it[Keys.ocrDropNoise] = value }
+    suspend fun setOcrEngine(value: String) = edit { it[Keys.ocrEngine] = value }
     suspend fun setAudioEnabled(value: Boolean) = edit { it[Keys.audioEnabled] = value }
     suspend fun setAudioTrim(value: Boolean) = edit { it[Keys.audioTrim] = value }
     suspend fun setAudioBufferSeconds(value: Int) = edit { it[Keys.audioBufferSeconds] = value }
@@ -187,5 +192,7 @@ class DsmPrefs(private val context: Context) {
         const val DEFAULT_MODEL = "Droid Sentence Miner"
         const val DEFAULT_TAGS = "DroidSentenceMiner"
         const val DEFAULT_AUDIO_BUFFER_SECONDS = 300
+        const val ENGINE_MEIKI = "meiki"
+        const val ENGINE_MLKIT = "mlkit"
     }
 }

@@ -18,6 +18,7 @@ import io.github.wilsonnet.droidsentenceminer.textlog.TextLogDatabase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.first
 
 class DsmApp : Application() {
 
@@ -53,7 +54,21 @@ class AppContainer(private val context: Context) {
     val textLog: TextLog by lazy { TextLog(context, TextLogDatabase.build(context), prefs) }
     val miner: CardMiner by lazy { CardMiner(context, db, lookup, ankiClient, prefs, textLog) }
 
-    fun ocrEngine(twoPass: Boolean): OcrEngine = MlKitJapaneseOcr(twoPass = twoPass)
+    private val mlKitEngines = java.util.concurrent.ConcurrentHashMap<Pair<Boolean, Boolean>, MlKitJapaneseOcr>()
+
+    /**
+     * The OCR engine the user picked: meikiocr when selected and downloaded, ML Kit otherwise.
+     * [twoPass]/[dropNoise] only apply to ML Kit.
+     */
+    suspend fun ocrEngine(twoPass: Boolean, dropNoise: Boolean = true, preferred: String? = null): OcrEngine {
+        val choice = preferred ?: prefs.ocrEngine.first()
+        if (choice == DsmPrefs.ENGINE_MEIKI) {
+            io.github.wilsonnet.droidsentenceminer.ocr.MeikiOcr.load(
+                io.github.wilsonnet.droidsentenceminer.ocr.MeikiModels.dir(context),
+            )?.let { return it }
+        }
+        return mlKitEngines.getOrPut(twoPass to dropNoise) { MlKitJapaneseOcr(twoPass = twoPass, dropNoise = dropNoise) }
+    }
 
     companion object {
         fun from(context: Context): AppContainer =

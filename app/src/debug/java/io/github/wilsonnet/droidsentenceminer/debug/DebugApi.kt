@@ -150,6 +150,11 @@ object DebugApi {
             }
             "/mine_line" -> respondApi(socket) { mineLine(params) }
             "/add_line" -> respondApi(socket) { addLine(params) }
+            "/install_ocr_models" -> respondApi(socket) {
+                val error = runBlocking { io.github.wilsonnet.droidsentenceminer.ocr.MeikiModels.download(app) }
+                JSONObject().put("ok", error == null).put("error", error)
+                    .put("installed", io.github.wilsonnet.droidsentenceminer.ocr.MeikiModels.installed(app))
+            }
             "/clear_lines" -> respondApi(socket) {
                 runBlocking { AppContainer.from(app).textLog.clear() }
                 JSONObject().put("ok", true)
@@ -277,10 +282,13 @@ object DebugApi {
         val (twoPass, dropNoise) = runBlocking {
             container.prefs.ocrTwoPass.first() to container.prefs.ocrDropNoise.first()
         }
-        val engine = MlKitJapaneseOcr(
-            twoPass = params["twoPass"]?.let { it == "1" || it == "true" } ?: twoPass,
-            dropNoise = params["noise"]?.let { it == "1" || it == "true" } ?: dropNoise,
-        )
+        val engine = runBlocking {
+            container.ocrEngine(
+                twoPass = params["twoPass"]?.let { it == "1" || it == "true" } ?: twoPass,
+                dropNoise = params["noise"]?.let { it == "1" || it == "true" } ?: dropNoise,
+                preferred = params["engine"],
+            )
+        }
         val result = runBlocking { engine.recognize(bitmap) }
         val text = result.text.trim()
         val matches = if (text.isBlank()) emptyList() else runBlocking { container.lookup.scan(text) }
@@ -299,6 +307,7 @@ object DebugApi {
         return JSONObject()
             .put("ok", true)
             .put("text", text)
+            .put("engine", engine.name)
             .put("elapsedMs", result.elapsedMs)
             .put("matchCount", matches.size)
             .put("matches", JSONArray(matches.map { it.text }))

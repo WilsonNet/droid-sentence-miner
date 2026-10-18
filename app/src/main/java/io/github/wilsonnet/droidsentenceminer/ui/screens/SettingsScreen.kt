@@ -63,6 +63,10 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
 
     val autoInterval by container.prefs.autoOcrIntervalMs.collectAsState(initial = 400)
     val liveWindow by container.prefs.liveTextWindow.collectAsState(initial = true)
+    val engine by container.prefs.ocrEngine.collectAsState(initial = io.github.wilsonnet.droidsentenceminer.core.DsmPrefs.ENGINE_MEIKI)
+    var meikiInstalled by remember { mutableStateOf(io.github.wilsonnet.droidsentenceminer.ocr.MeikiModels.installed(context)) }
+    var meikiProgress by remember { mutableStateOf<Int?>(null) }
+    var meikiError by remember { mutableStateOf<String?>(null) }
     val audioTrim by container.prefs.audioTrim.collectAsState(initial = false)
     val bufferSeconds by container.prefs.audioBufferSeconds.collectAsState(initial = 300)
     val clipBefore by container.prefs.clipBeforeMs.collectAsState(initial = 500)
@@ -87,8 +91,66 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
         Card {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("OCR", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                val meiki = io.github.wilsonnet.droidsentenceminer.core.DsmPrefs.ENGINE_MEIKI
+                val mlkit = io.github.wilsonnet.droidsentenceminer.core.DsmPrefs.ENGINE_MLKIT
+                Text("Engine", style = MaterialTheme.typography.bodyLarge)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    androidx.compose.material3.RadioButton(
+                        selected = engine == meiki,
+                        onClick = { scope.launch { container.prefs.setOcrEngine(meiki) } },
+                    )
+                    Column(Modifier.weight(1f)) {
+                        Text("meikiocr (recommended)", style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            "Trained on Japanese games: much more accurate on stylized and outlined text. " +
+                                if (meikiInstalled) "Installed." else "Needs a one-time 31 MB download.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    androidx.compose.material3.RadioButton(
+                        selected = engine == mlkit,
+                        onClick = { scope.launch { container.prefs.setOcrEngine(mlkit) } },
+                    )
+                    Column(Modifier.weight(1f)) {
+                        Text("Google ML Kit", style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            "Built in, no download. Weaker on game fonts (small kana, dakuten).",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                if (engine == meiki && !meikiInstalled) {
+                    val progress = meikiProgress
+                    if (progress != null) {
+                        androidx.compose.material3.LinearProgressIndicator(
+                            progress = { progress / 100f },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    } else {
+                        androidx.compose.material3.FilledTonalButton(onClick = {
+                            meikiError = null
+                            meikiProgress = 0
+                            scope.launch {
+                                val error = io.github.wilsonnet.droidsentenceminer.ocr.MeikiModels.download(context) { meikiProgress = it }
+                                meikiProgress = null
+                                meikiError = error
+                                meikiInstalled = io.github.wilsonnet.droidsentenceminer.ocr.MeikiModels.installed(context)
+                            }
+                        }) { Text("Download meikiocr models (31 MB)") }
+                        Text(
+                            "Until then ML Kit is used.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    meikiError?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
+                }
                 SettingSwitch(
-                    title = "Two-pass OCR",
+                    title = "Two-pass OCR (ML Kit)",
                     description = "Re-read detected lines at higher resolution and keep the better result. More accurate, a bit slower.",
                     checked = twoPass,
                 ) { value ->
@@ -199,7 +261,10 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
                         "• Jiten by Sirush — deinflection rule source\n" +
                         "• ML Kit by Google — on-device Japanese OCR\n" +
                         "• AnkiDroid — AnkiDroid API and FlashCards contract\n" +
-                        "• OwOCR / MeikiOCR — OCR two-pass concepts used by GSM",
+                        "• meikiocr by rtr46 — game-trained OCR models (LGPL-3.0), downloaded at runtime\n" +
+                        "• meikidroid by rtr46 — Android game OCR overlay reference\n" +
+                        "• ONNX Runtime by Microsoft — on-device model inference\n" +
+                        "• OwOCR — OCR two-pass concepts used by GSM",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

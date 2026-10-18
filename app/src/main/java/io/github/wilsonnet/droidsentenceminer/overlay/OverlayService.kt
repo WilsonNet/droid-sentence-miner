@@ -91,20 +91,6 @@ class OverlayService : Service() {
     private var pendingScan: RectF? = null
     private var pendingAutoOcr = false
 
-    private var ocrEngine: MlKitJapaneseOcr? = null
-    private var ocrEngineTwoPass: Boolean? = null
-    private var ocrEngineDropNoise: Boolean? = null
-
-    private fun ocrEngine(twoPass: Boolean, dropNoise: Boolean): MlKitJapaneseOcr {
-        val current = ocrEngine
-        if (current == null || ocrEngineTwoPass != twoPass || ocrEngineDropNoise != dropNoise) {
-            ocrEngine = MlKitJapaneseOcr(twoPass = twoPass, dropNoise = dropNoise)
-            ocrEngineTwoPass = twoPass
-            ocrEngineDropNoise = dropNoise
-        }
-        return ocrEngine ?: MlKitJapaneseOcr(twoPass = twoPass, dropNoise = dropNoise)
-    }
-
     override fun onCreate() {
         super.onCreate()
         container = AppContainer.from(this)
@@ -128,6 +114,7 @@ class OverlayService : Service() {
             captureManager,
             container.textLog,
             container.prefs,
+            container,
             areas = { currentAreas() },
             paused = {
                 AppVisibility.mainResumed || panelView != null || areaSelector != null || !captureManager.contentVisible
@@ -611,7 +598,7 @@ class OverlayService : Service() {
         val result = try {
             val twoPass = container.prefs.ocrTwoPass.first()
             val dropNoise = container.prefs.ocrDropNoise.first()
-            ocrEngine(twoPass, dropNoise).recognize(cropped)
+            container.ocrEngine(twoPass, dropNoise).recognize(cropped)
         } catch (e: Exception) {
             panelState.scanning = false
             val status = "OCR failed: ${e.message}"

@@ -56,7 +56,7 @@ object OcrPostProcessor {
     }
 
     fun toSentenceText(merged: List<MergedLine>): String {
-        return merged.joinToString("\n") { it.text }.trim()
+        return merged.joinToString("\n") { OcrTextFixes.apply(it.text) }.trim()
     }
 
     private fun sameTextRow(group: List<OcrLine>, candidate: OcrLine): Boolean {

@@ -28,6 +28,10 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+        // Phones/handhelds (arm) + the x86_64 emulator; 32-bit x86 would add ~52 MB of native OCR libs.
+        ndk {
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
+        }
     }
 
     signingConfigs {
@@ -102,6 +106,7 @@ dependencies {
     ksp(libs.androidx.room.compiler)
 
     implementation(libs.mlkit.japanese)
+    implementation(libs.onnxruntime.android)
     implementation(libs.ankidroid.api)
 
     testImplementation(libs.junit)

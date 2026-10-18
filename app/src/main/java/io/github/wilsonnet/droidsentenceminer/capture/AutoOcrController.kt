@@ -6,6 +6,7 @@ import android.util.Log
 import io.github.wilsonnet.droidsentenceminer.core.DsmPrefs
 import io.github.wilsonnet.droidsentenceminer.ocr.JapaneseTextScore
 import io.github.wilsonnet.droidsentenceminer.ocr.MlKitJapaneseOcr
+import io.github.wilsonnet.droidsentenceminer.ocr.OcrEngine
 import io.github.wilsonnet.droidsentenceminer.ocr.OcrPostProcessor
 import io.github.wilsonnet.droidsentenceminer.ocr.SubtitleLineFilter
 import io.github.wilsonnet.droidsentenceminer.textlog.TextLineEntity
@@ -37,6 +38,7 @@ class AutoOcrController(
     private val capture: ScreenCaptureManager,
     private val textLog: TextLog,
     private val prefs: DsmPrefs,
+    private val container: io.github.wilsonnet.droidsentenceminer.AppContainer,
     /** Areas for the current orientation. */
     private val areas: () -> List<TextArea>,
     /** True while DSM's own UI covers the screen; reads are skipped so it isn't logged. */
@@ -79,7 +81,8 @@ class AutoOcrController(
 
     private suspend fun loop() {
         val dropNoise = prefs.ocrDropNoise.first()
-        val fast = MlKitJapaneseOcr(twoPass = false, dropNoise = dropNoise)
+        // meikiocr is accurate in one pass; ML Kit gets a fast pass here and a two-pass re-read below.
+        val fast = container.ocrEngine(twoPass = false, dropNoise = dropNoise)
         val tracker = TextLineTracker()
         var lastSignature: IntArray? = null
         var lastRead = ""
@@ -165,7 +168,8 @@ class AutoOcrController(
         val fast = TextSimilarity.clean(fastText)
         if (!prefs.ocrTwoPass.first() || crops.isEmpty()) return fast
         val dropNoise = prefs.ocrDropNoise.first()
-        val engine = MlKitJapaneseOcr(twoPass = true, dropNoise = dropNoise)
+        val engine = container.ocrEngine(twoPass = true, dropNoise = dropNoise)
+        if (engine !is MlKitJapaneseOcr) return fast
         val text = runCatching {
             TextSimilarity.clean(crops.map { dialogueText(engine, it, dropNoise) }.joinToString("\n"))
         }.getOrElse { return fast }
@@ -173,7 +177,7 @@ class AutoOcrController(
         return if (JapaneseTextScore.score(text) >= JapaneseTextScore.score(fast)) text else fast
     }
 
-    private suspend fun dialogueText(engine: MlKitJapaneseOcr, crop: Bitmap, dropNoise: Boolean): String {
+    private suspend fun dialogueText(engine: OcrEngine, crop: Bitmap, dropNoise: Boolean): String {
         val result = engine.recognize(crop)
         val rows = SubtitleLineFilter.filter(OcrPostProcessor.merge(result.lines, dropNoise = dropNoise))
         return OcrPostProcessor.toSentenceText(rows).trim()
