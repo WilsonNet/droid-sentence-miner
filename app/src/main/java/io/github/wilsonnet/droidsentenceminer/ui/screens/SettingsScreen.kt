@@ -13,7 +13,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Book
+import androidx.compose.material.icons.filled.Style
 import androidx.compose.material3.Card
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
@@ -28,6 +33,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -38,7 +44,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 @Composable
-fun SettingsScreen(modifier: Modifier = Modifier) {
+fun SettingsScreen(modifier: Modifier = Modifier, onOpen: (String) -> Unit = {}) {
     val context = LocalContext.current
     val container = remember { AppContainer.from(context) }
     val scope = rememberCoroutineScope()
@@ -91,6 +97,19 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Text("Settings", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+
+        val dictionaries by remember { container.db.dictionaryDao().observeAll() }.collectAsState(initial = emptyList())
+        val ankiDeck by container.prefs.ankiDeck.collectAsState(initial = "")
+        SettingsLink(
+            Icons.Default.Book,
+            "Dictionaries",
+            if (dictionaries.isEmpty()) "None installed yet: install Jitendex here" else "${dictionaries.size} installed",
+        ) { onOpen(io.github.wilsonnet.droidsentenceminer.PAGE_DICTIONARIES) }
+        SettingsLink(
+            Icons.Default.Style,
+            "Anki",
+            "Backend, deck, note type and fields" + if (ankiDeck.isNotBlank()) " · deck: $ankiDeck" else "",
+        ) { onOpen(io.github.wilsonnet.droidsentenceminer.PAGE_ANKI) }
 
         Card {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -191,7 +210,7 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
                 SettingSwitch(
                     title = "Glossary: first dictionary only",
                     description = "Put only your highest-priority dictionary on the card (Yomitan's {glossary-first}), " +
-                        "e.g. a monolingual dictionary ordered first in the Dicts tab.",
+                        "e.g. a monolingual dictionary ordered first in Settings → Dictionaries.",
                     checked = firstDict,
                 ) { value -> scope.launch { container.prefs.setGlossaryFirstDictionary(value) } }
             }
@@ -368,5 +387,20 @@ private fun SettingSlider(
             valueRange = range,
             steps = steps,
         )
+    }
+}
+
+@Composable
+private fun SettingsLink(icon: ImageVector, title: String, subtitle: String, onClick: () -> Unit) {
+    Card(onClick = onClick) {
+        Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            Spacer(Modifier.width(16.dp))
+            Column(Modifier.weight(1f)) {
+                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
+        }
     }
 }

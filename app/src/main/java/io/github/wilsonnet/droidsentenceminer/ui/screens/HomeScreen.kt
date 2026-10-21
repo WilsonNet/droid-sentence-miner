@@ -332,8 +332,8 @@ fun HomeScreen(modifier: Modifier = Modifier) {
         Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text("Getting started", fontWeight = FontWeight.SemiBold)
-                Text("1. Import a Yomitan dictionary (Jitendex or JMdict) in the Dictionaries tab", style = MaterialTheme.typography.bodySmall)
-                Text("2. Configure Anki in the Anki tab", style = MaterialTheme.typography.bodySmall)
+                Text("1. Import a Yomitan dictionary (Jitendex or JMdict) in Settings → Dictionaries", style = MaterialTheme.typography.bodySmall)
+                Text("2. Configure Anki in Settings → Anki", style = MaterialTheme.typography.bodySmall)
                 Text("3. Start the floating bubble and tap it over Japanese text", style = MaterialTheme.typography.bodySmall)
             }
         }

@@ -8,6 +8,7 @@ import android.graphics.RectF
 import android.util.Log
 import com.ichi2.anki.api.AddContentApi
 import io.github.wilsonnet.droidsentenceminer.AppContainer
+import io.github.wilsonnet.droidsentenceminer.book.BookOcr
 import io.github.wilsonnet.droidsentenceminer.MainActivity
 import io.github.wilsonnet.droidsentenceminer.anki.AnkiResult
 import io.github.wilsonnet.droidsentenceminer.capture.ScreenCaptureManager
@@ -113,6 +114,7 @@ object DebugApi {
                 else respondBytes(socket, "image/png", png)
             }
             "/ocr" -> respondApi(socket) { ocrFile(params) }
+                "/book" -> respondApi(socket) { bookFile(params) }
             "/lookup" -> respondApi(socket) { lookup(params) }
             "/mine" -> respondApi(socket) { mine(params) }
             "/dicts" -> respondApi(socket) { dicts() }
@@ -370,6 +372,30 @@ object DebugApi {
             Bitmap.createBitmap(decoded, left, top, (r.right * decoded.width).toInt() - left, (r.bottom * decoded.height).toInt() - top)
         } ?: decoded
         return ocrBitmap(bitmap, params)
+    }
+
+    /** Book mode: reads a page photo into paragraphs and shows it in the Book tab. */
+    private fun bookFile(params: Map<String, String>): JSONObject {
+        val path = params["file"] ?: return errorJson("missing 'file' parameter")
+        val container = AppContainer.from(app)
+        val bitmap = runBlocking { BookOcr.loadPhoto(app, android.net.Uri.fromFile(java.io.File(path))) }
+            ?: return errorJson("could not decode $path")
+        val page = runBlocking { container.bookOcr.read(bitmap) }
+        container.bookPage.value = page
+        val blocks = JSONArray()
+        page.blocks.forEach { block ->
+            blocks.put(
+                JSONObject()
+                    .put("text", block.text)
+                    .put("vertical", block.vertical)
+                    .put("box", JSONArray(listOf(block.box.left, block.box.top, block.box.right, block.box.bottom))),
+            )
+        }
+        return JSONObject()
+            .put("ok", true)
+            .put("size", JSONArray(listOf(bitmap.width, bitmap.height)))
+            .put("elapsedMs", page.elapsedMs)
+            .put("blocks", blocks)
     }
 
     private fun ocrBitmap(bitmap: Bitmap, params: Map<String, String>): JSONObject {

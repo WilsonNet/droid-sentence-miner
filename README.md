@@ -26,6 +26,12 @@ with [Yomitan](https://github.com/yomidevs/yomitan) dictionary compatibility.
   real time. Tap a line to look up and mine it without leaving the game.
 - **App focus** — share "A single app" (Android 14+) and pick the game: only it is read, and
   auto OCR pauses while you are in other apps or in Droid Sentence Miner itself.
+- **Book mode (paper books, manga)** — the *Book* tab takes a photo with Samsung Camera on Galaxy
+  phones (any camera app elsewhere) or picks one from the gallery, reads the page with ML Kit — vertical (tategaki, columns right to left)
+  and horizontal print — and outlines each paragraph on the photo. Tap a paragraph, tap a word,
+  and mine it: the card gets the word's sentence (cut at 。！？, keeping closing quotes) and the
+  paragraph cropped from the photo as its picture. Ruby lines, page numbers and sentences split
+  across blocks are handled; ✎ fixes a misread before mining.
 - **Texts page** (GSM's texthooker) — every recognized line, newest first. Tap a line, tap a word,
   and mine it: the card gets that line's sentence, its screenshot and its voice clip.
 - **Replay buffer sentence audio** — the last 5 minutes (configurable 1–10) of game audio are kept
@@ -61,7 +67,7 @@ with [Yomitan](https://github.com/yomidevs/yomitan) dictionary compatibility.
 - **Pitch accent graph** — the same SVG Yomitan's `{pitch-accent-graphs}` writes (byte-identical to
   the user's existing Yomitan cards), filled into a pitch/graph field such as Anime Cards' *Graph*.
   Uses any installed Yomitan pitch dictionary, or the free Kanjium pitch accents (124k words,
-  one-click install from *Dicts* or the Home setup card).
+  one-click install from *Settings → Dictionaries* or the Home setup card).
 - **Sentence audio** (Android 10+) — captures playback audio through the existing MediaProjection
   session (the Android equivalent of GSM's loopback capture) into the replay buffer, with a
   waveform **audio editor** to trim the exact line before mining.
@@ -97,7 +103,7 @@ android sdk install platform-tools platforms/android-36 build-tools/35.0.0 emula
 echo "sdk.dir=$ANDROID_HOME" > local.properties
 
 # 3. Build & test
-./gradlew testDebugUnitTest          # 118 JVM unit tests
+./gradlew testDebugUnitTest          # 123 JVM unit tests
 ./gradlew connectedDebugAndroidTest  # 4 on-device tests (VAD + AAC encoding)
 ./gradlew assembleDebug              # app/build/outputs/apk/debug/app-debug.apk
 
@@ -107,11 +113,11 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 ## Usage
 
-1. **Dictionaries** — open the *Dicts* tab and install **Jitendex** and **Kanjium pitch accents**
+1. **Dictionaries** — open *Settings → Dictionaries* and install **Jitendex** and **Kanjium pitch accents**
    with one tap each (or import any Yomitan `.zip`, e.g. a monolingual dictionary; drag it first
    if you want only it on cards). In *Settings → OCR*, tap *Download meikiocr models* (31 MB).
-2. **Anki** — in the *Anki* tab pick a backend:
-   - *AnkiDroid*: install AnkiDroid, grant the API permission from the tab, and enable
+2. **Anki** — in *Settings → Anki* pick a backend:
+   - *AnkiDroid*: install AnkiDroid, grant the API permission from that page, and enable
      *Settings → Advanced → AnkiDroid API* inside AnkiDroid.
    - *AnkiConnect*: start Anki with the AnkiConnect add-on and enter the URL
      (e.g. `http://192.168.1.10:8765`).
@@ -130,7 +136,10 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 5. **Audio** — on by default; grant the microphone permission when asked (Android requires it for
    playback capture). *Settings* has the buffer length, start/end offsets and silence trimming.
    Apps that opt out of capture stay silent.
-6. **Test drive** — the Home tab has a built-in sample (a public-domain Aozora Bunko passage) and
+6. **Books** — open the *Book* tab, *Take photo* of the page (flat, well lit, filling the frame),
+   tap the paragraph on the photo, then tap a word in its text to look it up and *Anki* it.
+   Arrows step through paragraphs; ✎ corrects the OCR text.
+7. **Test drive** — the Home tab has a built-in sample (a public-domain Aozora Bunko passage) and
    an image picker to test OCR + lookup without a game.
 
 ## How it works
@@ -159,6 +168,10 @@ MediaProjection ──► ScreenCaptureManager ──► AutoOcrController ─�
   instead: pass 1 recognizes the region, pass 2 re-reads each line upscaled and keeps the better
   reading. Either way rows are merged, furigana and off-size background text are dropped, and auto
   OCR stores the consensus of all reads of a line.
+- **Book photos** (`book/`): always ML Kit (meikiocr only reads horizontal game text). ML Kit's
+  blocks are kept as paragraphs; `PageLayout` decides vertical vs horizontal from line shapes,
+  orders columns right→left (lines top→bottom when horizontal), drops thin kana-only ruby lines
+  and non-Japanese blocks, and joins a block that ends mid-sentence with the adjacent one.
 - **Matching**: `JapaneseDeinflector` expands every substring of the OCR text into dictionary-form
   candidates (Yomitan/Jiten rules), a single batched SQL query resolves them, and longest-match-wins
   builds the clickable word list. Grammar-only single-kana matches are filtered as noise.
@@ -216,12 +229,17 @@ Glossaries may be strings, arrays, image definitions, deinflection entries or st
   recipe): every subtitle cue in the run was logged (61/61, 56 exact, mean character accuracy
   0.99), line start times within ±300 ms (p90) of the cue, and every voice clip located in the
   original audio at correlation ≥0.97, starting 160–1080 ms (median ~400 ms) before the subtitle.
-- 118 JVM unit tests: pitch graphs (byte-identical to Yomitan), word audio sources, Anki field mapping, meikiocr decoding, OCR text fixes (一→ー), text areas, line consensus, replay buffer, voice trimming, line tracking, clip windows, subtitle-row
+- 123 JVM unit tests: book page layout (tategaki order, ruby filter, split sentences), pitch graphs (byte-identical to Yomitan), word audio sources, Anki field mapping, meikiocr decoding, OCR text fixes (一→ー), text areas, line consensus, replay buffer, voice trimming, line tracking, clip windows, subtitle-row
   filtering, deinflector (conjugations across godan/ichidan/suru/kuru/adjectives),
   glossary parsing/rendering, OCR post-processing (merge, furigana filter, normalization),
   VAD segmentation, PCM utilities, Yomitan index parsing.
 - 4 on-device instrumented tests: VAD segmentation with real waveforms, AAC/M4A encoding through
   MediaCodec, WAV fallback.
+- Book mode on a Galaxy phone (`/book` with synthetic photographed pages, Noto Serif 44 px,
+  slightly rotated and blurred): vertical page read as 2 paragraphs in correct column order in
+  ~340 ms, horizontal page 174 ms with a comma-split sentence rejoined; ML Kit still misread a few
+  kanji on the blurred render (吾→音, 間→問), hence the ✎ fix-up. Camera intent, paragraph tap
+  and word lookup checked in the UI.
 - Emulator end-to-end: Jitendex one-click install (436,555 terms), OCR of an Aozora Bunko passage
   (20 matched words, deinflection of 走れ → 走る), popup lookup, mining into a real AnkiDroid
   installation (card verified with image), and mining through AnkiConnect against a mock server
@@ -237,8 +255,9 @@ Glossaries may be strings, arrays, image definitions, deinflection entries or st
   frame-injection test path.
 - AnkiDroid media naming: the API stores our AAC clip as `…m4a_<n>.mp3`. It plays, but pass the
   proper MIME type/extension so the file name matches the content.
-- Vertical text (meikiocr ships a vertical recognizer; not wired up yet) and furigana-aware
-  reading for manga-style layouts.
+- Vertical text for screen OCR (meikiocr ships a vertical recognizer; not wired up yet). Book mode
+  reads vertical print with ML Kit; manga speech bubbles and inline ruby are untested.
+- Book mode: share a photo straight from the camera/gallery into DSM; pinch-zoom on the page.
 - Pitch accent in the lookup popup (the card already gets the graph); jidoujisho-style graph option.
 - Hotkey toggle for the live/lookup overlay (gamepad button or volume key via an accessibility
   service), as meikidroid does — handy on Android handhelds.

@@ -2,4 +2,5 @@
 <paths>
     <cache-path name="anki_media" path="anki-media/" />
     <cache-path name="shared" path="shared/" />
+    <cache-path name="camera" path="camera/" />
 </paths>

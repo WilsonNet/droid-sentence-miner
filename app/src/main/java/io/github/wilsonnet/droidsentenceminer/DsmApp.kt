@@ -6,6 +6,8 @@ import io.github.wilsonnet.droidsentenceminer.anki.AnkiClient
 import io.github.wilsonnet.droidsentenceminer.anki.AnkiConnectBridge
 import io.github.wilsonnet.droidsentenceminer.anki.AnkiDroidBridge
 import io.github.wilsonnet.droidsentenceminer.anki.CardMiner
+import io.github.wilsonnet.droidsentenceminer.book.BookOcr
+import io.github.wilsonnet.droidsentenceminer.book.BookPage
 import io.github.wilsonnet.droidsentenceminer.core.DsmPrefs
 import io.github.wilsonnet.droidsentenceminer.dict.DictDatabase
 import io.github.wilsonnet.droidsentenceminer.dict.DictDownloader
@@ -18,6 +20,7 @@ import io.github.wilsonnet.droidsentenceminer.textlog.TextLogDatabase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 
 class DsmApp : Application() {
@@ -53,6 +56,10 @@ class AppContainer(private val context: Context) {
     val ankiClient: AnkiClient by lazy { AnkiClient(ankiDroid, ankiConnect, prefs) }
     val textLog: TextLog by lazy { TextLog(context, TextLogDatabase.build(context), prefs) }
     val miner: CardMiner by lazy { CardMiner(context, db, lookup, ankiClient, prefs, textLog) }
+    val bookOcr: BookOcr by lazy { BookOcr() }
+
+    /** The last photographed page; kept here so it survives tab switches and rotation. */
+    val bookPage = MutableStateFlow<BookPage?>(null)
 
     private val mlKitEngines = java.util.concurrent.ConcurrentHashMap<Pair<Boolean, Boolean>, MlKitJapaneseOcr>()
 

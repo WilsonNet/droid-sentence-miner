@@ -48,24 +48,24 @@ class MlKitJapaneseOcr(
         OcrResult(text = text, lines = lines, elapsedMs = elapsed)
     }
 
-    private suspend fun recognizeOnce(bitmap: Bitmap): List<OcrLine> {
+    private suspend fun recognizeOnce(bitmap: Bitmap): List<OcrLine> = recognizeBlocks(bitmap).flatten()
+
+    /** Raw lines grouped by ML Kit's text blocks (paragraphs), no post-processing. */
+    suspend fun recognizeBlocks(bitmap: Bitmap): List<List<OcrLine>> {
         val image = InputImage.fromBitmap(bitmap, 0)
         val text: Text = recognizer.process(image).awaitResult()
-        val lines = mutableListOf<OcrLine>()
-        for (block in text.textBlocks) {
-            for (line in block.lines) {
-                val box = line.boundingBox ?: continue
-                val content = line.text
-                if (content.isBlank()) continue
-                lines += OcrLine(
-                    text = content,
-                    box = BoundingBox.from(box),
-                    confidence = line.confidence,
-                    angle = line.angle,
-                )
-            }
-        }
-        return lines
+        return text.textBlocks.map { block -> linesOf(block) }.filter { it.isNotEmpty() }
+    }
+
+    private fun linesOf(block: Text.TextBlock): List<OcrLine> = block.lines.mapNotNull { line ->
+        val box = line.boundingBox ?: return@mapNotNull null
+        if (line.text.isBlank()) return@mapNotNull null
+        OcrLine(
+            text = line.text,
+            box = BoundingBox.from(box),
+            confidence = line.confidence,
+            angle = line.angle,
+        )
     }
 
     /**

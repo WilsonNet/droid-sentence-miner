@@ -97,7 +97,7 @@ Endpoints: `/state`, `/scan`, `/frame.png`, `/ocr` (`l,t,r,b` crops the file fir
 `/install_ocr_models` (meikiocr download), `/ocr?engine=meiki|mlkit`, `/select_areas` (opens the area editor),
 `/install_dict?id=jitendex` (background install; progress in `/state.dictInstall`),
 `/anki_notes?word=` (field-level card verification via the AnkiDroid provider),
-`/anki_meta` (decks + note types), `/startoverlay`, `/stopoverlay`, `/request_projection`.
+`/anki_meta` (decks + note types), `/book?file=` (book-mode page OCR → paragraphs, shown in the Book tab), `/startoverlay`, `/stopoverlay`, `/request_projection`.
 Regions are screen fractions.
 See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes.
 
@@ -144,6 +144,16 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   JapanesePod101 `dictionary_post` search (split rows on the `dc-result-row` *class*, not the
   substring, or `dc-result-row__checkbox` breaks parsing) → Jisho `audio_{term}:{reading}` →
   optional custom URL first.
+- **Book mode** (`book/`, `ui/screens/BookScreen.kt`): photos come from a camera app via
+  `TakePagePhoto` (a `TakePicture` that targets Samsung Camera `com.sec.android.app.camera` when it
+  resolves, else any `IMAGE_CAPTURE` app; both are in manifest `<queries>`) into `cache/camera/page.jpg` (FileProvider path `camera`) — no CAMERA permission;
+  declaring one would make `TakePicture` require it. Decoded upright (`ImageDecoder` applies EXIF)
+  and capped at 3000 px (`BookOcr.loadPhoto`). Always ML Kit `recognizeBlocks`, never meikiocr
+  (horizontal-only) and never `OcrPostProcessor.merge` (joins horizontal rows, garbles columns);
+  `PageLayout` (unit-tested) does tategaki order, ruby filtering and split-sentence joins. The
+  page lives in `AppContainer.bookPage`, so it survives tab switches.
+- **Navigation**: Home · Book · Texts · Settings. Dictionaries and Anki are Settings sub-pages
+  (`MainActivity.SettingsSubPage`, back button/gesture returns to the list).
 - **Shared text selections** (`ProcessTextActivity` → `TextLog.lineForSharedText`): a word is
   matched to the newest of the last 300 lines containing it (earlier bare-word shares skipped),
   otherwise logged as a manual line, so Galaxy AI / Circle to Search selections mine with sentence
@@ -214,6 +224,7 @@ app/src/main/java/io/github/wilsonnet/droidsentenceminer/
 ├── audio/     AudioPlaybackCapture, VAD, WAV/AAC encoders, PCM utils
 ├── overlay/   Foreground service, bubble, region selector, Compose panel
 ├── anki/      AnkiDroid + AnkiConnect bridges, card builder/miner
+├── book/      Book mode: page photo loading, ML Kit page OCR, tategaki layout
 ├── ui/        Compose screens, theme, lookup dialogs, audio editor
 └── core/      Settings (DataStore)
 
