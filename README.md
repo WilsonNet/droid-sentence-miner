@@ -119,7 +119,7 @@ android sdk install platform-tools platforms/android-36 build-tools/35.0.0 emula
 echo "sdk.dir=$ANDROID_HOME" > local.properties
 
 # 3. Build & test
-./gradlew testDebugUnitTest          # 128 JVM unit tests
+./gradlew testDebugUnitTest          # 131 JVM unit tests
 ./gradlew connectedDebugAndroidTest  # 4 on-device tests (VAD + AAC encoding)
 ./gradlew assembleDebug              # app/build/outputs/apk/debug/app-debug.apk
 
@@ -251,7 +251,7 @@ Glossaries may be strings, arrays, image definitions, deinflection entries or st
   recipe): every subtitle cue in the run was logged (61/61, 56 exact, mean character accuracy
   0.99), line start times within ±300 ms (p90) of the cue, and every voice clip located in the
   original audio at correlation ≥0.97, starting 160–1080 ms (median ~400 ms) before the subtitle.
-- 128 JVM unit tests: screen text layer (subtitle glyphs → screen fractions, signage skipped), book page layout (tategaki order, ruby filter incl. real manga ruby, split sentences, per-character photo positions), H→エ fix, pitch graphs (byte-identical to Yomitan), word audio sources, Anki field mapping, meikiocr decoding, OCR text fixes (一→ー), text areas, line consensus, replay buffer, voice trimming, line tracking, clip windows, subtitle-row
+- 131 JVM unit tests: popup placement (flip/size/shift), screen text layer (subtitle glyphs → screen fractions, signage skipped), book page layout (tategaki order, ruby filter incl. real manga ruby, split sentences, per-character photo positions), H→エ fix, pitch graphs (byte-identical to Yomitan), word audio sources, Anki field mapping, meikiocr decoding, OCR text fixes (一→ー), text areas, line consensus, replay buffer, voice trimming, line tracking, clip windows, subtitle-row
   filtering, deinflector (conjugations across godan/ichidan/suru/kuru/adjectives),
   glossary parsing/rendering, OCR post-processing (merge, furigana filter, normalization),
   VAD segmentation, PCM utilities, Yomitan index parsing.
@@ -266,6 +266,8 @@ Glossaries may be strings, arrays, image definitions, deinflection entries or st
   player, meikiocr, area over the subtitle band: the layer window followed each subtitle (fitted to
   the line, e.g. `[210,601]–[865,711]` px), a tap mid-word looked up the word covering it with the
   popup right under the subtitle, YouTube's media session went PAUSED on the tap and PLAYING on close.
+  Fullscreen landscape: paused, controls hidden, tapping 入 looked up 入りたい with the popup flipped
+  above the subtitle at 1688×899 px (was 900×263 before the Popper-style placement).
 - Book mode on real manga: 6 pages of *Black Jack ni Yoroshiku* vol. 1 (Shuho Sato's officially
   free Japanese PDF from densho810.com, rendered 1414×2000) on the Galaxy phone, 140–250 ms per
   page. Every typeset dialogue bubble and caption was found, columns in the right order; misses were

@@ -19,6 +19,8 @@ data class ScreenTextLine(
     val glyphs: List<FracRect>,
     /** Index of the auto OCR text area it was read from. */
     val area: Int,
+    /** The engine's mean character confidence (1 when it reports none). */
+    val confidence: Float = 1f,
 ) {
     val bounds: FracRect get() = glyphs.reduce(FracRect::union)
 }
@@ -48,7 +50,13 @@ object ScreenText {
             area.left + b.right.toFloat() / cropWidth * area.width,
             area.top + b.bottom.toFloat() / cropHeight * area.height,
         )
-        return raw.mapNotNull { line ->
+        // The detector sometimes returns a second, garbled box over the same line: keep the surer one.
+        val distinct = raw.filterNot { line ->
+            raw.any { other ->
+                other !== line && (other.confidence ?: 1f) > (line.confidence ?: 1f) && overlap(line.box, other.box) > 0.5f
+            }
+        }
+        return distinct.mapNotNull { line ->
             val inKept = kept.any { k ->
                 line.box.centerX >= k.left && line.box.centerX <= k.right && line.box.centerY >= k.top && line.box.centerY <= k.bottom
             }
@@ -56,8 +64,17 @@ object ScreenText {
             val text = PageLayout.clean(line.text)
             if (text.none { JapaneseTextScore.isJapanese(it) }) return@mapNotNull null
             val vertical = line.box.height > line.box.width * 1.3f && text.length >= 2
-            ScreenTextLine(text, PageLayout.glyphsOf(line, text, vertical).map(::frac), areaIndex)
+            ScreenTextLine(text, PageLayout.glyphsOf(line, text, vertical).map(::frac), areaIndex, line.confidence ?: 1f)
         }.sortedWith(compareBy({ it.area }, { it.bounds.top }, { it.bounds.left }))
+    }
+
+    /** Intersection over the smaller box's area. */
+    private fun overlap(a: BoundingBox, b: BoundingBox): Float {
+        val w = minOf(a.right, b.right) - maxOf(a.left, b.left)
+        val h = minOf(a.bottom, b.bottom) - maxOf(a.top, b.top)
+        if (w <= 0 || h <= 0) return 0f
+        val smaller = minOf(a.width.toLong() * a.height, b.width.toLong() * b.height).coerceAtLeast(1)
+        return (w.toLong() * h).toFloat() / smaller
     }
 
     /** The character at screen fraction ([x], [y]) as (line, index), within [slack] (fraction of width). */

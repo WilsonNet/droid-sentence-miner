@@ -314,9 +314,13 @@ fun WordLookupPopup(
     val density = androidx.compose.ui.platform.LocalDensity.current
     val config = androidx.compose.ui.platform.LocalConfiguration.current
     val gap = with(density) { 8.dp.roundToPx() }
-    val screenHeightPx = with(density) { config.screenHeightDp.dp.toPx() }
+    val plan = rememberPopupPlan(
+        anchor,
+        with(density) { config.screenWidthDp.dp.toPx() },
+        with(density) { config.screenHeightDp.dp.toPx() },
+    )
     androidx.compose.ui.window.Popup(
-        popupPositionProvider = remember(anchor, gap) { AnchoredPopupPosition(anchor, gap) },
+        popupPositionProvider = remember(anchor, gap, plan) { AnchoredPopupPosition(anchor, gap, plan.side) },
         onDismissRequest = onDismiss,
         properties = androidx.compose.ui.window.PopupProperties(focusable = false, dismissOnClickOutside = false),
     ) {
@@ -326,20 +330,43 @@ fun WordLookupPopup(
             image = image,
             onDismiss = onDismiss,
             onMine = onMine,
-            maxHeight = popupMaxHeight(anchor.top, anchor.bottom, screenHeightPx),
+            maxHeight = with(density) { plan.maxHeight.toDp() },
             handleBack = true,
         )
     }
 }
 
-/** Room on the larger side of the word, so the popup never covers it; at most 45 % of the screen. */
+/** The popup's width: the screen minus margins, at most 420 dp (600 dp in landscape, where height is short). */
 @Composable
-fun popupMaxHeight(anchorTop: Float, anchorBottom: Float, screenHeightPx: Float): androidx.compose.ui.unit.Dp {
-    val density = androidx.compose.ui.platform.LocalDensity.current
+fun popupWidth(): androidx.compose.ui.unit.Dp {
     val config = androidx.compose.ui.platform.LocalConfiguration.current
+    return popupWidth(config.screenWidthDp.dp, config.screenHeightDp.dp)
+}
+
+/** [popupWidth] for a screen of the given size (overlay windows: their Configuration can lag rotation). */
+fun popupWidth(screenWidth: androidx.compose.ui.unit.Dp, screenHeight: androidx.compose.ui.unit.Dp): androidx.compose.ui.unit.Dp {
+    val cap = if (screenWidth > screenHeight) 600.dp else 420.dp
+    return minOf(screenWidth - 24.dp, cap)
+}
+
+/**
+ * Popper-style placement next to [anchor] (window px) on a [screenWidth]×[screenHeight] px screen:
+ * the side with room for a definition, and the popup's height limited to that room.
+ */
+@Composable
+fun rememberPopupPlan(
+    anchor: androidx.compose.ui.geometry.Rect,
+    screenWidth: Float,
+    screenHeight: Float,
+    popupWidth: androidx.compose.ui.unit.Dp = popupWidth(),
+): PopupPlacement.Plan {
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val width = with(density) { popupWidth.toPx() }
+    val preferred = with(density) { 260.dp.toPx() }
     val gap = with(density) { 8.dp.toPx() }
-    val roomPx = maxOf(anchorTop, screenHeightPx - anchorBottom) - 3 * gap
-    return with(density) { roomPx.toDp() }.coerceIn(160.dp, (config.screenHeightDp * 0.45f).dp)
+    return remember(anchor, screenWidth, screenHeight, width) {
+        PopupPlacement.plan(anchor.left, anchor.top, anchor.right, anchor.bottom, screenWidth, screenHeight, width, preferred, gap)
+    }
 }
 
 /**
@@ -356,6 +383,7 @@ fun WordLookupCard(
     onMine: (suspend (TermLookup.LookupDetails?) -> AnkiResult<String>)?,
     maxHeight: androidx.compose.ui.unit.Dp,
     handleBack: Boolean,
+    width: androidx.compose.ui.unit.Dp = popupWidth(),
 ) {
     val dark = androidx.compose.foundation.isSystemInDarkTheme()
     val stack = rememberLookupStack(word, sentence)
@@ -363,8 +391,6 @@ fun WordLookupCard(
     val state = rememberWordLookup(entry.word, dark)
     val mine = mineAction(state, entry.word, entry.sentence, image.takeIf { stack.size == 1 }, onMine.takeIf { stack.size == 1 })
     val onTap = recursiveTap(stack)
-    val config = androidx.compose.ui.platform.LocalConfiguration.current
-    val width = minOf(config.screenWidthDp - 24, 420).dp
 
     if (handleBack) {
         androidx.activity.compose.BackHandler {
@@ -402,9 +428,11 @@ fun WordLookupCard(
     }
 }
 
+/** Places the measured popup on [side] of [anchor] (window px), shifted to stay on screen. */
 class AnchoredPopupPosition(
     private val anchor: androidx.compose.ui.geometry.Rect,
     private val gap: Int,
+    private val side: PopupPlacement.Side,
 ) : androidx.compose.ui.window.PopupPositionProvider {
     override fun calculatePosition(
         anchorBounds: androidx.compose.ui.unit.IntRect,
@@ -412,18 +440,18 @@ class AnchoredPopupPosition(
         layoutDirection: androidx.compose.ui.unit.LayoutDirection,
         popupContentSize: androidx.compose.ui.unit.IntSize,
     ): androidx.compose.ui.unit.IntOffset {
-        val w = popupContentSize.width
-        val h = popupContentSize.height
-        val x = (anchor.center.x - w / 2f).toInt().coerceIn(gap, maxOf(gap, windowSize.width - w - gap))
-        val below = anchor.bottom.toInt() + gap
-        val above = anchor.top.toInt() - gap - h
-        val y = when {
-            below + h <= windowSize.height - gap -> below
-            above >= gap -> above
-            // Neither side fits whole: take the roomier one.
-            anchor.top > windowSize.height - anchor.bottom -> gap
-            else -> below
-        }
-        return androidx.compose.ui.unit.IntOffset(x, y)
+        val (x, y) = PopupPlacement.position(
+            side,
+            anchor.left,
+            anchor.top,
+            anchor.right,
+            anchor.bottom,
+            windowSize.width.toFloat(),
+            windowSize.height.toFloat(),
+            popupContentSize.width.toFloat(),
+            popupContentSize.height.toFloat(),
+            gap.toFloat(),
+        )
+        return androidx.compose.ui.unit.IntOffset(x.toInt(), y.toInt())
     }
 }

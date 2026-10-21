@@ -21,6 +21,7 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
@@ -29,7 +30,8 @@ import io.github.wilsonnet.droidsentenceminer.capture.ScreenCaptureManager
 import io.github.wilsonnet.droidsentenceminer.capture.ScreenTextLine
 import io.github.wilsonnet.droidsentenceminer.ui.components.AnchoredPopupPosition
 import io.github.wilsonnet.droidsentenceminer.ui.components.WordLookupCard
-import io.github.wilsonnet.droidsentenceminer.ui.components.popupMaxHeight
+import io.github.wilsonnet.droidsentenceminer.ui.components.popupWidth
+import io.github.wilsonnet.droidsentenceminer.ui.components.rememberPopupPlan
 import io.github.wilsonnet.droidsentenceminer.ui.theme.DsmTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -142,8 +144,10 @@ class ScreenDictionary(
             onCreate()
             onStart()
         }
+        // An explicit width: a WRAP_CONTENT window is measured at the dialog width (320 dp) first.
+        val popupWidthDp = popupWidth((w / density).dp, (h / density).dp)
         val params = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.WRAP_CONTENT,
+            (popupWidthDp.value * density).roundToInt(),
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
@@ -157,6 +161,7 @@ class ScreenDictionary(
             y = anchor.bottom.roundToInt()
             cutoutAlways()
         }
+        var side = io.github.wilsonnet.droidsentenceminer.ui.components.PopupPlacement.Side.BELOW
         val view = ComposeView(context).apply {
             setViewTreeLifecycleOwner(owner)
             setViewTreeViewModelStoreOwner(owner)
@@ -164,6 +169,9 @@ class ScreenDictionary(
             alpha = 0f // shown once measured and placed next to the word
             setContent {
                 DsmTheme {
+                    val local = androidx.compose.ui.platform.LocalDensity.current
+                    val plan = rememberPopupPlan(anchor, w, h, popupWidthDp)
+                    side = plan.side
                     WordLookupCard(
                         word = word,
                         sentence = allText,
@@ -174,8 +182,9 @@ class ScreenDictionary(
                             val logLine = container.textLog.lineForSharedText(allText)
                             container.miner.mineLine(logLine, word, details)
                         },
-                        maxHeight = popupMaxHeight(anchor.top, anchor.bottom, h),
+                        maxHeight = with(local) { plan.maxHeight.toDp() },
                         handleBack = false,
+                        width = popupWidthDp,
                     )
                 }
             }
@@ -185,7 +194,7 @@ class ScreenDictionary(
             }
             addOnLayoutChangeListener { v, _, _, _, _, _, _, _, _ ->
                 val gap = (8 * density).roundToInt()
-                val pos = AnchoredPopupPosition(anchor, gap).calculatePosition(
+                val pos = AnchoredPopupPosition(anchor, gap, side).calculatePosition(
                     IntRect.Zero,
                     IntSize(w.toInt(), h.toInt()),
                     LayoutDirection.Ltr,

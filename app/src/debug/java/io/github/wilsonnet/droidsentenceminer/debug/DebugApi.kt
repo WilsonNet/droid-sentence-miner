@@ -306,7 +306,7 @@ object DebugApi {
         val layer = JSONArray()
         service?.debugScreenText?.forEach { line ->
             val b = line.bounds
-            layer.put(JSONObject().put("text", line.text).put("glyphs", line.glyphs.size).put("bounds", JSONArray(listOf(b.left, b.top, b.right, b.bottom))))
+            layer.put(JSONObject().put("text", line.text).put("glyphs", line.glyphs.size).put("confidence", line.confidence.toDouble()).put("bounds", JSONArray(listOf(b.left, b.top, b.right, b.bottom))))
         }
         json.put("screenText", JSONObject().put("lines", layer).put("popupOpen", service?.debugScreenPopupOpen == true))
         val buffer = container.textLog.audioBuffer

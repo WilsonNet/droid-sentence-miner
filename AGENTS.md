@@ -176,7 +176,16 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   inside an overlay strip is positioned relative to that strip). While the popup is open the layer is
   frozen and auto OCR pauses (`holdLayer`/`paused`), or it would log the definition text. Media
   pause/play via `AudioManager.dispatchMediaKeyEvent`, only if music was active; resume is delayed
-  350 ms so tapping the next word doesn't play/pause-flicker. `/state.screenText` shows the layer.
+  350 ms so tapping the next word doesn't play/pause-flicker. `/state.screenText` shows the layer
+  (with per-line confidence; overlapping duplicate detections keep the surer one).
+- **Popup placement** (`ui/components/PopupPlacement.kt`, unit-tested): Popper.js-style — below the
+  word if it has ≥260 dp, else flip above, else beside; height = room on that side (capped at 60 %
+  only on portrait screens), shifted to stay on screen. Overlay popup windows need an explicit
+  width: a `WRAP_CONTENT` window is measured at `config_prefDialogWidth` (320 dp) first and Compose
+  never asks for more. The overlay service's Compose `Configuration` can lag rotation, so the overlay
+  sizes from `ScreenCaptureManager.screenMetrics`. Width: 420 dp portrait, 600 dp landscape.
+  Test the YouTube flow like a user: pause, tap an empty spot to hide the player controls (they
+  cover the subtitle and the layer re-reads them), then tap the word.
   Testing: `/autoocr?on=1` and consent bring DSM/the panel to the front (auto OCR pauses) — reopen
   the video with `am start -a VIEW -d <youtube url>` and close the panel first.
 - **Navigation**: Home · Book · Texts · Settings. Dictionaries and Anki are Settings sub-pages
