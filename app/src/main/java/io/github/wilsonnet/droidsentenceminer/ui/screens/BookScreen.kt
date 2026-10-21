@@ -27,11 +27,13 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -97,6 +99,7 @@ fun BookScreen(modifier: Modifier = Modifier) {
         runCatching { android.webkit.WebView(context).destroy() }
     }
     var selected by rememberSaveable { mutableIntStateOf(-1) }
+    var readerOpen by rememberSaveable { mutableStateOf(false) }
     var reading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
 
@@ -112,6 +115,7 @@ fun BookScreen(modifier: Modifier = Modifier) {
                 result.onSuccess { read ->
                     container.bookPage.value = read
                     selected = if (read.blocks.size == 1) 0 else -1
+                    readerOpen = read.blocks.isNotEmpty()
                     if (read.blocks.isEmpty()) error = "No Japanese text found. Get closer and keep the page flat and lit."
                 }.onFailure { error = "OCR failed: ${it.message}" }
             }
@@ -128,6 +132,12 @@ fun BookScreen(modifier: Modifier = Modifier) {
     }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri: Uri? ->
         if (uri != null) read(uri)
+    }
+
+    val open = page
+    if (readerOpen && open != null) {
+        Box(modifier) { PageReader(open) { readerOpen = false } }
+        return
     }
 
     Column(
@@ -184,6 +194,13 @@ fun BookScreen(modifier: Modifier = Modifier) {
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.primary,
                     )
+                }
+            }
+            if (current.blocks.isNotEmpty()) {
+                FilledTonalButton(onClick = { readerOpen = true }) {
+                    Icon(Icons.Default.Fullscreen, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Read on the photo")
                 }
             }
             PagePhoto(current, selected) { selected = it }
@@ -359,7 +376,7 @@ private fun BlockCard(page: BookPage, index: Int, onPrev: () -> Unit, onNext: ()
                     val fixed = draft.replace("\n", "").trim()
                     if (fixed.isNotEmpty()) {
                         container.bookPage.value = page.copy(
-                            blocks = page.blocks.toMutableList().also { it[index] = block.copy(text = fixed) },
+                            blocks = page.blocks.toMutableList().also { it[index] = block.withText(fixed) },
                         )
                     }
                     editing = false

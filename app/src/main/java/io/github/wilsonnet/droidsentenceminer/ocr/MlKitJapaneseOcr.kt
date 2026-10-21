@@ -65,6 +65,7 @@ class MlKitJapaneseOcr(
             box = BoundingBox.from(box),
             confidence = line.confidence,
             angle = line.angle,
+            chars = line.elements.flatMap { it.symbols }.mapNotNull { it.boundingBox?.let(BoundingBox::from) },
         )
     }
 

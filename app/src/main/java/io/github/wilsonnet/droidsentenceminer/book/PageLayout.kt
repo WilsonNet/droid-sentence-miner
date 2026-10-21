@@ -11,7 +11,20 @@ data class PageBlock(
     val text: String,
     val box: BoundingBox,
     val vertical: Boolean,
-)
+    /** Where each character of [text] sits on the photo (same length as [text]). */
+    val glyphs: List<BoundingBox> = emptyList(),
+) {
+    /** After the user corrects [text]: keeps each new character near the old ones' positions. */
+    fun withText(newText: String): PageBlock {
+        if (glyphs.isEmpty() || newText.length == glyphs.size) return copy(text = newText)
+        return copy(text = newText, glyphs = List(newText.length) { glyphs[it * glyphs.size / newText.length] })
+    }
+
+    /** Index of the character drawn at ([x], [y]) on the photo, within [slack] pixels. */
+    fun glyphAt(x: Float, y: Float, slack: Float = 0f): Int? = glyphs.indices
+        .filter { i -> glyphs[i].let { x >= it.left - slack && x <= it.right + slack && y >= it.top - slack && y <= it.bottom + slack } }
+        .minByOrNull { i -> glyphs[i].let { (it.centerX - x) * (it.centerX - x) + (it.centerY - y) * (it.centerY - y) } }
+}
 
 /**
  * Turns OCR text blocks from a photo of a printed page into readable paragraphs. Unlike the
@@ -36,10 +49,11 @@ object PageLayout {
             } else {
                 lines.sortedWith(compareBy({ it.box.top }, { it.box.left }))
             }
-            val text = ordered.joinToString("") { clean(it.text) }
+            val pieces = ordered.map { line -> clean(line.text).let { it to glyphsOf(line, it, vertical) } }
+            val text = pieces.joinToString("") { it.first }
             // Page numbers, running heads in Latin script, etc.
             if (text.none { JapaneseTextScore.isJapanese(it) }) return@mapNotNull null
-            PageBlock(text, ordered.map { it.box }.reduce { a, b -> a.union(b) }, vertical)
+            PageBlock(text, ordered.map { it.box }.reduce { a, b -> a.union(b) }, vertical, pieces.flatMap { it.second })
         }
         val ordered = if (vertical) {
             built.sortedWith(compareByDescending<PageBlock> { it.box.right }.thenBy { it.box.top })
@@ -59,7 +73,7 @@ object PageLayout {
         for (block in blocks) {
             val prev = out.lastOrNull()
             if (prev != null && prev.text.last() !in TERMINATORS + CLOSERS && continues(prev.box, block.box, vertical, thickness)) {
-                out[out.lastIndex] = PageBlock(prev.text + block.text, prev.box.union(block.box), vertical)
+                out[out.lastIndex] = PageBlock(prev.text + block.text, prev.box.union(block.box), vertical, prev.glyphs + block.glyphs)
             } else {
                 out += block
             }
@@ -85,6 +99,24 @@ object PageLayout {
 
     private fun clean(text: String): String =
         OcrTextFixes.apply(OcrPostProcessor.normalize(text)).replace(ELLIPSIS, "……")
+
+    /**
+     * One box per character of the cleaned [text]: the engine's symbol boxes when they line up,
+     * otherwise the line split evenly along its writing direction.
+     */
+    internal fun glyphsOf(line: OcrLine, text: String, vertical: Boolean): List<BoundingBox> {
+        val chars = line.chars
+        if (chars != null && chars.size == text.length) return chars
+        val n = text.length
+        val b = line.box
+        return List(n) { i ->
+            if (vertical) {
+                BoundingBox(b.left, b.top + b.height * i / n, b.right, b.top + b.height * (i + 1) / n)
+            } else {
+                BoundingBox(b.left + b.width * i / n, b.top, b.left + b.width * (i + 1) / n, b.bottom)
+            }
+        }
+    }
 
     private fun thicknessOf(box: BoundingBox, vertical: Boolean): Int = if (vertical) box.width else box.height
 

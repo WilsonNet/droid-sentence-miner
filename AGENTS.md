@@ -163,6 +163,11 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   scanned word onto the popup's stack. Hold-to-select is a hand-rolled `awaitEachGesture` (tap /
   long-press-drag / scroll by touch slop). On adb, test drags with `input draganddrop`, not
   `input motionevent` (separate injections don't deliver the release).
+- **Overlay reader** (`PageReader.kt`): `PageBlock.glyphs` holds one photo box per character of
+  `text` — ML Kit symbol boxes (`OcrLine.chars`) when their count matches the cleaned line, else the
+  line split evenly (`PageLayout.glyphsOf`); edits keep positions via `PageBlock.withText`. Page →
+  screen is fit-center, then zoom/pan in a `graphicsLayer` (origin 0,0); taps are mapped back with
+  `toPage`. One `awaitEachGesture` handles tap / hold-drag / pan+pinch.
 - **Navigation**: Home · Book · Texts · Settings. Dictionaries and Anki are Settings sub-pages
   (`MainActivity.SettingsSubPage`, back button/gesture returns to the list).
 - **Shared text selections** (`ProcessTextActivity` → `TextLog.lineForSharedText`): a word is

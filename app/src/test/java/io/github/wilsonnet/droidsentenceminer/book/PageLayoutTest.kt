@@ -80,6 +80,24 @@ class PageLayoutTest {
     }
 
     @Test
+    fun placesEveryCharacterOnThePhoto() {
+        val column = OcrLine(
+            "猫である",
+            BoundingBox(900, 100, 940, 260),
+            chars = listOf(BoundingBox(900, 100, 940, 140), BoundingBox(900, 140, 940, 180), BoundingBox(900, 180, 940, 220), BoundingBox(900, 220, 940, 260)),
+        )
+        val next = line("名前は", 850, 100, 890, 220) // no symbol boxes: split evenly
+        val block = PageLayout.build(listOf(listOf(column, next))).single()
+
+        assertEquals("猫である名前は", block.text)
+        assertEquals(block.text.length, block.glyphs.size)
+        assertEquals(1, block.glyphAt(920f, 150f))
+        assertEquals(5, block.glyphAt(870f, 170f)) // 前: second third of the left column
+        assertEquals(null, block.glyphAt(500f, 500f))
+        assertEquals(2, block.withText("猫だ").glyphs.size)
+    }
+
+    @Test
     fun findsTheSentenceAroundATap() {
         val text = "彼は言った。「明日また来るね。」そして帰った。"
         assertEquals("彼は言った。", PageLayout.sentenceAt(text, 1))

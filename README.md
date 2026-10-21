@@ -35,6 +35,11 @@ with [Yomitan](https://github.com/yomidevs/yomitan) dictionary compatibility.
   word (below it, or above when there is no room), instantly and without a scrim, so tapping the
   next word just moves it. Tap Japanese inside a definition to look that up too (← goes back). Ruby lines, page numbers and sentences split
   across blocks are handled; ✎ fixes a misread before mining.
+- **Overlay dictionary mode (read on the photo)** — Mokuro-style: after a photo the page opens
+  full screen with the OCR text laid invisibly over the printed characters (ML Kit's per-character
+  boxes). Tap any character on the photo, in a speech bubble or a column of print, and the word
+  starting there lights up with its definition popping up beside it; hold and drag to select
+  characters yourself; pinch to zoom, drag to pan.
 - **Texts page** (GSM's texthooker) — every recognized line, newest first. Tap a line, tap a word,
   and mine it: the card gets that line's sentence, its screenshot and its voice clip.
 - **Replay buffer sentence audio** — the last 5 minutes (configurable 1–10) of game audio are kept
@@ -106,7 +111,7 @@ android sdk install platform-tools platforms/android-36 build-tools/35.0.0 emula
 echo "sdk.dir=$ANDROID_HOME" > local.properties
 
 # 3. Build & test
-./gradlew testDebugUnitTest          # 125 JVM unit tests
+./gradlew testDebugUnitTest          # 126 JVM unit tests
 ./gradlew connectedDebugAndroidTest  # 4 on-device tests (VAD + AAC encoding)
 ./gradlew assembleDebug              # app/build/outputs/apk/debug/app-debug.apk
 
@@ -142,6 +147,8 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 6. **Books** — open the *Book* tab, *Take photo* of the page (flat, well lit, filling the frame),
    tap the paragraph on the photo, then tap a word in its text to look it up and *Anki* it
    (hold + drag to pick the exact characters yourself; tap words inside the definition to dig deeper).
+   After a photo the page opens in the overlay reader: tap the printed text itself to look it up,
+   pinch to zoom; ✕ or Back returns to the paragraph view (*Read on the photo* reopens it).
    Arrows step through paragraphs; ✎ corrects the OCR text.
 7. **Test drive** — the Home tab has a built-in sample (a public-domain Aozora Bunko passage) and
    an image picker to test OCR + lookup without a game.
@@ -233,7 +240,7 @@ Glossaries may be strings, arrays, image definitions, deinflection entries or st
   recipe): every subtitle cue in the run was logged (61/61, 56 exact, mean character accuracy
   0.99), line start times within ±300 ms (p90) of the cue, and every voice clip located in the
   original audio at correlation ≥0.97, starting 160–1080 ms (median ~400 ms) before the subtitle.
-- 125 JVM unit tests: book page layout (tategaki order, ruby filter incl. real manga ruby, split sentences), H→エ fix, pitch graphs (byte-identical to Yomitan), word audio sources, Anki field mapping, meikiocr decoding, OCR text fixes (一→ー), text areas, line consensus, replay buffer, voice trimming, line tracking, clip windows, subtitle-row
+- 126 JVM unit tests: book page layout (tategaki order, ruby filter incl. real manga ruby, split sentences, per-character photo positions), H→エ fix, pitch graphs (byte-identical to Yomitan), word audio sources, Anki field mapping, meikiocr decoding, OCR text fixes (一→ー), text areas, line consensus, replay buffer, voice trimming, line tracking, clip windows, subtitle-row
   filtering, deinflector (conjugations across godan/ichidan/suru/kuru/adjectives),
   glossary parsing/rendering, OCR post-processing (merge, furigana filter, normalization),
   VAD segmentation, PCM utilities, Yomitan index parsing.
@@ -249,7 +256,9 @@ Glossaries may be strings, arrays, image definitions, deinflection entries or st
   page. Every typeset dialogue bubble and caption was found, columns in the right order; misses were
   a short "25歳" label, a "卒……" fragment and stylized signs; handwritten SFX are ignored. Ruby
   columns (about half the body width) are dropped; ML Kit's エ→H and ……→".." errors are corrected.
-  Rendering at 1.5× changed nothing, so resolution is not the limit.
+  Rendering at 1.5× changed nothing, so resolution is not the limit. Overlay reader on the same
+  page: tapping a kanji in a bubble highlighted exactly that word on the photo and opened its entry;
+  hold-and-drag selected along the column. Pinch zoom is not covered by adb tests (single touch).
 - Emulator end-to-end: Jitendex one-click install (436,555 terms), OCR of an Aozora Bunko passage
   (20 matched words, deinflection of 走れ → 走る), popup lookup, mining into a real AnkiDroid
   installation (card verified with image), and mining through AnkiConnect against a mock server

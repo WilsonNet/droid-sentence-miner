@@ -43,6 +43,8 @@ data class OcrLine(
     val box: BoundingBox,
     val confidence: Float? = null,
     val angle: Float? = null,
+    /** Per-character boxes when the engine reports them (ML Kit symbols). */
+    val chars: List<BoundingBox>? = null,
 )
 
 data class OcrResult(
