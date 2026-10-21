@@ -30,7 +30,10 @@ with [Yomitan](https://github.com/yomidevs/yomitan) dictionary compatibility.
   phones (any camera app elsewhere) or picks one from the gallery, reads the page with ML Kit — vertical (tategaki, columns right to left)
   and horizontal print — and outlines each paragraph on the photo. Tap a paragraph, tap a word,
   and mine it: the card gets the word's sentence (cut at 。！？, keeping closing quotes) and the
-  paragraph cropped from the photo as its picture. Ruby lines, page numbers and sentences split
+  paragraph cropped from the photo as its picture. Hold and drag over the text to force your own
+  selection (hold alone = one character, e.g. a single kanji). The definition pops up right at the
+  word (below it, or above when there is no room), instantly and without a scrim, so tapping the
+  next word just moves it. Tap Japanese inside a definition to look that up too (← goes back). Ruby lines, page numbers and sentences split
   across blocks are handled; ✎ fixes a misread before mining.
 - **Texts page** (GSM's texthooker) — every recognized line, newest first. Tap a line, tap a word,
   and mine it: the card gets that line's sentence, its screenshot and its voice clip.
@@ -137,7 +140,8 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
    playback capture). *Settings* has the buffer length, start/end offsets and silence trimming.
    Apps that opt out of capture stay silent.
 6. **Books** — open the *Book* tab, *Take photo* of the page (flat, well lit, filling the frame),
-   tap the paragraph on the photo, then tap a word in its text to look it up and *Anki* it.
+   tap the paragraph on the photo, then tap a word in its text to look it up and *Anki* it
+   (hold + drag to pick the exact characters yourself; tap words inside the definition to dig deeper).
    Arrows step through paragraphs; ✎ corrects the OCR text.
 7. **Test drive** — the Home tab has a built-in sample (a public-domain Aozora Bunko passage) and
    an image picker to test OCR + lookup without a game.

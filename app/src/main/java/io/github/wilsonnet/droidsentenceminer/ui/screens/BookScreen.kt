@@ -6,6 +6,8 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -53,7 +55,12 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.changedToUp
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.SpanStyle
@@ -69,7 +76,7 @@ import io.github.wilsonnet.droidsentenceminer.book.BookPage
 import io.github.wilsonnet.droidsentenceminer.book.PageLayout
 import io.github.wilsonnet.droidsentenceminer.book.TakePagePhoto
 import io.github.wilsonnet.droidsentenceminer.dict.ScannedWord
-import io.github.wilsonnet.droidsentenceminer.ui.components.WordLookupDialog
+import io.github.wilsonnet.droidsentenceminer.ui.components.WordLookupPopup
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -84,6 +91,11 @@ fun BookScreen(modifier: Modifier = Modifier) {
     val scope = rememberCoroutineScope()
 
     val page by container.bookPage.collectAsState()
+    // Chromium's first start costs a few hundred ms; pay it after the first frame, not on the first tap.
+    LaunchedEffect(Unit) {
+        androidx.compose.runtime.withFrameNanos { }
+        runCatching { android.webkit.WebView(context).destroy() }
+    }
     var selected by rememberSaveable { mutableIntStateOf(-1) }
     var reading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -235,23 +247,32 @@ private fun BlockCard(page: BookPage, index: Int, onPrev: () -> Unit, onNext: ()
     val container = remember { AppContainer.from(context) }
     val block = page.blocks[index]
     var words by remember(block) { mutableStateOf<List<ScannedWord>>(emptyList()) }
-    var tapped by remember(block) { mutableStateOf<ScannedWord?>(null) }
+    // The looked-up range: a dictionary word on tap, or the user's own long-press selection.
+    var picked by remember(block) { mutableStateOf<IntRange?>(null) }
+    var dragging by remember(block) { mutableStateOf<IntRange?>(null) }
     var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
+    var textOrigin by remember { mutableStateOf(Offset.Zero) }
+    val haptics = LocalHapticFeedback.current
 
     LaunchedEffect(block) { words = container.lookup.scan(block.text) }
 
     val highlight = MaterialTheme.colorScheme.primaryContainer
+    val selecting = MaterialTheme.colorScheme.tertiaryContainer
     var editing by remember { mutableStateOf(false) }
     val text = buildAnnotatedString {
         append(block.text)
-        tapped?.let { addStyle(SpanStyle(background = highlight, fontWeight = FontWeight.SemiBold), it.start, it.end) }
+        val range = dragging ?: picked
+        range?.let {
+            val color = if (dragging != null) selecting else highlight
+            addStyle(SpanStyle(background = color, fontWeight = FontWeight.SemiBold), it.first, it.last + 1)
+        }
     }
 
     Card {
         Column(Modifier.padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    "Paragraph ${index + 1} of ${page.blocks.size}" + if (words.isEmpty()) "" else " · tap a word",
+                    "Paragraph ${index + 1} of ${page.blocks.size}" + if (words.isEmpty()) "" else " · tap a word, hold to select",
                     style = MaterialTheme.typography.labelLarge,
                     modifier = Modifier.weight(1f),
                 )
@@ -272,10 +293,48 @@ private fun BlockCard(page: BookPage, index: Int, onPrev: () -> Unit, onNext: ()
                 onTextLayout = { layout = it },
                 modifier = Modifier
                     .padding(end = 8.dp)
-                    .pointerInput(words) {
-                        detectTapGestures { pos ->
-                            val offset = layout?.getOffsetForPosition(pos) ?: return@detectTapGestures
-                            words.firstOrNull { offset >= it.start && offset < it.end }?.let { tapped = it }
+                    .onGloballyPositioned { textOrigin = it.positionInWindow() }
+                    .pointerInput(block.text, words) {
+                        fun charAt(pos: Offset): Int? {
+                            val l = layout ?: return null
+                            if (block.text.isEmpty()) return null
+                            val o = l.getOffsetForPosition(pos)
+                            val c = if (o > 0 && l.getBoundingBox(o - 1).contains(pos)) o - 1 else o
+                            return c.coerceIn(0, block.text.lastIndex)
+                        }
+                        awaitEachGesture {
+                            val down = awaitFirstDown(requireUnconsumed = false)
+                            // 0 = held long enough (selection), 1 = tap, 2 = scroll or cancelled.
+                            var outcome = 0
+                            withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
+                                while (true) {
+                                    val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id }
+                                    if (change == null || change.isConsumed) { outcome = 2; break }
+                                    if (change.changedToUp()) { outcome = 1; break }
+                                    if ((change.position - down.position).getDistance() > viewConfiguration.touchSlop) { outcome = 2; break }
+                                }
+                            }
+                            when (outcome) {
+                                1 -> {
+                                    val at = charAt(down.position)
+                                    picked = at?.let { a -> words.firstOrNull { a >= it.start && a < it.end } }?.let { it.start until it.end }
+                                }
+                                0 -> {
+                                    val anchor = charAt(down.position) ?: return@awaitEachGesture
+                                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    picked = null
+                                    dragging = anchor..anchor
+                                    while (true) {
+                                        val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id } ?: break
+                                        change.consume()
+                                        if (change.changedToUp()) break
+                                        val at = charAt(change.position) ?: continue
+                                        dragging = minOf(anchor, at)..maxOf(anchor, at)
+                                    }
+                                    picked = dragging
+                                    dragging = null
+                                }
+                            }
                         }
                     },
             )
@@ -310,14 +369,20 @@ private fun BlockCard(page: BookPage, index: Int, onPrev: () -> Unit, onNext: ()
         )
     }
 
-    tapped?.let { word ->
-        val sentence = remember(word) { PageLayout.sentenceAt(block.text, word.start) }
+    picked?.let { range ->
+        val l = layout ?: return@let
+        val word = block.text.substring(range.first, range.last + 1)
+        val anchor = remember(range, l, textOrigin) {
+            l.getPathForRange(range.first, range.last + 1).getBounds().translate(textOrigin)
+        }
+        val sentence = remember(range) { PageLayout.sentenceAt(block.text, range.first) }
         val image = remember(block) { BookOcr.cardImage(page, block) }
-        WordLookupDialog(
-            word = word.text,
+        WordLookupPopup(
+            word = word,
             sentence = sentence,
             image = image,
-            onDismiss = { tapped = null },
+            anchor = anchor,
+            onDismiss = { picked = null },
         )
     }
 }

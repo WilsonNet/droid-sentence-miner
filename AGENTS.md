@@ -155,6 +155,14 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   split-sentence joins. NFKC turns …… into dots, so `PageLayout.clean` restores ……. Test page
   source: Black Jack ni Yoroshiku, free reuse, PDFs at densho810.com/free (`dl/001bj.zip`). The
   page lives in `AppContainer.bookPage`, so it survives tab switches.
+- **Lookup popup** (`WordLookupPopup`, `DefinitionComponents.kt`): non-focusable `Popup` placed by
+  `AnchoredPopupPosition` from the word's window rect (`getPathForRange` + `positionInWindow`), so
+  taps pass through to the text. Book tab pre-creates a WebView after the first frame (Chromium cold
+  start is the slow part). Recursive lookup: `TAP_SCRIPT` (JS on, `dsm` JavascriptInterface) sends
+  the text from the tapped character (ruby stripped) and its block; `recursiveTap` pushes the first
+  scanned word onto the popup's stack. Hold-to-select is a hand-rolled `awaitEachGesture` (tap /
+  long-press-drag / scroll by touch slop). On adb, test drags with `input draganddrop`, not
+  `input motionevent` (separate injections don't deliver the release).
 - **Navigation**: Home · Book · Texts · Settings. Dictionaries and Anki are Settings sub-pages
   (`MainActivity.SettingsSubPage`, back button/gesture returns to the list).
 - **Shared text selections** (`ProcessTextActivity` → `TextLog.lineForSharedText`): a word is
