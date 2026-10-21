@@ -234,7 +234,7 @@ private fun ResultContent(state: OverlayPanelState, dark: Boolean, callbacks: Ov
             ) {
                 ClickableJapaneseText(
                     text = state.ocrText,
-                    matches = state.matches,
+                    scanned = state.matches,
                     onWordClick = callbacks.onWordClick,
                 )
             }
@@ -342,9 +342,13 @@ private fun WebViewBlock(html: String, dark: Boolean, modifier: Modifier = Modif
 @Composable
 fun ClickableJapaneseText(
     text: String,
-    matches: List<ScannedWord>,
+    scanned: List<ScannedWord>,
     onWordClick: (String) -> Unit,
 ) {
+    // The text can change (auto OCR updates the line) before its scan does: drop stale offsets.
+    val matches = remember(text, scanned) {
+        scanned.filter { it.start >= 0 && it.end <= text.length && it.start < it.end && text.regionMatches(it.start, it.text, 0, it.text.length) }
+    }
     if (text.isBlank()) {
         Text("(no text found)", style = MaterialTheme.typography.bodyMedium)
         return
@@ -355,6 +359,7 @@ fun ClickableJapaneseText(
             var cursor = 0
             val sorted = matches.sortedBy { it.start }
             for (match in sorted) {
+                if (match.start < cursor) continue
                 if (match.start > cursor) append(text.substring(cursor, match.start))
                 pushStyle(
                     SpanStyle(

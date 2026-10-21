@@ -367,7 +367,7 @@ private fun LineCard(
             } else {
                 var matches by remember(line.text) { mutableStateOf<List<ScannedWord>>(emptyList()) }
                 LaunchedEffect(line.text) { matches = container.lookup.scan(line.text) }
-                ClickableJapaneseText(text = line.text, matches = matches, onWordClick = onWord)
+                ClickableJapaneseText(text = line.text, scanned = matches, onWordClick = onWord)
 
                 var screenshot by remember(line.screenshotPath) { mutableStateOf<Bitmap?>(null) }
                 LaunchedEffect(line.screenshotPath) { screenshot = container.textLog.screenshot(line) }
