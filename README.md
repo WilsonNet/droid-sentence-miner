@@ -103,7 +103,7 @@ android sdk install platform-tools platforms/android-36 build-tools/35.0.0 emula
 echo "sdk.dir=$ANDROID_HOME" > local.properties
 
 # 3. Build & test
-./gradlew testDebugUnitTest          # 123 JVM unit tests
+./gradlew testDebugUnitTest          # 125 JVM unit tests
 ./gradlew connectedDebugAndroidTest  # 4 on-device tests (VAD + AAC encoding)
 ./gradlew assembleDebug              # app/build/outputs/apk/debug/app-debug.apk
 
@@ -229,7 +229,7 @@ Glossaries may be strings, arrays, image definitions, deinflection entries or st
   recipe): every subtitle cue in the run was logged (61/61, 56 exact, mean character accuracy
   0.99), line start times within ±300 ms (p90) of the cue, and every voice clip located in the
   original audio at correlation ≥0.97, starting 160–1080 ms (median ~400 ms) before the subtitle.
-- 123 JVM unit tests: book page layout (tategaki order, ruby filter, split sentences), pitch graphs (byte-identical to Yomitan), word audio sources, Anki field mapping, meikiocr decoding, OCR text fixes (一→ー), text areas, line consensus, replay buffer, voice trimming, line tracking, clip windows, subtitle-row
+- 125 JVM unit tests: book page layout (tategaki order, ruby filter incl. real manga ruby, split sentences), H→エ fix, pitch graphs (byte-identical to Yomitan), word audio sources, Anki field mapping, meikiocr decoding, OCR text fixes (一→ー), text areas, line consensus, replay buffer, voice trimming, line tracking, clip windows, subtitle-row
   filtering, deinflector (conjugations across godan/ichidan/suru/kuru/adjectives),
   glossary parsing/rendering, OCR post-processing (merge, furigana filter, normalization),
   VAD segmentation, PCM utilities, Yomitan index parsing.
@@ -240,6 +240,12 @@ Glossaries may be strings, arrays, image definitions, deinflection entries or st
   ~340 ms, horizontal page 174 ms with a comma-split sentence rejoined; ML Kit still misread a few
   kanji on the blurred render (吾→音, 間→問), hence the ✎ fix-up. Camera intent, paragraph tap
   and word lookup checked in the UI.
+- Book mode on real manga: 6 pages of *Black Jack ni Yoroshiku* vol. 1 (Shuho Sato's officially
+  free Japanese PDF from densho810.com, rendered 1414×2000) on the Galaxy phone, 140–250 ms per
+  page. Every typeset dialogue bubble and caption was found, columns in the right order; misses were
+  a short "25歳" label, a "卒……" fragment and stylized signs; handwritten SFX are ignored. Ruby
+  columns (about half the body width) are dropped; ML Kit's エ→H and ……→".." errors are corrected.
+  Rendering at 1.5× changed nothing, so resolution is not the limit.
 - Emulator end-to-end: Jitendex one-click install (436,555 terms), OCR of an Aozora Bunko passage
   (20 matched words, deinflection of 走れ → 走る), popup lookup, mining into a real AnkiDroid
   installation (card verified with image), and mining through AnkiConnect against a mock server

@@ -150,7 +150,10 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   declaring one would make `TakePicture` require it. Decoded upright (`ImageDecoder` applies EXIF)
   and capped at 3000 px (`BookOcr.loadPhoto`). Always ML Kit `recognizeBlocks`, never meikiocr
   (horizontal-only) and never `OcrPostProcessor.merge` (joins horizontal rows, garbles columns);
-  `PageLayout` (unit-tested) does tategaki order, ruby filtering and split-sentence joins. The
+  `PageLayout` (unit-tested) does tategaki order, ruby filtering (kana-only, ≤12 chars, <0.6× median
+  column width — checked *after* `OcrTextFixes`, since ruby エーダイ comes back as `Hーダイ`) and
+  split-sentence joins. NFKC turns …… into dots, so `PageLayout.clean` restores ……. Test page
+  source: Black Jack ni Yoroshiku, free reuse, PDFs at densho810.com/free (`dl/001bj.zip`). The
   page lives in `AppContainer.bookPage`, so it survives tab switches.
 - **Navigation**: Home · Book · Texts · Settings. Dictionaries and Anki are Settings sub-pages
   (`MainActivity.SettingsSubPage`, back button/gesture returns to the list).

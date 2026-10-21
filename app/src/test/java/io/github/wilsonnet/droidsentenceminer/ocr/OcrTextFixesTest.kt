@@ -14,6 +14,13 @@ class OcrTextFixesTest {
     }
 
     @Test
+    fun readsLatinHBeforeKatakanaAsE() {
+        assertEquals("エリート", OcrTextFixes.apply("Hリート"))
+        assertEquals("エーダイ", OcrTextFixes.apply("Hーダイ"))
+        assertEquals("HP回復", OcrTextFixes.apply("HP回復"))
+    }
+
+    @Test
     fun keepsTheNumeral() {
         assertEquals("もう一つ", OcrTextFixes.apply("もう一つ"))
         assertEquals("お一人様", OcrTextFixes.apply("お一人様"))

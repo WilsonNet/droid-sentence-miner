@@ -65,6 +65,21 @@ class PageLayoutTest {
     }
 
     @Test
+    fun dropsLongAndMisreadRubyFromMangaBubbles() {
+        // Raw ML Kit lines from a manga page: ruby columns are about half the body width.
+        val name = listOf(
+            line("斉藤英二郎", 1144, 1014, 1178, 1160),
+            line("さいとうえいじろう", 1174, 1014, 1190, 1159),
+        )
+        val bubble = listOf(
+            line("Hーダイ", 768, 1408, 785, 1476),
+            line("永大卒か..…", 741, 1411, 772, 1556),
+        )
+        val blocks = PageLayout.build(listOf(name, bubble))
+        assertEquals(listOf("斉藤英二郎", "永大卒か……"), blocks.map { it.text })
+    }
+
+    @Test
     fun findsTheSentenceAroundATap() {
         val text = "彼は言った。「明日また来るね。」そして帰った。"
         assertEquals("彼は言った。", PageLayout.sentenceAt(text, 1))

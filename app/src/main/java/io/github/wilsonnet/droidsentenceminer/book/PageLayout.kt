@@ -36,7 +36,7 @@ object PageLayout {
             } else {
                 lines.sortedWith(compareBy({ it.box.top }, { it.box.left }))
             }
-            val text = OcrTextFixes.apply(ordered.joinToString("") { OcrPostProcessor.normalize(it.text) })
+            val text = ordered.joinToString("") { clean(it.text) }
             // Page numbers, running heads in Latin script, etc.
             if (text.none { JapaneseTextScore.isJapanese(it) }) return@mapNotNull null
             PageBlock(text, ordered.map { it.box }.reduce { a, b -> a.union(b) }, vertical)
@@ -80,12 +80,19 @@ object PageLayout {
         return sized.count { it.box.height > it.box.width * 1.3f } * 2 > sized.size
     }
 
+    /** NFKC turns …… into dots; OCR reads it as 2–5 of them. */
+    private val ELLIPSIS = Regex("[.・…]{2,}")
+
+    private fun clean(text: String): String =
+        OcrTextFixes.apply(OcrPostProcessor.normalize(text)).replace(ELLIPSIS, "……")
+
     private fun thicknessOf(box: BoundingBox, vertical: Boolean): Int = if (vertical) box.width else box.height
 
     /** Ruby read as its own line: short, kana only and much thinner than body text. */
     private fun isFurigana(line: OcrLine, vertical: Boolean, medianThickness: Int): Boolean {
-        if (medianThickness <= 0 || line.text.length > 8) return false
-        val kanaOnly = line.text.all { it in '぀'..'ヿ' }
+        val text = clean(line.text)
+        if (medianThickness <= 0 || text.length > 12) return false
+        val kanaOnly = text.all { it in '\u3040'..'\u30FF' }
         return kanaOnly && thicknessOf(line.box, vertical) < medianThickness * 0.6f
     }
 

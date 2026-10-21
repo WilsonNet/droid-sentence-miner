@@ -11,7 +11,19 @@ object OcrTextFixes {
     private const val NUMERAL_FOLLOWERS =
         "つ人度番日回緒生方本杯枚個歩部員口切息時線気応発年月週階台匹冊通見瞬層般体同定心途段帯面律連斉家円万億千百十品着軒件曲話球点戦歳言粒滴羽頭杯"
 
-    fun apply(text: String): String = longVowelMarks(text)
+    fun apply(text: String): String = katakanaE(longVowelMarks(text))
+
+    /** ML Kit reads the katakana エ as a Latin H in vertical text (Hリート, Hーダイ). */
+    fun katakanaE(text: String): String {
+        if ('H' !in text && 'Ｈ' !in text) return text
+        val chars = text.toCharArray()
+        for (i in chars.indices) {
+            if (chars[i] != 'H' && chars[i] != 'Ｈ') continue
+            val next = chars.getOrNull(i + 1) ?: continue
+            if (next == 'ー' || next.code in 0x30A1..0x30FA) chars[i] = 'エ'
+        }
+        return String(chars)
+    }
 
     /** 一 (kanji "one") right after kana is almost always the long-vowel mark ー (おー, わー, メニュー). */
     fun longVowelMarks(text: String): String {
