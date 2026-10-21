@@ -65,6 +65,7 @@ class OverlayService : Service() {
     private lateinit var captureManager: ScreenCaptureManager
     private lateinit var audioManager: AudioCaptureManager
     private lateinit var autoOcr: AutoOcrController
+    private lateinit var screenDictionary: ScreenDictionary
 
     private var bubbleView: BubbleView? = null
     private var bubbleParams: WindowManager.LayoutParams? = null
@@ -109,6 +110,7 @@ class OverlayService : Service() {
             }
         }
 
+        screenDictionary = ScreenDictionary(this, windowManager, scope, container)
         autoOcr = AutoOcrController(
             scope,
             captureManager,
@@ -117,9 +119,16 @@ class OverlayService : Service() {
             container,
             areas = { currentAreas() },
             paused = {
-                AppVisibility.mainResumed || panelView != null || areaSelector != null || !captureManager.contentVisible
+                AppVisibility.mainResumed || panelView != null || areaSelector != null || !captureManager.contentVisible ||
+                    screenDictionary.popupOpen
             },
+            holdLayer = { screenDictionary.popupOpen },
         )
+        scope.launch {
+            kotlinx.coroutines.flow.combine(autoOcr.screenText, container.prefs.screenDictionary) { lines, on -> if (on) lines else emptyList() }
+                .collect { lines -> if (lines.isEmpty() && !screenDictionary.popupOpen) screenDictionary.clear() else screenDictionary.update(lines) }
+        }
+        scope.launch { container.prefs.pauseOnLookup.collect { screenDictionary.pauseMedia = it } }
         scope.launch { container.prefs.autoAreas(landscape = false).collect { portraitAreas = it } }
         scope.launch { container.prefs.autoAreas(landscape = true).collect { landscapeAreas = it } }
         scope.launch {
@@ -202,6 +211,7 @@ class OverlayService : Service() {
 
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
+        screenDictionary.clear()
         // Games usually run in landscape: keep capturing across rotations by resizing the display.
         if (captureManager.isReady && !captureManager.onScreenSizeChanged()) {
             autoOcr.stop()
@@ -220,6 +230,7 @@ class OverlayService : Service() {
         closeAreaSelector()
         hidePanel()
         hideLiveWindow()
+        screenDictionary.clear()
         autoOcr.stop()
         audioManager.stop()
         captureManager.release()
@@ -901,6 +912,10 @@ class OverlayService : Service() {
     internal val debugContainer: AppContainer get() = container
     internal val debugCaptureManager: ScreenCaptureManager get() = captureManager
     internal val debugAudioRunning: Boolean get() = audioManager.isRunning
+
+    /** The screen dictionary's current text layer and whether its popup is open (debug API). */
+    internal val debugScreenText get() = autoOcr.screenText.value
+    internal val debugScreenPopupOpen get() = screenDictionary.popupOpen
 
     internal fun debugSetRegion(region: RectF) {
         lastRegion = RectF(region)

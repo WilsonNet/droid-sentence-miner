@@ -302,6 +302,13 @@ object DebugApi {
                 .put("lastRead", auto.lastRead)
                 .put("error", auto.error),
         )
+        // Screen dictionary: the invisible text layer over the real text (screen fractions).
+        val layer = JSONArray()
+        service?.debugScreenText?.forEach { line ->
+            val b = line.bounds
+            layer.put(JSONObject().put("text", line.text).put("glyphs", line.glyphs.size).put("bounds", JSONArray(listOf(b.left, b.top, b.right, b.bottom))))
+        }
+        json.put("screenText", JSONObject().put("lines", layer).put("popupOpen", service?.debugScreenPopupOpen == true))
         val buffer = container.textLog.audioBuffer
         json.put(
             "audioBuffer",

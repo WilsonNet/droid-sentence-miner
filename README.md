@@ -22,6 +22,14 @@ with [Yomitan](https://github.com/yomidevs/yomitan) dictionary compatibility.
   a screenshot. Repeated reads must agree before a line counts, and the stored text is the
   consensus of all reads of that line, so fades, typewriter text and OCR noise over moving video
   don't create junk; background signage is filtered out.
+- **Screen dictionary (tap the real text, in any app)** — while auto OCR runs, each read is laid
+  as an invisible text layer exactly over the subtitles/dialogue on screen (meikiocr's and ML Kit's
+  per-character positions). Tap a character in a YouTube hardsub or a game's text box and the word
+  covering it lights up with its definition right next to it; hold and drag to select characters.
+  The layer is fitted to the text, so touches elsewhere still reach the app. Videos are fast, so a
+  lookup pauses playback (media key: YouTube and most players) and resumes it when the popup closes;
+  if you pause yourself, the layer stays and you can tap word after word. Mining links the
+  log line, so the card gets the sentence, screenshot and voice clip.
 - **Live text window** — a small floating feed of the newest lines over the game, updated in
   real time. Tap a line to look up and mine it without leaving the game.
 - **App focus** — share "A single app" (Android 14+) and pick the game: only it is read, and
@@ -111,7 +119,7 @@ android sdk install platform-tools platforms/android-36 build-tools/35.0.0 emula
 echo "sdk.dir=$ANDROID_HOME" > local.properties
 
 # 3. Build & test
-./gradlew testDebugUnitTest          # 126 JVM unit tests
+./gradlew testDebugUnitTest          # 128 JVM unit tests
 ./gradlew connectedDebugAndroidTest  # 4 on-device tests (VAD + AAC encoding)
 ./gradlew assembleDebug              # app/build/outputs/apk/debug/app-debug.apk
 
@@ -138,6 +146,9 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
    *Auto OCR text areas*. New lines
    appear in the floating *Live text* window — tap one to look up words and mine it with its audio
    and screenshot. Everything is also on the *Texts* tab.
+   While it runs, just tap a word in the real subtitle on screen to look it up (the video pauses
+   until you close the definition). Toggles: *Settings → Tap text on screen to look it up* and
+   *Pause the video while looking up*.
 4. **Manual scan (one-off)** — tap the bubble (or long-press → *Scan once: pick a region*), adjust
    the capture box and hit *Scan region*. This box is separate from the auto OCR text areas. Tap a
    highlighted word for definitions, then *Anki*. Manual scans are logged on *Texts* too.
@@ -240,7 +251,7 @@ Glossaries may be strings, arrays, image definitions, deinflection entries or st
   recipe): every subtitle cue in the run was logged (61/61, 56 exact, mean character accuracy
   0.99), line start times within ±300 ms (p90) of the cue, and every voice clip located in the
   original audio at correlation ≥0.97, starting 160–1080 ms (median ~400 ms) before the subtitle.
-- 126 JVM unit tests: book page layout (tategaki order, ruby filter incl. real manga ruby, split sentences, per-character photo positions), H→エ fix, pitch graphs (byte-identical to Yomitan), word audio sources, Anki field mapping, meikiocr decoding, OCR text fixes (一→ー), text areas, line consensus, replay buffer, voice trimming, line tracking, clip windows, subtitle-row
+- 128 JVM unit tests: screen text layer (subtitle glyphs → screen fractions, signage skipped), book page layout (tategaki order, ruby filter incl. real manga ruby, split sentences, per-character photo positions), H→エ fix, pitch graphs (byte-identical to Yomitan), word audio sources, Anki field mapping, meikiocr decoding, OCR text fixes (一→ー), text areas, line consensus, replay buffer, voice trimming, line tracking, clip windows, subtitle-row
   filtering, deinflector (conjugations across godan/ichidan/suru/kuru/adjectives),
   glossary parsing/rendering, OCR post-processing (merge, furigana filter, normalization),
   VAD segmentation, PCM utilities, Yomitan index parsing.
@@ -251,6 +262,10 @@ Glossaries may be strings, arrays, image definitions, deinflection entries or st
   ~340 ms, horizontal page 174 ms with a comma-split sentence rejoined; ML Kit still misread a few
   kanji on the blurred render (吾→音, 間→問), hence the ✎ fix-up. Camera intent, paragraph tap
   and word lookup checked in the UI.
+- Screen dictionary on the Galaxy phone with the hardsub vlog (`MH6JpXmv4zI`) in YouTube's portrait
+  player, meikiocr, area over the subtitle band: the layer window followed each subtitle (fitted to
+  the line, e.g. `[210,601]–[865,711]` px), a tap mid-word looked up the word covering it with the
+  popup right under the subtitle, YouTube's media session went PAUSED on the tap and PLAYING on close.
 - Book mode on real manga: 6 pages of *Black Jack ni Yoroshiku* vol. 1 (Shuho Sato's officially
   free Japanese PDF from densho810.com, rendered 1414×2000) on the Galaxy phone, 140–250 ms per
   page. Every typeset dialogue bubble and caption was found, columns in the right order; misses were

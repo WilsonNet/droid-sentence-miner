@@ -146,6 +146,17 @@ class TermLookup(
         words
     }
 
+    /**
+     * The range to look up for a tap on [text] at [index]: the scanned word covering that
+     * character (tapping ル in ハトヤホテル gives ホテル), else the longest word starting there,
+     * else the character alone.
+     */
+    suspend fun wordAt(text: String, index: Int): IntRange {
+        scan(text).firstOrNull { index >= it.start && index < it.end }?.let { return it.start until it.end }
+        val from = scan(text.substring(index, minOf(text.length, index + MAX_TERM_LENGTH))).firstOrNull { it.start == 0 }
+        return index until index + (from?.text?.length ?: 1)
+    }
+
     suspend fun lookup(word: String, allowDeinflection: Boolean = true): LookupDetails = withContext(Dispatchers.Default) {
         val dicts = dictionariesByPriority()
         if (dicts.isEmpty() || word.isBlank()) {

@@ -97,7 +97,7 @@ object PageLayout {
     /** NFKC turns …… into dots; OCR reads it as 2–5 of them. */
     private val ELLIPSIS = Regex("[.・…]{2,}")
 
-    private fun clean(text: String): String =
+    fun clean(text: String): String =
         OcrTextFixes.apply(OcrPostProcessor.normalize(text)).replace(ELLIPSIS, "……")
 
     /**

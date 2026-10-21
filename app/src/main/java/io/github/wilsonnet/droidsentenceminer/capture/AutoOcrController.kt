@@ -43,6 +43,8 @@ class AutoOcrController(
     private val areas: () -> List<TextArea>,
     /** True while DSM's own UI covers the screen; reads are skipped so it isn't logged. */
     private val paused: () -> Boolean = { false },
+    /** Keep the screen dictionary layer while paused (its popup is open over the text). */
+    private val holdLayer: () -> Boolean = { false },
 ) {
     data class Status(
         val running: Boolean = false,
@@ -59,6 +61,11 @@ class AutoOcrController(
     private var job: Job? = null
     private var openLineId: Long? = null
 
+    private val _screenText = MutableStateFlow<List<ScreenTextLine>>(emptyList())
+
+    /** The latest read placed on screen, for tap-to-look-up (see [ScreenText]). */
+    val screenText: StateFlow<List<ScreenTextLine>> = _screenText
+
     val isRunning: Boolean get() = job?.isActive == true
 
     fun start() {
@@ -70,6 +77,7 @@ class AutoOcrController(
             } finally {
                 withContext(NonCancellable) { closeOpenLine(System.currentTimeMillis()) }
                 _status.value = _status.value.copy(running = false)
+                _screenText.value = emptyList()
             }
         }
     }
@@ -107,6 +115,7 @@ class AutoOcrController(
                 // Our own screen/panel is showing: don't log it, keep the current line open.
                 capture.pollNewFrame()
                 lastSignature = null
+                if (!holdLayer()) _screenText.value = emptyList()
                 _status.value = _status.value.copy(error = PAUSED)
                 delay(interval)
                 continue
@@ -130,8 +139,13 @@ class AutoOcrController(
                 text = if (lastSignature != null && FrameSignature.distance(signature, lastSignature) < STATIC_REGION_DISTANCE) {
                     lastRead
                 } else {
-                    val raw = crops.map { crop -> runCatching { dialogueText(fast, crop, dropNoise) }.getOrElse { "" } }.joinToString("\n").trim()
-                    if (looksJapanese(raw)) raw else ""
+                    val reads = crops.mapIndexed { i, crop ->
+                        runCatching { dialogueRead(fast, crop, dropNoise, selected[i], i) }.getOrElse { "" to emptyList() }
+                    }
+                    val raw = reads.joinToString("\n") { it.first }.trim()
+                    val japanese = looksJapanese(raw)
+                    _screenText.value = if (japanese) reads.flatMap { it.second } else emptyList()
+                    if (japanese) raw else ""
                 }
                 lastSignature = signature
                 lastCrops = crops
@@ -181,6 +195,20 @@ class AutoOcrController(
         val result = engine.recognize(crop)
         val rows = SubtitleLineFilter.filter(OcrPostProcessor.merge(result.lines, dropNoise = dropNoise))
         return OcrPostProcessor.toSentenceText(rows).trim()
+    }
+
+    /** [dialogueText] plus the same read laid out on screen for the screen dictionary. */
+    private suspend fun dialogueRead(
+        engine: OcrEngine,
+        crop: Bitmap,
+        dropNoise: Boolean,
+        area: TextArea,
+        areaIndex: Int,
+    ): Pair<String, List<ScreenTextLine>> {
+        val result = engine.recognize(crop)
+        val rows = SubtitleLineFilter.filter(OcrPostProcessor.merge(result.lines, dropNoise = dropNoise))
+        val layer = ScreenText.fromRead(result.lines, rows.map { it.box }, crop.width, crop.height, area, areaIndex)
+        return OcrPostProcessor.toSentenceText(rows).trim() to layer
     }
 
     private suspend fun closeOpenLine(atMs: Long) {

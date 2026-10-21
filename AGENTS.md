@@ -168,6 +168,17 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   line split evenly (`PageLayout.glyphsOf`); edits keep positions via `PageBlock.withText`. Page →
   screen is fit-center, then zoom/pan in a `graphicsLayer` (origin 0,0); taps are mapped back with
   `toPage`. One `awaitEachGesture` handles tap / hold-drag / pan+pinch.
+- **Screen dictionary** (`overlay/ScreenDictionary.kt`, `capture/ScreenText.kt`): auto OCR's fast
+  read publishes `AutoOcrController.screenText` (lines with per-glyph screen fractions; meikiocr char
+  x-intervals mapped back in `MeikiOcr`, ML Kit symbols). The service fits one touchable, transparent
+  `TYPE_APPLICATION_OVERLAY` window per text area over its lines (`ScreenTextLayerView`); the popup is
+  a separate overlay window placed by `AnchoredPopupPosition` in absolute screen px (a Compose `Popup`
+  inside an overlay strip is positioned relative to that strip). While the popup is open the layer is
+  frozen and auto OCR pauses (`holdLayer`/`paused`), or it would log the definition text. Media
+  pause/play via `AudioManager.dispatchMediaKeyEvent`, only if music was active; resume is delayed
+  350 ms so tapping the next word doesn't play/pause-flicker. `/state.screenText` shows the layer.
+  Testing: `/autoocr?on=1` and consent bring DSM/the panel to the front (auto OCR pauses) — reopen
+  the video with `am start -a VIEW -d <youtube url>` and close the panel first.
 - **Navigation**: Home · Book · Texts · Settings. Dictionaries and Anki are Settings sub-pages
   (`MainActivity.SettingsSubPage`, back button/gesture returns to the list).
 - **Shared text selections** (`ProcessTextActivity` → `TextLog.lineForSharedText`): a word is

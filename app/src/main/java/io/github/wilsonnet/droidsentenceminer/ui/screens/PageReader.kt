@@ -106,10 +106,7 @@ fun PageReader(page: BookPage, onClose: () -> Unit) {
     fun lookupAt(screen: Offset) {
         val (b, i) = glyphAt(screen) ?: run { picked = null; return }
         val text = page.blocks[b].text
-        scope.launch {
-            val word = container.lookup.scan(text.substring(i, min(text.length, i + 16))).firstOrNull { it.start == 0 }
-            picked = GlyphRange(b, i until i + (word?.text?.length ?: 1))
-        }
+        scope.launch { picked = GlyphRange(b, container.lookup.wordAt(text, i)) }
     }
 
     BackHandler(onBack = onClose)

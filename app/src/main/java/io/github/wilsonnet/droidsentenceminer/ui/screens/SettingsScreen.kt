@@ -69,6 +69,8 @@ fun SettingsScreen(modifier: Modifier = Modifier, onOpen: (String) -> Unit = {})
 
     val autoInterval by container.prefs.autoOcrIntervalMs.collectAsState(initial = 400)
     val liveWindow by container.prefs.liveTextWindow.collectAsState(initial = true)
+    val screenDictionary by container.prefs.screenDictionary.collectAsState(initial = true)
+    val pauseOnLookup by container.prefs.pauseOnLookup.collectAsState(initial = true)
     val engine by container.prefs.ocrEngine.collectAsState(initial = io.github.wilsonnet.droidsentenceminer.core.DsmPrefs.ENGINE_MEIKI)
     var meikiInstalled by remember { mutableStateOf(io.github.wilsonnet.droidsentenceminer.ocr.MeikiModels.installed(context)) }
     var meikiProgress by remember { mutableStateOf<Int?>(null) }
@@ -193,6 +195,16 @@ fun SettingsScreen(modifier: Modifier = Modifier, onOpen: (String) -> Unit = {})
                     description = "Show a small floating feed of new lines over the game while auto OCR runs. Tap a line to mine it.",
                     checked = liveWindow,
                 ) { value -> scope.launch { container.prefs.setLiveTextWindow(value) } }
+                SettingSwitch(
+                    title = "Tap text on screen to look it up",
+                    description = "While auto OCR runs, the text it reads is laid invisibly over the real subtitles or dialogue, in any app: tap a character for its word, hold and drag to select.",
+                    checked = screenDictionary,
+                ) { value -> scope.launch { container.prefs.setScreenDictionary(value) } }
+                SettingSwitch(
+                    title = "Pause the video while looking up",
+                    description = "A tap on screen text pauses playback (YouTube and most players) and resumes it when the definition closes.",
+                    checked = pauseOnLookup,
+                ) { value -> scope.launch { container.prefs.setPauseOnLookup(value) } }
                 SettingSlider(
                     title = "Auto OCR interval",
                     value = "$autoInterval ms",

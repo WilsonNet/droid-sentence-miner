@@ -311,62 +311,98 @@ fun WordLookupPopup(
     onDismiss: () -> Unit,
     onMine: (suspend (TermLookup.LookupDetails?) -> AnkiResult<String>)? = null,
 ) {
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val config = androidx.compose.ui.platform.LocalConfiguration.current
+    val gap = with(density) { 8.dp.roundToPx() }
+    val screenHeightPx = with(density) { config.screenHeightDp.dp.toPx() }
+    androidx.compose.ui.window.Popup(
+        popupPositionProvider = remember(anchor, gap) { AnchoredPopupPosition(anchor, gap) },
+        onDismissRequest = onDismiss,
+        properties = androidx.compose.ui.window.PopupProperties(focusable = false, dismissOnClickOutside = false),
+    ) {
+        WordLookupCard(
+            word = word,
+            sentence = sentence,
+            image = image,
+            onDismiss = onDismiss,
+            onMine = onMine,
+            maxHeight = popupMaxHeight(anchor.top, anchor.bottom, screenHeightPx),
+            handleBack = true,
+        )
+    }
+}
+
+/** Room on the larger side of the word, so the popup never covers it; at most 45 % of the screen. */
+@Composable
+fun popupMaxHeight(anchorTop: Float, anchorBottom: Float, screenHeightPx: Float): androidx.compose.ui.unit.Dp {
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val config = androidx.compose.ui.platform.LocalConfiguration.current
+    val gap = with(density) { 8.dp.toPx() }
+    val roomPx = maxOf(anchorTop, screenHeightPx - anchorBottom) - 3 * gap
+    return with(density) { roomPx.toDp() }.coerceIn(160.dp, (config.screenHeightDp * 0.45f).dp)
+}
+
+/**
+ * The popup's content: headword, Anki button, definition (tap Japanese in it to look that up,
+ * ← to go back). Hosted by [WordLookupPopup] in the app and by an overlay window over other apps.
+ * [handleBack] needs an OnBackPressedDispatcher, so it is off in overlay windows.
+ */
+@Composable
+fun WordLookupCard(
+    word: String,
+    sentence: String,
+    image: Bitmap?,
+    onDismiss: () -> Unit,
+    onMine: (suspend (TermLookup.LookupDetails?) -> AnkiResult<String>)?,
+    maxHeight: androidx.compose.ui.unit.Dp,
+    handleBack: Boolean,
+) {
     val dark = androidx.compose.foundation.isSystemInDarkTheme()
     val stack = rememberLookupStack(word, sentence)
     val entry = stack.last()
     val state = rememberWordLookup(entry.word, dark)
     val mine = mineAction(state, entry.word, entry.sentence, image.takeIf { stack.size == 1 }, onMine.takeIf { stack.size == 1 })
     val onTap = recursiveTap(stack)
-    val density = androidx.compose.ui.platform.LocalDensity.current
     val config = androidx.compose.ui.platform.LocalConfiguration.current
-    val gap = with(density) { 8.dp.roundToPx() }
-    // Room on the larger side of the word, so the popup never covers it.
-    val screenHeightPx = with(density) { config.screenHeightDp.dp.toPx() }
-    val roomPx = maxOf(anchor.top, screenHeightPx - anchor.bottom) - 3 * gap
-    val maxHeight = with(density) { roomPx.toDp() }.coerceIn(160.dp, (config.screenHeightDp * 0.45f).dp)
     val width = minOf(config.screenWidthDp - 24, 420).dp
 
-    androidx.activity.compose.BackHandler {
-        if (stack.size > 1) stack.removeAt(stack.lastIndex) else onDismiss()
+    if (handleBack) {
+        androidx.activity.compose.BackHandler {
+            if (stack.size > 1) stack.removeAt(stack.lastIndex) else onDismiss()
+        }
     }
-    androidx.compose.ui.window.Popup(
-        popupPositionProvider = remember(anchor, gap) { AnchoredPopupPosition(anchor, gap) },
-        onDismissRequest = onDismiss,
-        properties = androidx.compose.ui.window.PopupProperties(focusable = false, dismissOnClickOutside = false),
+    androidx.compose.material3.Surface(
+        modifier = Modifier
+            .width(width)
+            .heightIn(max = maxHeight),
+        shape = MaterialTheme.shapes.medium,
+        tonalElevation = 6.dp,
+        shadowElevation = 12.dp,
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
-        androidx.compose.material3.Surface(
-            modifier = Modifier
-                .width(width)
-                .heightIn(max = maxHeight),
-            shape = MaterialTheme.shapes.medium,
-            tonalElevation = 6.dp,
-            shadowElevation = 12.dp,
-            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        ) {
-            Column(Modifier.padding(start = 14.dp, end = 6.dp, top = 6.dp, bottom = 8.dp)) {
-                Row(verticalAlignment = Alignment.Top) {
-                    LookupHeader(
-                        state,
-                        entry.word,
-                        Modifier.weight(1f).padding(top = 6.dp),
-                        onBack = if (stack.size > 1) ({ stack.removeAt(stack.lastIndex) }) else null,
-                    )
-                    MineButton(state, mine)
-                    androidx.compose.material3.IconButton(onClick = onDismiss) {
-                        Icon(Icons.Default.Close, contentDescription = "Close")
-                    }
+        Column(Modifier.padding(start = 14.dp, end = 6.dp, top = 6.dp, bottom = 8.dp)) {
+            Row(verticalAlignment = Alignment.Top) {
+                LookupHeader(
+                    state,
+                    entry.word,
+                    Modifier.weight(1f).padding(top = 6.dp),
+                    onBack = if (stack.size > 1) ({ stack.removeAt(stack.lastIndex) }) else null,
+                )
+                MineButton(state, mine)
+                androidx.compose.material3.IconButton(onClick = onDismiss) {
+                    Icon(Icons.Default.Close, contentDescription = "Close")
                 }
-                state.status?.let {
-                    Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
-                }
-                Spacer(Modifier.size(4.dp))
-                Box(Modifier.padding(end = 8.dp)) { LookupBody(state, dark, maxHeight = maxHeight - 90.dp, onTextTap = onTap) }
             }
+            state.status?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+            }
+            Spacer(Modifier.size(4.dp))
+            Box(Modifier.padding(end = 8.dp)) { LookupBody(state, dark, maxHeight = maxHeight - 90.dp, onTextTap = onTap) }
         }
     }
 }
 
-private class AnchoredPopupPosition(
+class AnchoredPopupPosition(
     private val anchor: androidx.compose.ui.geometry.Rect,
     private val gap: Int,
 ) : androidx.compose.ui.window.PopupPositionProvider {

@@ -112,10 +112,16 @@ class MeikiOcr private constructor(
                         val chars = MeikiDecoder.decodeLine(codes[i], charBoxes[i], scores[i], effective[i])
                         if (chars.isEmpty()) return@mapNotNull null
                         val text = MeikiDecoder.fixSwappedPairs(chars.joinToString("") { it.char })
+                        val box = boxes[i]
+                        // Character x-intervals are in the resized line; map them back onto the screen.
+                        val scale = box.width().toFloat() / effective[i]
                         OcrLine(
                             text = text,
-                            box = BoundingBox.from(boxes[i]),
+                            box = BoundingBox.from(box),
                             confidence = chars.map { it.score }.average().toFloat(),
+                            chars = chars.map {
+                                BoundingBox((box.left + it.x1 * scale).toInt(), box.top, (box.left + it.x2 * scale).toInt(), box.bottom)
+                            },
                         )
                     }
                 }

@@ -41,6 +41,8 @@ class DsmPrefs(private val context: Context) {
         val autoAreasPortrait = stringPreferencesKey("auto_areas_portrait")
         val autoAreasLandscape = stringPreferencesKey("auto_areas_landscape")
         val liveTextWindow = booleanPreferencesKey("live_text_window")
+        val screenDictionary = booleanPreferencesKey("screen_dictionary")
+        val pauseOnLookup = booleanPreferencesKey("pause_on_lookup")
         val liveWindowX = intPreferencesKey("live_window_x")
         val liveWindowY = intPreferencesKey("live_window_y")
 
@@ -103,6 +105,14 @@ class DsmPrefs(private val context: Context) {
     }
 
     suspend fun setLiveTextWindow(value: Boolean) = edit { it[Keys.liveTextWindow] = value }
+
+    /** Tap the real on-screen text (over any app) to look it up while auto OCR runs. */
+    val screenDictionary: Flow<Boolean> = context.dataStore.data.map { it[Keys.screenDictionary] ?: true }
+    suspend fun setScreenDictionary(value: Boolean) = edit { it[Keys.screenDictionary] = value }
+
+    /** Pause the playing video while a screen-dictionary lookup is open. */
+    val pauseOnLookup: Flow<Boolean> = context.dataStore.data.map { it[Keys.pauseOnLookup] ?: true }
+    suspend fun setPauseOnLookup(value: Boolean) = edit { it[Keys.pauseOnLookup] = value }
     suspend fun setLiveWindowPosition(x: Int, y: Int) = edit {
         it[Keys.liveWindowX] = x
         it[Keys.liveWindowY] = y
