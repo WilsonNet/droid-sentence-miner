@@ -129,6 +129,12 @@ GIF for the MP4; recorded on a Xiaomi Pad 7).
 - [AnkiDroid](https://github.com/ankidroid/Anki-Android) (2.16+) and/or desktop Anki with
   [AnkiConnect](https://foosoft.net/projects/anki-connect/).
 
+## Download
+
+Signed APKs are attached to each [GitHub release](https://github.com/WilsonNet/droid-sentence-miner/releases)
+(`droid-sentence-miner-vX.Y.Z.apk`). Download it on the device and allow installs from your browser
+or file manager; newer releases upgrade in place.
+
 ## Building from the command line
 
 No Android Studio required.

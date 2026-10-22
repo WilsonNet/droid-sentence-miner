@@ -11,7 +11,14 @@ owns what is in `.opencode/skills/dsm-docs/SKILL.md` — follow it before commit
 
 Skills: `dsm-debug-api` (drive/validate the app over adb), `dsm-ocr-eval` (measure OCR accuracy
 with ground truth), `dsm-docs` (docs checklist), `dsm-promo-media` (README screenshots and demo
-videos: phone-size capture on the tablet, scripted mining recordings, GIF previews).
+videos: phone-size capture on the tablet, scripted mining recordings, GIF previews), `dsm-release`
+(signed APK → GitHub Releases on a pushed `v*` tag).
+
+## Releases — only when asked
+
+Never create or push a `v*` tag unless the user explicitly asks for a release: the tag *is* the
+release (`.github/workflows/release.yml` builds a signed APK and publishes it). Recipe, signing key
+and secrets: `.opencode/skills/dsm-release/SKILL.md`.
 
 ## Git
 
@@ -260,6 +267,10 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   popup's composition scope and closing the popup cancelled the card. The popup checks
   `CardMiner.isInAnki` (the bridges' `isDuplicate(word, deck, model)` — first field of the
   configured note type, same rule `addNote` refuses with) and shows ✓ In Anki.
+- **Release builds run R8**: native code that looks up Java classes by name breaks when they are
+  renamed/stripped — ONNX Runtime crashed on the first meikiocr run (`ClassNotFoundException:
+  ai.onnxruntime.TensorInfo`) until `-keep class ai.onnxruntime.**` in `proguard-rules.pro`. Before a
+  release, install the release APK and run meikiocr + a lookup (no debug API in release).
 - **Prefer the debug API over UI automation.** Debug builds expose a loopback text API
   (`curl localhost:9099/...` via `adb forward tcp:9099 tcp:9099`) for capture frames, OCR,
   lookups and mining. Use it to validate flows; reserve `input tap`/screenshots for

@@ -21,8 +21,9 @@ android {
         applicationId = "io.github.wilsonnet.droidsentenceminer"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        // CI passes -PversionName/-PversionCode from the git tag (.github/workflows/release.yml).
+        versionCode = (findProperty("versionCode") as String?)?.toInt() ?: 1
+        versionName = (findProperty("versionName") as String?) ?: "0.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -42,12 +43,22 @@ android {
             keyAlias = "androiddebugkey"
             keyPassword = "android"
         }
+        // Release key comes from the environment (GitHub secrets in CI); unset ⇒ unsigned release APK.
+        System.getenv("DSM_KEYSTORE")?.let { path ->
+            create("release") {
+                storeFile = file(path)
+                storePassword = System.getenv("DSM_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("DSM_KEY_ALIAS")
+                keyPassword = System.getenv("DSM_KEY_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            signingConfig = signingConfigs.findByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",

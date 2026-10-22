@@ -22,3 +22,6 @@
 # ML Kit
 -keep class com.google.mlkit.** { *; }
 -dontwarn com.google.mlkit.**
+
+# ONNX Runtime (meikiocr): native code looks up its Java classes/methods by name over JNI
+-keep class ai.onnxruntime.** { *; }
