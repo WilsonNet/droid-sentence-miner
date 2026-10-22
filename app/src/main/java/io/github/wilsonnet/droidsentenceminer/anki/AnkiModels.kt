@@ -42,7 +42,8 @@ interface AnkiBridge {
     suspend fun ensureDeck(name: String): AnkiResult<Unit>
     suspend fun ensureModel(name: String): AnkiResult<Unit>
     suspend fun addNote(card: AnkiCard, deck: String, model: String): AnkiResult<String>
-    suspend fun isDuplicate(word: String, deck: String): AnkiResult<Boolean>
+    /** Whether [model] already has a note for [word] (its first field), like Yomitan's duplicate check. */
+    suspend fun isDuplicate(word: String, deck: String, model: String): AnkiResult<Boolean>
 }
 
 object CardFields {

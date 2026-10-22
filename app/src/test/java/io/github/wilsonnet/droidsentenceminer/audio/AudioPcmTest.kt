@@ -84,4 +84,22 @@ class AudioPcmTest {
         assertEquals('F'.code.toByte(), bytes[3])
         assertEquals(44 + 1000 * 2, bytes.size)
     }
+
+    @Test
+    fun `normalize brings voiced audio to the target and respects the peak ceiling`() {
+        val rate = 24_000
+        // 0.5 s of a quiet square wave (amplitude 1000), then 0.5 s of silence that must not count.
+        val quiet = AudioSegment(ShortArray(rate) { if (it >= rate / 2) 0 else if (it % 2 == 0) 1000 else -1000 }, rate, 1)
+        val out = AudioPcm.normalize(quiet)
+        val target = Short.MAX_VALUE * Math.pow(10.0, AudioPcm.DEFAULT_TARGET_DBFS / 20)
+        assertEquals(target, Math.abs(out.pcm[0].toDouble()), target * 0.02)
+        assertEquals(0, out.pcm[rate - 1].toInt())
+
+        // A loud clip with a near-full-scale peak is turned down, never clipped.
+        val loud = AudioSegment(ShortArray(rate) { if (it % 2 == 0) 30_000 else -30_000 }, rate, 1)
+        assertTrue(Math.abs(AudioPcm.normalize(loud).pcm[0].toInt()) < 30_000)
+
+        val silent = AudioSegment(ShortArray(rate), rate, 1)
+        assertTrue(AudioPcm.normalize(silent) === silent)
+    }
 }

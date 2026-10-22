@@ -162,10 +162,11 @@ class AnkiDroidBridge(private val context: Context) : AnkiBridge {
         }
     }
 
-    override suspend fun isDuplicate(word: String, deck: String): AnkiResult<Boolean> = withContext(Dispatchers.IO) {
+    override suspend fun isDuplicate(word: String, deck: String, model: String): AnkiResult<Boolean> = withContext(Dispatchers.IO) {
         if (!isAvailable()) return@withContext AnkiResult.NotAvailable
         runCatching {
-            val modelId = api.modelList.orEmpty().entries.firstOrNull { it.value == ankiModelName() }?.key
+            // Same check addNote refuses duplicates with: the note type's first field, collection-wide.
+            val modelId = api.modelList.orEmpty().entries.firstOrNull { it.value == model }?.key
             if (modelId == null) {
                 AnkiResult.Success(false)
             } else {
@@ -173,8 +174,6 @@ class AnkiDroidBridge(private val context: Context) : AnkiBridge {
             }
         }.getOrElse { AnkiResult.Error(it.message ?: "AnkiDroid error") }
     }
-
-    private fun ankiModelName(): String = io.github.wilsonnet.droidsentenceminer.core.DsmPrefs.DEFAULT_MODEL
 
     private fun addMedia(bytes: ByteArray, filename: String, mimeType: String): String? {
         val dir = File(context.cacheDir, "anki-media").apply { mkdirs() }

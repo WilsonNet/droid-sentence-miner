@@ -65,6 +65,7 @@ object JapaneseTextScore {
     fun score(text: String): Double {
         if (text.isBlank()) return 0.0
         var japanese = 0
+        var letters = 0
         var good = 0
         var bad = 0
         for (ch in text) {
@@ -74,13 +75,15 @@ object JapaneseTextScore {
                 ch.isWhitespace() -> Unit
                 ch.isLetterOrDigit() -> {
                     good++
+                    letters++
                     if (isJapanese(ch)) japanese++
                 }
                 else -> good++
             }
         }
-        if (good == 0) return 0.0
-        val japaneseRatio = japanese.toDouble() / good
+        if (letters == 0) return 0.0
+        // Punctuation is neutral: 「百花……っ」 is as Japanese as its three letters.
+        val japaneseRatio = japanese.toDouble() / letters
         val penalty = bad.toDouble() / (good + bad).coerceAtLeast(1)
         return japaneseRatio * 10.0 + good * 0.01 - penalty * 20.0
     }

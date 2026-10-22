@@ -136,4 +136,11 @@ class OcrPostProcessorTest {
         assertTrue(OcrPostProcessor.merge(emptyList()).isEmpty())
         assertFalse(OcrPostProcessor.merge(listOf(line("   ", 0, 0, 10, 10))).isNotEmpty())
     }
+
+    @Test
+    fun shortExclamationWithPunctuationStillScoresAsJapanese() {
+        // A visual novel's 「百花……っ」: punctuation must not dilute the Japanese ratio.
+        assertTrue(JapaneseTextScore.score("「百花......っ」") >= 3.0)
+        assertTrue(JapaneseTextScore.score("...!!") < 3.0)
+    }
 }

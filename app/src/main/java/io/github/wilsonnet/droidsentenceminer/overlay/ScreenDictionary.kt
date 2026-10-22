@@ -45,7 +45,7 @@ import kotlin.math.roundToInt
  * Screen dictionary: over any app (a YouTube video, a game), the latest auto OCR read is laid as an
  * invisible, touchable text layer exactly over the real text. Tap a character to look up the word
  * starting there, hold and drag to select; the definition pops up next to it. The layer windows
- * are fitted to the text, so touches anywhere else still reach the app.
+ * (one per line) are fitted to the text, so touches anywhere else still reach the app.
  *
  * Videos move on, so a lookup pauses playback (media key) and resumes it when the popup closes;
  * while it is open the layer is frozen and auto OCR holds (it would read the popup otherwise).
@@ -86,22 +86,21 @@ class ScreenDictionary(
         val metrics = ScreenCaptureManager.screenMetrics(context)
         val w = metrics.widthPixels.toFloat()
         val h = metrics.heightPixels.toFloat()
-        val pad = 10 * density
-        val byArea = newLines.withIndex().groupBy { it.value.area }
-        (layers.keys - byArea.keys).forEach { removeLayer(it) }
-        for ((area, indexed) in byArea) {
-            val bounds = indexed.map { it.value.bounds }.reduce { a, b -> a.union(b) }
+        val pad = 6 * density
+        // One window per line, fitted to it: everything between lines (a game's buttons, the
+        // empty part of a dialogue box) still reaches the app.
+        (layers.keys - newLines.indices.toSet()).forEach { removeLayer(it) }
+        for ((index, line) in newLines.withIndex()) {
+            val bounds = line.bounds
             val left = max(0f, bounds.left * w - pad).roundToInt()
             val top = max(0f, bounds.top * h - pad).roundToInt()
             val right = min(w, bounds.right * w + pad).roundToInt()
             val bottom = min(h, bounds.bottom * h + pad).roundToInt()
-            val glyphs = indexed.map { (_, line) ->
-                line.glyphs.map { g -> RectF(g.left * w - left, g.top * h - top, g.right * w - left, g.bottom * h - top) }
-            }
-            val existing = layers[area]
+            val glyphs = line.glyphs.map { g -> RectF(g.left * w - left, g.top * h - top, g.right * w - left, g.bottom * h - top) }
+            val existing = layers[index]
             val view = existing?.first ?: ScreenTextLayerView(context)
             val params = existing?.second ?: layerParams()
-            view.setLines(glyphs, indexed.map { it.index })
+            view.setLines(listOf(glyphs), listOf(index))
             view.onTap = { line, index -> lookupFrom(line, index) }
             view.onSelect = { line, range -> show(line, range) }
             params.x = left
@@ -109,7 +108,7 @@ class ScreenDictionary(
             params.width = right - left
             params.height = bottom - top
             if (existing == null) {
-                layers[area] = view to params
+                layers[index] = view to params
                 runCatching { windowManager.addView(view, params) }
             } else {
                 runCatching { windowManager.updateViewLayout(view, params) }
@@ -123,8 +122,8 @@ class ScreenDictionary(
         lines = emptyList()
     }
 
-    private fun removeLayer(area: Int) {
-        layers.remove(area)?.let { (view, _) -> runCatching { windowManager.removeView(view) } }
+    private fun removeLayer(line: Int) {
+        layers.remove(line)?.let { (view, _) -> runCatching { windowManager.removeView(view) } }
     }
 
     /**
@@ -268,6 +267,7 @@ class ScreenDictionary(
 
     private companion object {
         const val VERIFY_DELAY_MS = 250L
+        const val PAUSE_CHECK_MS = 500L
     }
 
     private fun pauseMediaPlayback() {
@@ -276,6 +276,9 @@ class ScreenDictionary(
         if (!audio.isMusicActive) return
         sendMediaKey(audio, KeyEvent.KEYCODE_MEDIA_PAUSE)
         pausedMedia = true
+        // Games play audio but ignore media keys, which go to the last media session instead
+        // (a paused YouTube). Still audible: the pause missed, so don't send play later.
+        handler.postDelayed({ if (audio.isMusicActive) pausedMedia = false }, PAUSE_CHECK_MS)
     }
 
     private fun resumeMedia() {

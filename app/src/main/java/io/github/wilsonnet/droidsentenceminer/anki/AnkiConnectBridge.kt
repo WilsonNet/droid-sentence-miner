@@ -183,9 +183,11 @@ class AnkiConnectBridge(
         }
     }
 
-    override suspend fun isDuplicate(word: String, deck: String): AnkiResult<Boolean> = withContext(Dispatchers.IO) {
+    override suspend fun isDuplicate(word: String, deck: String, model: String): AnkiResult<Boolean> = withContext(Dispatchers.IO) {
         val sanitized = word.replace("\"", "")
-        val query = "deck:\"$deck\" ${CardFields.EXPRESSION}:\"$sanitized\""
+        // addNote checks duplicates on the note type's first field within the deck; ask the same.
+        val firstField = modelFieldNames(model)?.firstOrNull() ?: CardFields.EXPRESSION
+        val query = "deck:\"$deck\" note:\"$model\" \"$firstField:$sanitized\""
         val params = buildJsonObject { put("query", query) }
         when (val response = invoke("findNotes", params)) {
             is AnkiResult.Success -> AnkiResult.Success(response.value.jsonArray.isNotEmpty())
@@ -269,6 +271,11 @@ class AnkiClient(
             DsmPrefs.PROVIDER_ANKICONNECT -> ankiConnect
             else -> ankiDroid
         }
+    }
+
+    suspend fun isDuplicate(word: String): AnkiResult<Boolean> {
+        val snapshot = prefs.snapshot()
+        return bridge().isDuplicate(word, snapshot.ankiDeck, snapshot.ankiModel)
     }
 
     suspend fun fallback(): AnkiBridge = if (prefs.ankiProvider.first() == DsmPrefs.PROVIDER_ANKICONNECT) ankiDroid else ankiConnect

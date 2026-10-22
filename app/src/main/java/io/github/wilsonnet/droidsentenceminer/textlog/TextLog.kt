@@ -3,7 +3,7 @@ package io.github.wilsonnet.droidsentenceminer.textlog
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import io.github.wilsonnet.droidsentenceminer.audio.AudioRingBuffer
+import io.github.wilsonnet.droidsentenceminer.audio.AudioPcm import io.github.wilsonnet.droidsentenceminer.audio.AudioRingBuffer
 import io.github.wilsonnet.droidsentenceminer.audio.AudioSegment
 import io.github.wilsonnet.droidsentenceminer.audio.VoiceTrimmer
 import io.github.wilsonnet.droidsentenceminer.core.DsmPrefs
@@ -122,12 +122,13 @@ class TextLog(
         return withContext(Dispatchers.Default) {
             val raw = audioBuffer.slice(bounds.startMs, bounds.endMs) ?: return@withContext null
             if (raw.durationMs < 200) return@withContext null
-            if (trim ?: prefs.audioTrim.first()) {
+            val clip = if (trim ?: prefs.audioTrim.first()) {
                 val result = VoiceTrimmer.trim(raw)
                 Clip(result.segment, ClipWindow.Bounds(bounds.startMs + result.startMs, bounds.startMs + result.endMs), result.trimmed)
             } else {
                 Clip(raw, bounds, false)
             }
+            if (prefs.audioNormalize.first()) clip.copy(segment = AudioPcm.normalize(clip.segment)) else clip
         }
     }
 

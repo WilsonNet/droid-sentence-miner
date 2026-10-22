@@ -14,6 +14,16 @@ with [Yomitan](https://github.com/yomidevs/yomitan) dictionary compatibility.
   <img src="docs/screenshots/anki-card.png" width="24%" alt="Anki card" />
 </p>
 
+## Demo
+
+| Visual novel (Nightshade on Steam via DroidDeck) | YouTube hardsubs |
+| --- | --- |
+| [![Mining a word from Nightshade](docs/videos/nightshade-mining.gif)](docs/videos/nightshade-mining.mp4) | [![Mining a word from a YouTube video](docs/videos/youtube-mining.gif)](docs/videos/youtube-mining.mp4) |
+| Tap 手薄 in the game's text box → definition → *Anki* → ✓ *In Anki* | Tap 消防車 in the burned-in subtitle → *Anki* → ✓ *In Anki* |
+
+Both cards got the sentence, a screenshot, word audio and the sentence's voice clip (click a
+GIF for the MP4; recorded on a Xiaomi Pad 7).
+
 ## Features
 
 - **Auto OCR mode** — draw boxes over the game's text areas once (dialogue box, name box,
@@ -21,15 +31,21 @@ with [Yomitan](https://github.com/yomidevs/yomitan) dictionary compatibility.
   every ~400 ms; each new line is logged with the moment it appeared, the moment it went away and
   a screenshot. Repeated reads must agree before a line counts, and the stored text is the
   consensus of all reads of that line, so fades, typewriter text and OCR noise over moving video
-  don't create junk; background signage is filtered out.
+  don't create junk; background signage is filtered out. Visual novel text that types itself out
+  a few characters at a time is followed to the end of the line (each frame is compared with the
+  last one OCR'd, cell by cell), so lines aren't cut mid-sentence.
 - **Screen dictionary (tap the real text, in any app)** — while auto OCR runs, each read is laid
   as an invisible text layer exactly over the subtitles/dialogue on screen (meikiocr's and ML Kit's
   per-character positions). Tap a character in a YouTube hardsub or a game's text box and the word
   covering it lights up with its definition right next to it; hold and drag to select characters.
-  The layer is fitted to the text, so touches elsewhere still reach the app. Videos are fast, so a
+  The layer is one invisible window per line, fitted to it, so touches elsewhere (a game's
+  buttons, the empty part of a text box) still reach the app. Videos are fast, so a
   lookup pauses playback (media key: YouTube and most players) and resumes it when the popup closes;
   if you pause yourself, the layer stays and you can tap word after word. Mining links the
   log line, so the card gets the sentence, screenshot and voice clip.
+- **Already in Anki** — like Yomitan, the popup checks your note type for the word: if it already
+  has a note the button shows ✓ *In Anki* instead of making a duplicate. A card keeps being added
+  if you close the popup right after tapping *Anki*.
 - **Tablets and landscape** — tabs move to a side rail and screens sit in a centered column.
 - **Live text window** — a floating feed of the lines over the game, updated in real time. Tap
   a line to look up and mine it without leaving the game. Scroll back through the history (new
@@ -92,7 +108,14 @@ with [Yomitan](https://github.com/yomidevs/yomitan) dictionary compatibility.
   one-click install from *Settings → Dictionaries* or the Home setup card).
 - **Sentence audio** (Android 10+) — captures playback audio through the existing MediaProjection
   session (the Android equivalent of GSM's loopback capture) into the replay buffer, with a
-  waveform **audio editor** to trim the exact line before mining.
+  waveform **audio editor** to trim the exact line before mining. Every clip is **normalized** to
+  the same loudness (on by default, *Settings → Sentence audio*).
+- **Microphone fallback** — some apps block audio capture and Android hands over pure silence
+  (DroidDeck, which runs Steam games, targets Android 9; Netflix). Turn on *Microphone fallback*
+  (Settings or the bubble menu; off until you allow it) and DSM records the microphone whenever
+  device audio is silent while something is playing, and switches back as soon as device audio
+  returns. Android's voice **noise suppression** is applied to the mic (on by default, can be
+  turned off). Works with the speaker on; picks up room noise; records nothing with headphones.
 - **Mining history** — recent cards with a status showing whether they made it into Anki.
 - **Text selection lookup** — other apps can send selected text via `ACTION_PROCESS_TEXT`, including
   Samsung's text selection on screenshots/images and Circle to Search. A selected word is matched to
@@ -125,7 +148,7 @@ android sdk install platform-tools platforms/android-36 build-tools/35.0.0 emula
 echo "sdk.dir=$ANDROID_HOME" > local.properties
 
 # 3. Build & test
-./gradlew testDebugUnitTest          # 131 JVM unit tests
+./gradlew testDebugUnitTest          # 137 JVM unit tests
 ./gradlew connectedDebugAndroidTest  # 4 on-device tests (VAD + AAC encoding)
 ./gradlew assembleDebug              # app/build/outputs/apk/debug/app-debug.apk
 
@@ -149,7 +172,8 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
    orientation the area editor opens: drag boxes over the dialogue/subtitle area (drag to move,
    corners to resize, × to delete; drag the toolbar by ⠿ out of the way) and *Save*. To change
    them later (e.g. a different video), tap ✎ in the *Live text* window or long-press the bubble →
-   *Auto OCR text areas*. New lines
+   *Auto OCR text areas*. If the screen capture ends (the captured app was closed, consent
+   revoked), the bubble menu offers *Restart screen capture*. New lines
    appear in the floating *Live text* window — tap one to look up words and mine it with its audio
    and screenshot. Everything is also on the *Texts* tab.
    While it runs, just tap a word in the real subtitle on screen to look it up (the video pauses
@@ -159,8 +183,9 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
    the capture box and hit *Scan region*. This box is separate from the auto OCR text areas. Tap a
    highlighted word for definitions, then *Anki*. Manual scans are logged on *Texts* too.
 5. **Audio** — on by default; grant the microphone permission when asked (Android requires it for
-   playback capture). *Settings* has the buffer length, start/end offsets and silence trimming.
-   Apps that opt out of capture stay silent.
+   playback capture). *Settings* has the buffer length, start/end offsets, silence trimming and
+   volume normalization. Apps that opt out of capture (DroidDeck, Netflix) record silence unless
+   you enable *Microphone fallback* (Settings or the bubble menu).
 6. **Books** — open the *Book* tab, *Take photo* of the page (flat, well lit, filling the frame),
    tap the paragraph on the photo, then tap a word in its text to look it up and *Anki* it
    (hold + drag to pick the exact characters yourself; tap words inside the definition to dig deeper).
@@ -233,6 +258,12 @@ Glossaries may be strings, arrays, image definitions, deinflection entries or st
   was just created through the API and the backend refuses it, the app retries with the built-in
   *Basic* note type so your card is still created. Tested against AnkiDroid 2.24.1 (works,
   including media); AnkiDroid 2.25.0 has a provider bug with freshly-created note types.
+- **DroidDeck** (Steam games on Android): text works like any game. Its `targetSdkVersion` is 28,
+  so Android blocks other apps from capturing its audio (see
+  [Droid-Deck/DroidDeck#1314](https://github.com/Droid-Deck/DroidDeck/issues/1314)); use the
+  microphone fallback. The game pauses itself whenever it loses focus (e.g. the capture consent
+  dialog); tap *再開* to continue. Keep the text area on the dialogue box only — side buttons
+  (スキップ, クイックロード) inside it get logged as lines.
 - **Emulator**: with a headless emulator, starting MediaProjection can black out the emulated
   display (SwiftShader/host GPU limitation). OCR, lookup, audio encode and Anki paths are all
   testable; for end-to-end screen capture use a device or a windowed emulator.
@@ -257,7 +288,15 @@ Glossaries may be strings, arrays, image definitions, deinflection entries or st
   recipe): every subtitle cue in the run was logged (61/61, 56 exact, mean character accuracy
   0.99), line start times within ±300 ms (p90) of the cue, and every voice clip located in the
   original audio at correlation ≥0.97, starting 160–1080 ms (median ~400 ms) before the subtitle.
-- 131 JVM unit tests: popup placement (flip/size/shift), screen text layer (subtitle glyphs → screen fractions, signage skipped), book page layout (tategaki order, ruby filter incl. real manga ruby, split sentences, per-character photo positions), H→エ fix, pitch graphs (byte-identical to Yomitan), word audio sources, Anki field mapping, meikiocr decoding, OCR text fixes (一→ー), text areas, line consensus, replay buffer, voice trimming, line tracking, clip windows, subtitle-row
+- Visual novel on a Xiaomi Pad 7 (HyperOS 3): Nightshade through DroidDeck, meikiocr, text area
+  on the dialogue box. Before: lines froze at the first half-typed read (戦乱の世におい). After:
+  every line of the prologue and first scene logged complete (3-line narration included), short
+  exclamations like 「百花……っ」 kept, 一筋 no longer turned into ー筋. Device audio came back as
+  digital zeros (`AudioRecord … [mute]`); with the microphone fallback the voiced lines are
+  audible in the clips (speech at ~2000 RMS after normalization vs ~15 raw at the tablet's
+  volume). Cards mined from the popup (手薄, 術) had sentence, screenshot, word audio and clip.
+- 137 JVM unit tests: frame change detection (one typewriter glyph counts), loudness
+  normalization, popup placement (flip/size/shift), screen text layer (subtitle glyphs → screen fractions, signage skipped), book page layout (tategaki order, ruby filter incl. real manga ruby, split sentences, per-character photo positions), H→エ fix, pitch graphs (byte-identical to Yomitan), word audio sources, Anki field mapping, meikiocr decoding, OCR text fixes (一→ー), text areas, line consensus, replay buffer, voice trimming, line tracking, clip windows, subtitle-row
   filtering, deinflector (conjugations across godan/ichidan/suru/kuru/adjectives),
   glossary parsing/rendering, OCR post-processing (merge, furigana filter, normalization),
   VAD segmentation, PCM utilities, Yomitan index parsing.
@@ -288,6 +327,13 @@ Glossaries may be strings, arrays, image definitions, deinflection entries or st
   (note + media verified), plus MediaProjection consent flow.
 
 ## Roadmap
+
+- Text areas per app (a game's dialogue box and a video's subtitle band need different boxes;
+  areas are per orientation only today).
+- RNNoise (as OBS uses) for the microphone fallback instead of the device's voice suppressor.
+- Deinflection with Yomitan's part-of-speech conditions: 象徴ではある currently highlights as one
+  "te-form" match of 象徴.
+- Faster mining: a card takes ~11 s on the Xiaomi Pad 7 (word audio download + AAC encode).
 
 - Neural VAD (Silero via ONNX Runtime, as GSM uses) for silence trimming that holds up under
   loud BGM; the current energy trimmer is opt-in because it clipped speech under rain/music in

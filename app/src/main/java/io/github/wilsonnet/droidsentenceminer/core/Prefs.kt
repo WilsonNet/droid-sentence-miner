@@ -31,6 +31,9 @@ class DsmPrefs(private val context: Context) {
         val ocrEngine = stringPreferencesKey("ocr_engine")
         val audioEnabled = booleanPreferencesKey("audio_enabled")
         val audioTrim = booleanPreferencesKey("audio_trim")
+        val audioMicFallback = booleanPreferencesKey("audio_mic_fallback")
+        val audioNormalize = booleanPreferencesKey("audio_normalize")
+        val audioNoiseSuppression = booleanPreferencesKey("audio_noise_suppression")
         val wordAudio = booleanPreferencesKey("word_audio")
         val glossaryFirstDictionary = booleanPreferencesKey("glossary_first_dictionary")
         val wordAudioCustomUrl = stringPreferencesKey("word_audio_custom_url")
@@ -82,6 +85,15 @@ class DsmPrefs(private val context: Context) {
     // Off by default: energy VAD can't separate voice from loud BGM/ambience reliably.
     val audioTrim: Flow<Boolean> = context.dataStore.data.map { it[Keys.audioTrim] ?: false }
     val wordAudio: Flow<Boolean> = context.dataStore.data.map { it[Keys.wordAudio] ?: true }
+
+    /** Record the microphone when the playing app blocks audio capture (see AudioCaptureManager). */
+    val audioMicFallback: Flow<Boolean> = context.dataStore.data.map { it[Keys.audioMicFallback] ?: false }
+
+    /** Bring every sentence clip to the same loudness (AudioPcm.normalize). */
+    val audioNormalize: Flow<Boolean> = context.dataStore.data.map { it[Keys.audioNormalize] ?: true }
+
+    /** Android's NoiseSuppressor on the microphone fallback. */
+    val audioNoiseSuppression: Flow<Boolean> = context.dataStore.data.map { it[Keys.audioNoiseSuppression] ?: true }
 
     /** Like Yomitan's {glossary-first}: only the highest-priority dictionary on the card. */
     val glossaryFirstDictionary: Flow<Boolean> = context.dataStore.data.map { it[Keys.glossaryFirstDictionary] ?: false }
@@ -172,6 +184,9 @@ class DsmPrefs(private val context: Context) {
     suspend fun setOcrEngine(value: String) = edit { it[Keys.ocrEngine] = value }
     suspend fun setAudioEnabled(value: Boolean) = edit { it[Keys.audioEnabled] = value }
     suspend fun setAudioTrim(value: Boolean) = edit { it[Keys.audioTrim] = value }
+    suspend fun setAudioMicFallback(value: Boolean) = edit { it[Keys.audioMicFallback] = value }
+    suspend fun setAudioNormalize(value: Boolean) = edit { it[Keys.audioNormalize] = value }
+    suspend fun setAudioNoiseSuppression(value: Boolean) = edit { it[Keys.audioNoiseSuppression] = value }
     suspend fun setWordAudio(value: Boolean) = edit { it[Keys.wordAudio] = value }
     suspend fun setGlossaryFirstDictionary(value: Boolean) = edit { it[Keys.glossaryFirstDictionary] = value }
     suspend fun setWordAudioCustomUrl(value: String) = edit { it[Keys.wordAudioCustomUrl] = value.trim() }

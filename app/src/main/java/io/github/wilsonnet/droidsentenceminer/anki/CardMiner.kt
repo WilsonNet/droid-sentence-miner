@@ -99,6 +99,12 @@ class CardMiner(
         )
     }
 
+    /** Yomitan's duplicate tag: the looked-up word's base form already has a note. Null if unknown. */
+    suspend fun isInAnki(word: String, details: TermLookup.LookupDetails?): Boolean? = withContext(Dispatchers.IO) {
+        val expression = details?.baseForm?.ifBlank { word } ?: word
+        (ankiClient.isDuplicate(expression) as? AnkiResult.Success)?.value
+    }
+
     suspend fun mine(
         word: String,
         sentence: String,

@@ -95,6 +95,8 @@ class OverlayService : Service() {
     private var lastCapture: Bitmap? = null
     private var pendingScan: RectF? = null
     private var pendingAutoOcr = false
+    private var micFallback = false
+    private var noiseSuppression = false
 
     override fun onCreate() {
         super.onCreate()
@@ -106,6 +108,7 @@ class OverlayService : Service() {
             onProjectionStopped = {
                 audioManager.stop()
                 scope.launch {
+                    panelState.captureStopped = true
                     if (panelState.scanning) {
                         panelState.scanning = false
                         panelState.status = "Screen capture was stopped"
@@ -135,6 +138,22 @@ class OverlayService : Service() {
         scope.launch { container.prefs.pauseOnLookup.collect { screenDictionary.pauseMedia = it } }
         screenDictionary.refresh = { autoOcr.readNow() }
         scope.launch { container.prefs.autoAreas(landscape = false).collect { portraitAreas = it } }
+        scope.launch {
+            kotlinx.coroutines.flow.combine(
+                container.prefs.audioMicFallback,
+                container.prefs.audioNoiseSuppression,
+            ) { on, denoise -> on to denoise }.collect { (on, denoise) ->
+                panelState.micFallback = on
+                if (on == micFallback && denoise == noiseSuppression) return@collect
+                micFallback = on
+                noiseSuppression = denoise
+                // Restart capture so the microphone recorder (and its service type) follows the setting.
+                if (audioManager.isRunning) {
+                    audioManager.stop()
+                    maybeStartAudioCapture()
+                }
+            }
+        }
         scope.launch { container.prefs.autoAreas(landscape = true).collect { landscapeAreas = it } }
         scope.launch {
             autoOcr.status.collect {
@@ -402,6 +421,7 @@ class OverlayService : Service() {
         }
         try {
             captureManager.start(resultCode, data) { startForegroundCompat(includeProjection = true) }
+            panelState.captureStopped = false
             maybeStartAudioCapture()
         } catch (e: Exception) {
             panelState.scanning = false
@@ -678,7 +698,10 @@ class OverlayService : Service() {
             if (audioManager.isRunning) return@launch
             val projection = captureManager.activeProjection ?: return@launch
             container.textLog.ensureAudioBuffer(container.prefs.audioBufferSeconds.first())
-            val started = audioManager.start(projection)
+            micFallback = container.prefs.audioMicFallback.first()
+            noiseSuppression = container.prefs.audioNoiseSuppression.first()
+            if (micFallback) startForegroundCompat(includeProjection = true)
+            val started = audioManager.start(projection, micFallback, noiseSuppression)
             if (!started) {
                 panelState.status = "Audio capture unavailable: ${audioManager.error.orEmpty()}"
             }
@@ -836,6 +859,13 @@ class OverlayService : Service() {
         onToggleAutoOcr = { toggleAutoOcr() },
         onLatestLine = { showLatestLine() },
         onSelectAreas = { showAreaSelector() },
+        onToggleMicFallback = {
+            scope.launch { container.prefs.setAudioMicFallback(!panelState.micFallback) }
+        },
+        onRestartCapture = {
+            hidePanel()
+            requestProjection()
+        },
         onShowLiveText = {
             hidePanel()
             liveDismissed = false
@@ -952,8 +982,24 @@ class OverlayService : Service() {
                 if (includeProjection) ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION else 0
             else -> 0
         }
+        // The microphone fallback records from the background, which needs the microphone type.
+        // Android only grants it while DSM may use the mic (e.g. right after the capture consent).
+        if (includeProjection && micFallbackEnabled() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val withMic = runCatching {
+                ServiceCompat.startForeground(
+                    this,
+                    NOTIFICATION_ID,
+                    buildNotification(),
+                    type or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE,
+                )
+            }
+            if (withMic.isSuccess) return
+        }
         ServiceCompat.startForeground(this, NOTIFICATION_ID, buildNotification(), type)
     }
+
+    private fun micFallbackEnabled(): Boolean =
+        micFallback && AudioCaptureManager.hasPermission(this)
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -1024,6 +1070,7 @@ class OverlayService : Service() {
     internal val debugContainer: AppContainer get() = container
     internal val debugCaptureManager: ScreenCaptureManager get() = captureManager
     internal val debugAudioRunning: Boolean get() = audioManager.isRunning
+    internal val debugAudioUsingMic: Boolean get() = audioManager.usingMic
 
     /** The screen dictionary's current text layer and whether its popup is open (debug API). */
     internal val debugScreenText get() = autoOcr.screenText.value

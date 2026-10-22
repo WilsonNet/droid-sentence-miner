@@ -2,7 +2,9 @@ package io.github.wilsonnet.droidsentenceminer.audio
 
 import kotlin.math.abs
 import kotlin.math.max
+import kotlin.math.pow
 import kotlin.math.roundToInt
+import kotlin.math.sqrt
 
 /** A chunk of PCM audio (16-bit, interleaved channels). */
 data class AudioSegment(
@@ -33,6 +35,55 @@ object AudioPcm {
         }
         return AudioSegment(mono, segment.sampleRate, 1)
     }
+
+    /**
+     * Loudness normalization: scales the clip so its voiced part (20 ms frames above
+     * [GATE_DBFS], so pauses don't count) averages [targetDbfs] RMS, with the peak kept under
+     * [PEAK_CEILING] and the gain at most [MAX_GAIN]. Evens out quiet games, loud videos and the
+     * microphone fallback, which records from the speaker far quieter than device audio.
+     */
+    fun normalize(segment: AudioSegment, targetDbfs: Double = DEFAULT_TARGET_DBFS): AudioSegment {
+        val pcm = segment.pcm
+        if (pcm.isEmpty()) return segment
+        val frame = (segment.sampleRate * segment.channels / 50).coerceAtLeast(1)
+        val gate = Short.MAX_VALUE * 10.0.pow(GATE_DBFS / 20)
+        var sum = 0.0
+        var count = 0L
+        var peak = 0
+        var i = 0
+        while (i < pcm.size) {
+            val end = minOf(i + frame, pcm.size)
+            var frameSum = 0.0
+            for (j in i until end) {
+                val v = pcm[j].toInt()
+                frameSum += v.toDouble() * v
+                peak = max(peak, abs(v))
+            }
+            if (sqrt(frameSum / (end - i)) >= gate) {
+                sum += frameSum
+                count += end - i
+            }
+            i = end
+        }
+        if (count == 0L || peak == 0) return segment
+        val rms = sqrt(sum / count)
+        val gain = minOf(
+            Short.MAX_VALUE * 10.0.pow(targetDbfs / 20) / rms,
+            Short.MAX_VALUE * PEAK_CEILING / peak,
+            MAX_GAIN,
+        )
+        if (abs(gain - 1.0) < 0.05) return segment
+        val out = ShortArray(pcm.size) { k ->
+            (pcm[k] * gain).roundToInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
+        }
+        return AudioSegment(out, segment.sampleRate, segment.channels)
+    }
+
+    /** Speech loudness on cards, roughly -16 LUFS. */
+    const val DEFAULT_TARGET_DBFS = -18.0
+    private const val GATE_DBFS = -50.0
+    private const val PEAK_CEILING = 0.89 // -1 dBFS
+    private const val MAX_GAIN = 20.0
 
     /** Slices by time, clamped to bounds. Returns null when the slice is empty. */
     fun trim(segment: AudioSegment, startMs: Long, endMs: Long): AudioSegment? {

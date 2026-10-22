@@ -77,6 +77,9 @@ fun SettingsScreen(modifier: Modifier = Modifier, onOpen: (String) -> Unit = {})
     var meikiError by remember { mutableStateOf<String?>(null) }
     val audioTrim by container.prefs.audioTrim.collectAsState(initial = false)
     val wordAudio by container.prefs.wordAudio.collectAsState(initial = true)
+    val micFallback by container.prefs.audioMicFallback.collectAsState(initial = false)
+    val normalize by container.prefs.audioNormalize.collectAsState(initial = true)
+    val noiseSuppression by container.prefs.audioNoiseSuppression.collectAsState(initial = true)
     val firstDict by container.prefs.glossaryFirstDictionary.collectAsState(initial = false)
     val wordAudioUrl by container.prefs.wordAudioCustomUrl.collectAsState(initial = "")
     var wordAudioUrlDraft by remember(wordAudioUrl) { mutableStateOf(wordAudioUrl) }
@@ -244,6 +247,29 @@ fun SettingsScreen(modifier: Modifier = Modifier, onOpen: (String) -> Unit = {})
                         audioEnabled = value
                         scope.launch { container.prefs.setAudioEnabled(value) }
                     }
+                }
+                if (audioEnabled && hasAudioPermission) {
+                    SettingSwitch(
+                        title = "Microphone fallback",
+                        description = "Some apps block audio capture (DroidDeck, Netflix) and only silence gets recorded. " +
+                            "When that happens, record the microphone instead: works with the speaker on, " +
+                            "picks up room noise, records nothing with headphones.",
+                        checked = micFallback,
+                    ) { value -> scope.launch { container.prefs.setAudioMicFallback(value) } }
+                    if (micFallback) {
+                        SettingSwitch(
+                            title = "Noise suppression",
+                            description = "Android's voice noise filter on the microphone (the one calls use): " +
+                                "less fan and room noise, but it can also soften music and effects.",
+                            checked = noiseSuppression,
+                        ) { value -> scope.launch { container.prefs.setAudioNoiseSuppression(value) } }
+                    }
+                    SettingSwitch(
+                        title = "Normalize volume",
+                        description = "Bring every sentence clip to the same loudness, so quiet games, loud videos " +
+                            "and microphone recordings sound alike on your cards.",
+                        checked = normalize,
+                    ) { value -> scope.launch { container.prefs.setAudioNormalize(value) } }
                 }
                 SettingSwitch(
                     title = "Word audio",

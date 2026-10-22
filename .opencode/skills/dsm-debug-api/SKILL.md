@@ -72,10 +72,18 @@ All GET, all JSON (except `frame.png`). Regions are screen fractions unless note
 | `/line_shot.jpg?id=` | The screenshot stored with the line |
 | `/mine_line?id=&word=` | Mine a word from a logged line with its audio + screenshot (the Texts-tab flow) |
 | `/clear_lines` | Delete the whole text log |
+| `/mic_fallback?on=1\|0` | Read/set the microphone fallback setting (restarts audio capture); returns `on` |
 
 `/state` also reports `autoOcr` (`running`, `reads`, `lines`, `lastRead`, `error`),
 `areasPortrait`/`areasLandscape` (box counts) and `audioBuffer`
-(`capturing`, `bufferedMs`, `newestAgeMs`).
+(`capturing`, `source` = `device` or `mic` — `mic` while the microphone fallback fills the buffer
+because the captured app blocks playback capture, `bufferedMs`, `newestAgeMs`).
+
+Re-consent recipe for a single app: `/stopoverlay`, bring `MainActivity` forward, `/startoverlay`,
+`/autoocr?on=1`, tap *Next*, then tap the app's **thumbnail** in the picker's top row (the icon
+grid order changes between runs — tapping the 3rd icon once picked YouTube instead of DroidDeck,
+and auto OCR then got no frames at all, `reads: 0`). `/request_projection` does nothing while a
+projection is active.
 
 Example output:
 

@@ -11,6 +11,7 @@ class OcrTextFixesTest {
         assertEquals("わー明るい", OcrTextFixes.apply("わ一明るい"))
         assertEquals("いいなーこの錆びれた感じ", OcrTextFixes.apply("いいな一この錆びれた感じ"))
         assertEquals("メニュー", OcrTextFixes.apply("メニュ一"))
+        assertEquals("背中から一筋の汗が流れる。", OcrTextFixes.apply("背中から一筋の汗が流れる。"))
     }
 
     @Test

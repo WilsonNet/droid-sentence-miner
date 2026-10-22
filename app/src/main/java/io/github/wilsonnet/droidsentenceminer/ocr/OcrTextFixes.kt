@@ -9,7 +9,7 @@ object OcrTextFixes {
 
     // After kana, 一 is still the numeral before counters/nouns like these (もう一つ, お一人, もう一度).
     private const val NUMERAL_FOLLOWERS =
-        "つ人度番日回緒生方本杯枚個歩部員口切息時線気応発年月週階台匹冊通見瞬層般体同定心途段帯面律連斉家円万億千百十品着軒件曲話球点戦歳言粒滴羽頭杯"
+        "つ人度番日回緒生方本杯枚個歩部員口切息時線気応発年月週階台匹冊通見瞬層般体同定心途段帯面律連斉家円万億千百十品着軒件曲話球点戦歳言粒滴羽頭杯筋瞥撃目端角睡周晩夜"
 
     fun apply(text: String): String = katakanaE(longVowelMarks(text))
 

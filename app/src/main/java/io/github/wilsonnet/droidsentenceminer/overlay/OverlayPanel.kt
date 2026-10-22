@@ -27,12 +27,14 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.darkColorScheme
@@ -78,6 +80,8 @@ data class OverlayCallbacks(
     val onLatestLine: () -> Unit = {},
     val onSelectAreas: () -> Unit = {},
     val onShowLiveText: () -> Unit = {},
+    val onRestartCapture: () -> Unit = {},
+    val onToggleMicFallback: () -> Unit = {},
 )
 
 @Composable
@@ -154,6 +158,11 @@ private fun Header(state: OverlayPanelState, callbacks: OverlayCallbacks) {
 private fun MenuContent(state: OverlayPanelState, callbacks: OverlayCallbacks) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Spacer(Modifier.height(4.dp))
+        if (state.autoOcrRunning && state.captureStopped) {
+            Button(onClick = callbacks.onRestartCapture, modifier = Modifier.fillMaxWidth()) {
+                Text("Restart screen capture")
+            }
+        }
         FilledTonalButton(
             onClick = callbacks.onToggleAutoOcr,
             modifier = Modifier.fillMaxWidth(),
@@ -176,6 +185,23 @@ private fun MenuContent(state: OverlayPanelState, callbacks: OverlayCallbacks) {
             TextButton(onClick = callbacks.onShowLiveText, modifier = Modifier.fillMaxWidth()) {
                 Text("Show live text window")
             }
+        }
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clickable(onClick = callbacks.onToggleMicFallback)
+                .padding(horizontal = 12.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text("Microphone fallback", style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    "Record the mic when the game blocks audio capture",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Switch(checked = state.micFallback, onCheckedChange = { callbacks.onToggleMicFallback() })
         }
         FilledTonalButton(
             onClick = callbacks.onScanRegion,

@@ -254,6 +254,11 @@ object DebugApi {
                 }
                 JSONObject().put("ok", clip != null).put("source", clip?.source).put("bytes", clip?.bytes?.size).put("ext", clip?.extension)
             }
+            "/mic_fallback" -> respondApi(socket) {
+                val prefs = AppContainer.from(app).prefs
+                params["on"]?.let { on -> runBlocking { prefs.setAudioMicFallback(on == "1" || on == "true") } }
+                JSONObject().put("ok", true).put("on", runBlocking { prefs.audioMicFallback.first() })
+            }
             "/select_areas" -> {
                 OverlayService.selectAreas(app)
                 respondJson(socket, JSONObject().put("ok", true))
@@ -325,6 +330,7 @@ object DebugApi {
             "audioBuffer",
             JSONObject()
                 .put("capturing", service?.debugAudioRunning == true)
+                .put("source", if (service?.debugAudioUsingMic == true) "mic" else "device")
                 .put("bufferedMs", buffer.bufferedMs)
                 .put("capacitySeconds", buffer.capacitySeconds)
                 .put("newestAgeMs", buffer.newestMs?.let { System.currentTimeMillis() - it }),

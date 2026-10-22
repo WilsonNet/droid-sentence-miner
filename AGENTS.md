@@ -97,7 +97,7 @@ Endpoints: `/state`, `/scan`, `/frame.png`, `/ocr` (`l,t,r,b` crops the file fir
 `/install_ocr_models` (meikiocr download), `/ocr?engine=meiki|mlkit`, `/select_areas` (opens the area editor),
 `/install_dict?id=jitendex` (background install; progress in `/state.dictInstall`),
 `/anki_notes?word=` (field-level card verification via the AnkiDroid provider),
-`/anki_meta` (decks + note types), `/book?file=` (book-mode page OCR → paragraphs, shown in the Book tab), `/live?show=1&mode=` (live text window), `/startoverlay`, `/stopoverlay`, `/request_projection`.
+`/anki_meta` (decks + note types), `/book?file=` (book-mode page OCR → paragraphs, shown in the Book tab), `/live?show=1&mode=` (live text window), `/mic_fallback?on=`, `/startoverlay`, `/stopoverlay`, `/request_projection`.
 Regions are screen fractions.
 See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes.
 
@@ -180,7 +180,7 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
 - **Screen dictionary** (`overlay/ScreenDictionary.kt`, `capture/ScreenText.kt`): auto OCR's fast
   read publishes `AutoOcrController.screenText` (lines with per-glyph screen fractions; meikiocr char
   x-intervals mapped back in `MeikiOcr`, ML Kit symbols). The service fits one touchable, transparent
-  `TYPE_APPLICATION_OVERLAY` window per text area over its lines (`ScreenTextLayerView`); the popup is
+  `TYPE_APPLICATION_OVERLAY` window per line (`ScreenTextLayerView`; per area swallowed taps on game buttons between lines); the popup is
   a separate overlay window placed by `AnchoredPopupPosition` in absolute screen px (a Compose `Popup`
   inside an overlay strip is positioned relative to that strip). While the popup is open the layer is
   frozen and auto OCR pauses (`holdLayer`/`paused`), or it would log the definition text. Media
@@ -233,6 +233,32 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   player settings. `yt-dlp -f bestaudio --download-sections "*0:00-8:00"` gives reference audio
   to cross-correlate `/clip.wav` output against.
 
+- **Typewriter text / static-region skip** (`FrameSignature` in `AutoOcrController.kt`): a frame
+  is OCR'd only if it differs from the frame *last OCR'd* (not the previous frame), by mean or by
+  any single cell of a 96×24 area-averaged grid. Comparing consecutive frames with a mean of a
+  bilinear 48×12 downscale froze visual novel lines at the first half-typed read.
+- **`SubtitleLineFilter` anchors on the row with the most Japanese**: game buttons inside the text
+  area (Nightshade's スキップ/クイックロード) became the anchor and the short, bigger dialogue line
+  was dropped as "wrong size". Keep areas on the dialogue box. `JapaneseTextScore` ignores
+  punctuation in its ratio, or 「百花……っ」 scored as not-Japanese.
+- **DroidDeck (Steam) blocks audio capture**: `targetSdkVersion 28`, no
+  `allowAudioPlaybackCapture`, so `AudioRecord` gets zeros (logcat `AudioRecordImpl … [mute]`).
+  Upstream: Droid-Deck/DroidDeck#1314 (28 is in their initial commit, likely for exec from app
+  data; no commit explains it). `AudioCaptureManager` microphone fallback (opt-in pref
+  `audioMicFallback`): mic recorder runs alongside, fills the buffer after
+  `SILENT_SWITCH_MS` of exact zeros while `isMusicActive`, device audio takes over on the first
+  non-zero chunk. Background mic needs FGS type `microphone`, only granted while DSM may use the
+  mic — `startForegroundCompat` tries it and falls back without. `NoiseSuppressor` on the mic
+  session (pref, default on); every clip goes through `AudioPcm.normalize` (pref, default on) in
+  `TextLog.clip`. DroidDeck pauses the game when it loses focus (consent dialog) — tap 再開.
+- **Media keys and games**: a game's audio makes `isMusicActive` true, but media keys go to the
+  last media session (a paused YouTube) — the lookup popup's PLAY on close started YouTube in the
+  background. `ScreenDictionary.pauseMediaPlayback` re-checks after 500 ms and skips the resume if
+  audio is still playing.
+- **Mining outlives the popup**: `mineAction` runs on `AppContainer.appScope`; it used the
+  popup's composition scope and closing the popup cancelled the card. The popup checks
+  `CardMiner.isInAnki` (the bridges' `isDuplicate(word, deck, model)` — first field of the
+  configured note type, same rule `addNote` refuses with) and shows ✓ In Anki.
 - **Prefer the debug API over UI automation.** Debug builds expose a loopback text API
   (`curl localhost:9099/...` via `adb forward tcp:9099 tcp:9099`) for capture frames, OCR,
   lookups and mining. Use it to validate flows; reserve `input tap`/screenshots for

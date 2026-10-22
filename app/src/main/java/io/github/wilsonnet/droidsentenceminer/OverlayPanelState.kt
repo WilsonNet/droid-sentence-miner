@@ -28,6 +28,12 @@ class OverlayPanelState {
     var lineId by mutableStateOf<Long?>(null)
     var autoOcrRunning by mutableStateOf(false)
 
+    /** Auto OCR is on but the screen capture ended (consent revoked, captured app closed). */
+    var captureStopped by mutableStateOf(false)
+
+    /** Microphone fallback setting, toggled from the bubble menu too. */
+    var micFallback by mutableStateOf(false)
+
     // Audio (GSM-style sentence audio)
     var audioSegment by mutableStateOf<AudioSegment?>(null)
     var audioSkipped by mutableStateOf(false)

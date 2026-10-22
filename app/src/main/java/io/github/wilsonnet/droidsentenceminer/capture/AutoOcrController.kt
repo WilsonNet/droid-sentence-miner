@@ -1,7 +1,6 @@
 package io.github.wilsonnet.droidsentenceminer.capture
 
 import android.graphics.Bitmap
-import android.graphics.Color
 import android.util.Log
 import io.github.wilsonnet.droidsentenceminer.core.DsmPrefs
 import io.github.wilsonnet.droidsentenceminer.ocr.JapaneseTextScore
@@ -146,9 +145,14 @@ class AutoOcrController(
                 val signature = crops.map { FrameSignature.of(it) }.reduce { acc, sig -> acc + sig }
                 atMs = frame.atMs
                 frameBitmap = frame.bitmap
-                text = if (lastSignature != null && FrameSignature.distance(signature, lastSignature) < STATIC_REGION_DISTANCE) {
+                // Compared with the frame last OCR'd, not the previous frame: typewriter text grows a
+                // little per frame and would otherwise never look changed (lines froze half-drawn).
+                val static = lastSignature?.let { !FrameSignature.changed(signature, it) } ?: false
+                text = if (static) {
                     lastRead
                 } else {
+                    lastSignature = signature
+                    lastCrops = crops
                     val reads = crops.mapIndexed { i, crop ->
                         runCatching { dialogueRead(fast, crop, dropNoise, selected[i], i) }.getOrElse { "" to emptyList() }
                     }
@@ -157,8 +161,6 @@ class AutoOcrController(
                     _screenText.value = if (japanese) reads.flatMap { it.second } else emptyList()
                     if (japanese) raw else ""
                 }
-                lastSignature = signature
-                lastCrops = crops
                 _status.value = _status.value.copy(reads = _status.value.reads + 1, lastRead = text, lastReadMs = atMs, error = null)
             }
             lastRead = text
@@ -251,26 +253,50 @@ class AutoOcrController(
 
     companion object {
         private const val TAG = "DSM-AutoOcr"
-        private const val STATIC_REGION_DISTANCE = 0.012
         const val NO_AREA = "No text area for this orientation — tap ✎ or long-press the bubble → Auto OCR text areas"
         const val PAUSED = "Paused while Droid Sentence Miner is on screen"
     }
 }
 
-/** Tiny grayscale fingerprint of a region, used to skip OCR when nothing visibly changed. */
+/**
+ * Small grayscale fingerprint of a region, used to skip OCR when nothing visibly changed.
+ * Cells are area averages (a bilinear downscale samples a few pixels and misses thin strokes),
+ * and one cell changing is enough: visual novel text appears a few characters at a time in a
+ * big, otherwise static dialogue box, which barely moves the mean.
+ */
 object FrameSignature {
-    private const val W = 48
-    private const val H = 12
+    const val W = 96
+    const val H = 24
+
+    /** Mean luminance change (0..1) that counts as a changed region. */
+    private const val MEAN_CHANGE = 0.012
+
+    /** Luminance change of one cell (0..255) that counts as a changed region: a glyph appeared. */
+    private const val CELL_CHANGE = 24
 
     fun of(bitmap: Bitmap): IntArray {
-        val small = Bitmap.createScaledBitmap(bitmap, W, H, true)
-        val pixels = IntArray(W * H)
-        small.getPixels(pixels, 0, W, 0, 0, W, H)
-        if (small !== bitmap) small.recycle()
-        return IntArray(pixels.size) { i ->
-            val p = pixels[i]
-            (Color.red(p) * 299 + Color.green(p) * 587 + Color.blue(p) * 114) / 1000
+        val w = bitmap.width
+        val h = bitmap.height
+        val pixels = IntArray(w * h)
+        bitmap.getPixels(pixels, 0, w, 0, 0, w, h)
+        return of(pixels, w, h)
+    }
+
+    /** [pixels] are ARGB, row-major. Every other pixel is sampled; plenty for glyph-sized cells. */
+    fun of(pixels: IntArray, width: Int, height: Int): IntArray {
+        val sums = LongArray(W * H)
+        val counts = IntArray(W * H)
+        val step = if (width >= W * 4 && height >= H * 4) 2 else 1
+        for (y in 0 until height step step) {
+            val cy = y * H / height
+            for (x in 0 until width step step) {
+                val p = pixels[y * width + x]
+                val cell = cy * W + x * W / width
+                sums[cell] += ((p shr 16 and 0xFF) * 299 + (p shr 8 and 0xFF) * 587 + (p and 0xFF) * 114) / 1000
+                counts[cell]++
+            }
         }
+        return IntArray(W * H) { i -> if (counts[i] == 0) 0 else (sums[i] / counts[i]).toInt() }
     }
 
     /** Mean absolute luminance difference, 0..1. */
@@ -279,5 +305,13 @@ object FrameSignature {
         var sum = 0L
         for (i in a.indices) sum += abs(a[i] - b[i])
         return sum.toDouble() / (a.size * 255.0)
+    }
+
+    /** True if the region visibly changed: overall, or in any one cell. */
+    fun changed(a: IntArray, b: IntArray): Boolean {
+        if (a.size != b.size || a.isEmpty()) return true
+        if (distance(a, b) >= MEAN_CHANGE) return true
+        for (i in a.indices) if (abs(a[i] - b[i]) >= CELL_CHANGE) return true
+        return false
     }
 }

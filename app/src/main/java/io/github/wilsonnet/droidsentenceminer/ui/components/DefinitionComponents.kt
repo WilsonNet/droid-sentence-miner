@@ -20,6 +20,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
@@ -45,7 +46,9 @@ import androidx.compose.ui.viewinterop.AndroidView
 import io.github.wilsonnet.droidsentenceminer.AppContainer
 import io.github.wilsonnet.droidsentenceminer.anki.AnkiResult
 import io.github.wilsonnet.droidsentenceminer.dict.TermLookup
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
@@ -145,6 +148,9 @@ private class WordLookupState {
     var html by mutableStateOf<String?>(null)
     var status by mutableStateOf<String?>(null)
     var mining by mutableStateOf(false)
+
+    /** The word already has an Anki note (Yomitan's duplicate tag); null until checked. */
+    var inAnki by mutableStateOf<Boolean?>(null)
 }
 
 @Composable
@@ -157,6 +163,7 @@ private fun rememberWordLookup(word: String, dark: Boolean): WordLookupState {
         state.details = result
         state.html = container.miner.buildPopupHtml(word, result, dark)
         state.loading = false
+        if (result.terms.isNotEmpty()) state.inAnki = container.miner.isInAnki(word, result)
     }
     return state
 }
@@ -171,18 +178,21 @@ private fun mineAction(
 ): () -> Unit {
     val context = LocalContext.current
     val container = remember { AppContainer.from(context) }
-    val scope = rememberCoroutineScope()
     return {
         state.mining = true
         state.status = "Adding to Anki…"
-        scope.launch {
+        // App scope, not the popup's: closing the popup right after tapping must not drop the card.
+        container.appScope.launch {
             val result = onMine?.invoke(state.details) ?: container.miner.mine(word, sentence, image, state.details)
-            state.status = when (result) {
-                is AnkiResult.Success -> "Added to Anki"
-                is AnkiResult.Error -> "Anki: ${result.message}"
-                AnkiResult.NotAvailable -> "Anki backend not available"
+            withContext(Dispatchers.Main) {
+                if (result is AnkiResult.Success) state.inAnki = true
+                state.status = when (result) {
+                    is AnkiResult.Success -> "Added to Anki"
+                    is AnkiResult.Error -> "Anki: ${result.message}"
+                    AnkiResult.NotAvailable -> "Anki backend not available"
+                }
+                state.mining = false
             }
-            state.mining = false
         }
     }
 }
@@ -242,13 +252,15 @@ private fun LookupBody(
 
 @Composable
 private fun MineButton(state: WordLookupState, onClick: () -> Unit) {
+    // Like Yomitan, a word that already has a note shows it instead of offering a duplicate.
+    val inAnki = state.inAnki == true
     FilledTonalButton(
-        enabled = !state.mining && state.details?.terms?.isNotEmpty() == true,
+        enabled = !inAnki && !state.mining && state.details?.terms?.isNotEmpty() == true,
         onClick = onClick,
     ) {
-        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+        Icon(if (inAnki) Icons.Default.Check else Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(6.dp))
-        Text("Anki")
+        Text(if (inAnki) "In Anki" else "Anki")
     }
 }
 
