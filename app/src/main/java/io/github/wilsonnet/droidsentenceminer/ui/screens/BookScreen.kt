@@ -78,6 +78,7 @@ import io.github.wilsonnet.droidsentenceminer.book.BookPage
 import io.github.wilsonnet.droidsentenceminer.book.PageLayout
 import io.github.wilsonnet.droidsentenceminer.book.TakePagePhoto
 import io.github.wilsonnet.droidsentenceminer.dict.ScannedWord
+import io.github.wilsonnet.droidsentenceminer.ui.components.ReadableWidth
 import io.github.wilsonnet.droidsentenceminer.ui.components.WordLookupPopup
 import kotlinx.coroutines.launch
 import java.io.File
@@ -140,8 +141,9 @@ fun BookScreen(modifier: Modifier = Modifier) {
         return
     }
 
+    ReadableWidth(modifier) { inner ->
     Column(
-        modifier = modifier
+        modifier = inner
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
@@ -210,6 +212,7 @@ fun BookScreen(modifier: Modifier = Modifier) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+    }
     }
 }
 
@@ -285,7 +288,7 @@ private fun BlockCard(page: BookPage, index: Int, onPrev: () -> Unit, onNext: ()
         }
     }
 
-    Card {
+    Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(

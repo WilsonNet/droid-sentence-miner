@@ -165,7 +165,7 @@ fun HomeScreen(modifier: Modifier = Modifier) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
-        Card {
+        Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text("Floating overlay", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 StatusLine("Overlay permission", hasOverlay)
@@ -227,7 +227,7 @@ fun HomeScreen(modifier: Modifier = Modifier) {
             }
         }
 
-        Card {
+        Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text("Test OCR & lookup", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -285,7 +285,7 @@ fun HomeScreen(modifier: Modifier = Modifier) {
             }
         }
 
-        Card {
+        Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Recent mined cards", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 if (recentCards.isEmpty()) {
@@ -329,7 +329,7 @@ fun HomeScreen(modifier: Modifier = Modifier) {
             }
         }
 
-        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+        Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text("Getting started", fontWeight = FontWeight.SemiBold)
                 Text("1. Import a Yomitan dictionary (Jitendex or JMdict) in Settings → Dictionaries", style = MaterialTheme.typography.bodySmall)

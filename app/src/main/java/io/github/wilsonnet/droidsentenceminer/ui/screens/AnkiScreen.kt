@@ -109,7 +109,7 @@ fun AnkiScreen(modifier: Modifier = Modifier) {
     ) {
         Text("Anki", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
 
-        Card {
+        Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text("Backend", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -171,7 +171,7 @@ fun AnkiScreen(modifier: Modifier = Modifier) {
             }
         }
 
-        Card {
+        Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text("Card target", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
 
@@ -303,7 +303,7 @@ fun AnkiScreen(modifier: Modifier = Modifier) {
             }
         }
 
-        Card {
+        Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("How cards are created", fontWeight = FontWeight.SemiBold)
                 Text(

@@ -113,7 +113,7 @@ fun SettingsScreen(modifier: Modifier = Modifier, onOpen: (String) -> Unit = {})
             "Backend, deck, note type and fields" + if (ankiDeck.isNotBlank()) " · deck: $ankiDeck" else "",
         ) { onOpen(io.github.wilsonnet.droidsentenceminer.PAGE_ANKI) }
 
-        Card {
+        Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("OCR", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 val meiki = io.github.wilsonnet.droidsentenceminer.core.DsmPrefs.ENGINE_MEIKI
@@ -216,7 +216,7 @@ fun SettingsScreen(modifier: Modifier = Modifier, onOpen: (String) -> Unit = {})
             }
         }
 
-        Card {
+        Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Cards", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 SettingSwitch(
@@ -228,7 +228,7 @@ fun SettingsScreen(modifier: Modifier = Modifier, onOpen: (String) -> Unit = {})
             }
         }
 
-        Card {
+        Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Sentence audio", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 SettingSwitch(
@@ -314,7 +314,7 @@ fun SettingsScreen(modifier: Modifier = Modifier, onOpen: (String) -> Unit = {})
             }
         }
 
-        Card {
+        Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("About", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 Text("Droid Sentence Miner ${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.bodyMedium)
@@ -404,7 +404,7 @@ private fun SettingSlider(
 
 @Composable
 private fun SettingsLink(icon: ImageVector, title: String, subtitle: String, onClick: () -> Unit) {
-    Card(onClick = onClick) {
+    Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
         Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
             Spacer(Modifier.width(16.dp))

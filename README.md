@@ -30,6 +30,7 @@ with [Yomitan](https://github.com/yomidevs/yomitan) dictionary compatibility.
   lookup pauses playback (media key: YouTube and most players) and resumes it when the popup closes;
   if you pause yourself, the layer stays and you can tap word after word. Mining links the
   log line, so the card gets the sentence, screenshot and voice clip.
+- **Tablets and landscape** — tabs move to a side rail and screens sit in a centered column.
 - **Live text window** — a floating feed of the lines over the game, updated in real time. Tap
   a line to look up and mine it without leaving the game. Scroll back through the history (new
   lines only pull it down while you're at the bottom; *Latest* jumps back), drag the corner grip

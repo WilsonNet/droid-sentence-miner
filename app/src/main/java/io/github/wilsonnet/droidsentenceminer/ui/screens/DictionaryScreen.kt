@@ -159,7 +159,7 @@ fun DictionaryScreen(modifier: Modifier = Modifier) {
         }
 
         if (dictionaries.isEmpty() && !importing) {
-            Card {
+            Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Recommended dictionaries", fontWeight = FontWeight.SemiBold)
                     RecommendedDictionaries.ALL.forEach { dict ->
@@ -188,7 +188,7 @@ fun DictionaryScreen(modifier: Modifier = Modifier) {
                 }
             }
         } else if (!importing) {
-            Card {
+            Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Add more dictionaries", fontWeight = FontWeight.SemiBold)
                     Text(
@@ -252,7 +252,7 @@ private fun DictionaryRow(
     onToggle: (Boolean) -> Unit,
     onDelete: () -> Unit,
 ) {
-    Card {
+    Card(Modifier.fillMaxWidth()) {
         Row(
             Modifier
                 .fillMaxWidth()
