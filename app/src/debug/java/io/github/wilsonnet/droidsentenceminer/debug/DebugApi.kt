@@ -138,6 +138,17 @@ object DebugApi {
             }
             "/request_projection" -> respondApi(socket) { requestProjection(params) }
             "/autoocr" -> respondApi(socket) { autoOcr(params) }
+            "/live" -> respondApi(socket) {
+                // Live text window: ?show=1 opens it, ?mode=compact|normal|fullscreen switches.
+                val service = OverlayService.activeInstance ?: return@respondApi errorJson("overlay not running")
+                val mode = params["mode"]?.let { m -> io.github.wilsonnet.droidsentenceminer.overlay.LiveMode.entries.firstOrNull { it.name.equals(m, true) } }
+                if (params["show"] == "1" || mode != null) {
+                    service.debugSetLive(params["show"] == "1", mode)
+                    Thread.sleep(400)
+                }
+                val (shown, current, rect) = service.debugLiveWindow
+                JSONObject().put("shown", shown).put("mode", current.name.lowercase()).put("rect", JSONArray(rect))
+            }
             "/lines" -> respondApi(socket) { lines(params) }
             "/clip.wav" -> {
                 val wav = clipWav(params)

@@ -30,8 +30,12 @@ with [Yomitan](https://github.com/yomidevs/yomitan) dictionary compatibility.
   lookup pauses playback (media key: YouTube and most players) and resumes it when the popup closes;
   if you pause yourself, the layer stays and you can tap word after word. Mining links the
   log line, so the card gets the sentence, screenshot and voice clip.
-- **Live text window** — a small floating feed of the newest lines over the game, updated in
-  real time. Tap a line to look up and mine it without leaving the game.
+- **Live text window** — a floating feed of the lines over the game, updated in real time. Tap
+  a line to look up and mine it without leaving the game. Scroll back through the history (new
+  lines only pull it down while you're at the bottom; *Latest* jumps back), drag the corner grip
+  to resize, shrink it to a one-line ticker (⌃⌄), or open it fullscreen with big text to read
+  back (auto OCR pauses there, since it would cover the game). Size, position and mode are
+  remembered; fullscreen always reopens as the normal window.
 - **App focus** — share "A single app" (Android 14+) and pick the game: only it is read, and
   auto OCR pauses while you are in other apps or in Droid Sentence Miner itself.
 - **Book mode (paper books, manga)** — the *Book* tab takes a photo with Samsung Camera on Galaxy

@@ -80,6 +80,10 @@ class OverlayService : Service() {
     private var liveOwner: OverlayLifecycleOwner? = null
     private var liveParams: WindowManager.LayoutParams? = null
     private var liveDismissed = false
+    private val liveMode = androidx.compose.runtime.mutableStateOf(LiveMode.NORMAL)
+    private var liveSizeDp = DEFAULT_LIVE_WIDTH_DP to DEFAULT_LIVE_HEIGHT_DP
+    /** Where the window sat before going fullscreen. */
+    private var liveRestorePosition: Pair<Int, Int>? = null
 
     private var areaSelector: AreaSelectorView? = null
     private var portraitAreas: List<TextArea> = emptyList()
@@ -120,7 +124,7 @@ class OverlayService : Service() {
             areas = { currentAreas() },
             paused = {
                 AppVisibility.mainResumed || panelView != null || areaSelector != null || !captureManager.contentVisible ||
-                    screenDictionary.popupOpen
+                    screenDictionary.popupOpen || (liveView != null && liveMode.value == LiveMode.FULLSCREEN)
             },
             holdLayer = { screenDictionary.popupOpen },
         )
@@ -212,6 +216,10 @@ class OverlayService : Service() {
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
         screenDictionary.clear()
+        liveParams?.let { p ->
+            applyLiveMode(p)
+            liveView?.let { runCatching { windowManager.updateViewLayout(it, p) } }
+        }
         // Games usually run in landscape: keep capturing across rotations by resizing the display.
         if (captureManager.isReady && !captureManager.onScreenSizeChanged()) {
             autoOcr.stop()
@@ -506,10 +514,15 @@ class OverlayService : Service() {
                 LiveTextWindow(
                     dao = container.textLog.dao,
                     status = autoOcr.status,
+                    mode = liveMode.value,
+                    onMode = { setLiveMode(it) },
                     onLineClick = { id -> showLatestLine(id) },
                     onDrag = { dx, dy -> moveLiveWindow(dx, dy) },
-                    onDragEnd = {
-                        liveParams?.let { p -> scope.launch { container.prefs.setLiveWindowPosition(p.x, p.y) } }
+                    onDragEnd = { saveLiveWindowPosition() },
+                    onResize = { dx, dy -> resizeLiveWindow(dx, dy) },
+                    onResizeEnd = {
+                        val (w, h) = liveSizeDp
+                        scope.launch { container.prefs.setLiveWindowSizeDp(w, h) }
                     },
                     onEditAreas = { showAreaSelector() },
                     onClose = {
@@ -527,7 +540,65 @@ class OverlayService : Service() {
                 params.x = x
                 params.y = y
             }
+            container.prefs.liveWindowSizeDp.first()?.let { liveSizeDp = it }
+            liveMode.value = container.prefs.liveWindowMode.first()
+                ?.let { name -> LiveMode.entries.firstOrNull { it.name == name } }
+                // Fullscreen is for a quick look back; reopening it there would hide the game.
+                ?.takeIf { it != LiveMode.FULLSCREEN }
+                ?: LiveMode.NORMAL
+            applyLiveMode(params)
             runCatching { windowManager.addView(view, params) }
+        }
+    }
+
+    private fun setLiveMode(mode: LiveMode) {
+        val params = liveParams ?: return
+        val old = liveMode.value
+        if (mode == old) return
+        if (mode == LiveMode.FULLSCREEN) {
+            liveRestorePosition = params.x to params.y
+        } else if (old == LiveMode.FULLSCREEN) {
+            liveRestorePosition?.let { (x, y) ->
+                params.x = x
+                params.y = y
+            }
+        }
+        liveMode.value = mode
+        applyLiveMode(params)
+        liveView?.let { runCatching { windowManager.updateViewLayout(it, params) } }
+        scope.launch { container.prefs.setLiveWindowMode(mode.name) }
+    }
+
+    /**
+     * Sizes the window for its mode. Explicit pixel sizes, not WRAP_CONTENT: an overlay window is
+     * first measured at the 320 dp dialog width, and a scrolling list has no content height.
+     */
+    private fun applyLiveMode(params: WindowManager.LayoutParams) {
+        val metrics = ScreenCaptureManager.screenMetrics(this)
+        val density = resources.displayMetrics.density
+        val sw = metrics.widthPixels
+        val sh = metrics.heightPixels
+        val width = (liveSizeDp.first * density).roundToInt().coerceIn((MIN_LIVE_WIDTH_DP * density).roundToInt(), sw)
+        when (liveMode.value) {
+            LiveMode.FULLSCREEN -> {
+                params.x = 0
+                params.y = 0
+                params.width = WindowManager.LayoutParams.MATCH_PARENT
+                params.height = WindowManager.LayoutParams.MATCH_PARENT
+            }
+            LiveMode.COMPACT -> {
+                params.width = width
+                params.height = WindowManager.LayoutParams.WRAP_CONTENT
+            }
+            LiveMode.NORMAL -> {
+                params.width = width
+                params.height = (liveSizeDp.second * density).roundToInt().coerceIn((MIN_LIVE_HEIGHT_DP * density).roundToInt(), sh)
+            }
+        }
+        if (liveMode.value != LiveMode.FULLSCREEN) {
+            params.x = params.x.coerceIn(0, max(0, sw - params.width))
+            val h = if (params.height > 0) params.height else (48 * density).roundToInt()
+            params.y = params.y.coerceIn(0, max(0, sh - h))
         }
     }
 
@@ -537,6 +608,24 @@ class OverlayService : Service() {
         val metrics = ScreenCaptureManager.screenMetrics(this)
         params.x = (params.x + dx).roundToInt().coerceIn(0, max(0, metrics.widthPixels - view.width))
         params.y = (params.y + dy).roundToInt().coerceIn(0, max(0, metrics.heightPixels - view.height))
+        runCatching { windowManager.updateViewLayout(view, params) }
+    }
+
+    private fun saveLiveWindowPosition() {
+        liveParams?.let { p -> scope.launch { container.prefs.setLiveWindowPosition(p.x, p.y) } }
+    }
+
+    private fun resizeLiveWindow(dx: Float, dy: Float) {
+        val view = liveView ?: return
+        val params = liveParams ?: return
+        if (liveMode.value != LiveMode.NORMAL) return
+        val metrics = ScreenCaptureManager.screenMetrics(this)
+        val density = resources.displayMetrics.density
+        params.width = (params.width + dx).roundToInt()
+            .coerceIn((MIN_LIVE_WIDTH_DP * density).roundToInt(), max((MIN_LIVE_WIDTH_DP * density).roundToInt(), metrics.widthPixels - params.x))
+        params.height = (params.height + dy).roundToInt()
+            .coerceIn((MIN_LIVE_HEIGHT_DP * density).roundToInt(), max((MIN_LIVE_HEIGHT_DP * density).roundToInt(), metrics.heightPixels - params.y))
+        liveSizeDp = (params.width / density).roundToInt() to (params.height / density).roundToInt()
         runCatching { windowManager.updateViewLayout(view, params) }
     }
 
@@ -917,6 +1006,23 @@ class OverlayService : Service() {
     internal val debugScreenText get() = autoOcr.screenText.value
     internal val debugScreenPopupOpen get() = screenDictionary.popupOpen
 
+    /** Live text window: shown, mode, and window rect in px [x, y, w, h] (debug API). */
+    internal val debugLiveWindow: Triple<Boolean, LiveMode, List<Int>>
+        get() = Triple(liveView != null, liveMode.value, listOf(liveParams?.x ?: 0, liveParams?.y ?: 0, liveView?.width ?: 0, liveView?.height ?: 0))
+
+    /** Shows the live text window (`show`) and/or switches its mode, on the main thread. */
+    internal fun debugSetLive(show: Boolean, mode: LiveMode?) {
+        android.os.Handler(mainLooper).post {
+            if (show) {
+                liveDismissed = false
+                showLiveWindow()
+            }
+            if (mode != null) {
+                if (liveView != null) setLiveMode(mode) else liveMode.value = mode
+            }
+        }
+    }
+
     internal fun debugSetRegion(region: RectF) {
         lastRegion = RectF(region)
     }
@@ -929,6 +1035,11 @@ class OverlayService : Service() {
     }
 
     companion object {
+        private const val DEFAULT_LIVE_WIDTH_DP = 340
+        private const val DEFAULT_LIVE_HEIGHT_DP = 200
+        private const val MIN_LIVE_WIDTH_DP = 200
+        private const val MIN_LIVE_HEIGHT_DP = 96
+
         @Volatile
         internal var activeInstance: OverlayService? = null
             private set

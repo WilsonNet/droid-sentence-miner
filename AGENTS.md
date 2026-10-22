@@ -97,7 +97,7 @@ Endpoints: `/state`, `/scan`, `/frame.png`, `/ocr` (`l,t,r,b` crops the file fir
 `/install_ocr_models` (meikiocr download), `/ocr?engine=meiki|mlkit`, `/select_areas` (opens the area editor),
 `/install_dict?id=jitendex` (background install; progress in `/state.dictInstall`),
 `/anki_notes?word=` (field-level card verification via the AnkiDroid provider),
-`/anki_meta` (decks + note types), `/book?file=` (book-mode page OCR → paragraphs, shown in the Book tab), `/startoverlay`, `/stopoverlay`, `/request_projection`.
+`/anki_meta` (decks + note types), `/book?file=` (book-mode page OCR → paragraphs, shown in the Book tab), `/live?show=1&mode=` (live text window), `/startoverlay`, `/stopoverlay`, `/request_projection`.
 Regions are screen fractions.
 See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes.
 
@@ -168,6 +168,13 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   line split evenly (`PageLayout.glyphsOf`); edits keep positions via `PageBlock.withText`. Page →
   screen is fit-center, then zoom/pan in a `graphicsLayer` (origin 0,0); taps are mapped back with
   `toPage`. One `awaitEachGesture` handles tap / hold-drag / pan+pinch.
+- **Live text window** (`overlay/LiveTextWindow.kt`, `LiveMode`): compact (one marquee line,
+  WRAP_CONTENT height), normal (explicit px size from `liveWindowSizeDp`, corner-grip resize,
+  reversed `LazyColumn` of 200 lines that follows the newest only while at the bottom) and
+  fullscreen (MATCH_PARENT, opaque; auto OCR pauses because it would OCR this window). Mode/size
+  live in prefs; fullscreen is never restored on reopen. `ScreenCaptureManager.screenMetrics`
+  leaves `density` at 0 — take density from `resources.displayMetrics` (a 0 there made a 0×0
+  window). Drive it with `/live?show=1&mode=`.
 - **Screen dictionary** (`overlay/ScreenDictionary.kt`, `capture/ScreenText.kt`): auto OCR's fast
   read publishes `AutoOcrController.screenText` (lines with per-glyph screen fractions; meikiocr char
   x-intervals mapped back in `MeikiOcr`, ML Kit symbols). The service fits one touchable, transparent

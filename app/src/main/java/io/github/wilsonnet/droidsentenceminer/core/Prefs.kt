@@ -45,6 +45,9 @@ class DsmPrefs(private val context: Context) {
         val pauseOnLookup = booleanPreferencesKey("pause_on_lookup")
         val liveWindowX = intPreferencesKey("live_window_x")
         val liveWindowY = intPreferencesKey("live_window_y")
+        val liveWindowMode = stringPreferencesKey("live_window_mode")
+        val liveWindowWidthDp = intPreferencesKey("live_window_width_dp")
+        val liveWindowHeightDp = intPreferencesKey("live_window_height_dp")
 
         val captureLeft = floatPreferencesKey("capture_left")
         val captureTop = floatPreferencesKey("capture_top")
@@ -116,6 +119,21 @@ class DsmPrefs(private val context: Context) {
     suspend fun setLiveWindowPosition(x: Int, y: Int) = edit {
         it[Keys.liveWindowX] = x
         it[Keys.liveWindowY] = y
+    }
+
+    /** Live text window mode: an `overlay.LiveMode` name (compact, normal, fullscreen). */
+    val liveWindowMode: Flow<String?> = context.dataStore.data.map { it[Keys.liveWindowMode] }
+    suspend fun setLiveWindowMode(value: String) = edit { it[Keys.liveWindowMode] = value }
+
+    /** Live text window size in dp (normal mode; compact keeps the width). */
+    val liveWindowSizeDp: Flow<Pair<Int, Int>?> = context.dataStore.data.map {
+        val w = it[Keys.liveWindowWidthDp] ?: return@map null
+        val h = it[Keys.liveWindowHeightDp] ?: return@map null
+        w to h
+    }
+    suspend fun setLiveWindowSizeDp(width: Int, height: Int) = edit {
+        it[Keys.liveWindowWidthDp] = width
+        it[Keys.liveWindowHeightDp] = height
     }
 
     val captureRegion: Flow<CaptureRegion> = context.dataStore.data.map {
