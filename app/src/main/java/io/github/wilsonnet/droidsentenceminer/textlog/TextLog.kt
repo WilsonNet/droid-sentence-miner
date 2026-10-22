@@ -35,6 +35,14 @@ class TextLog(
         return AudioRingBuffer(SAMPLE_RATE, seconds).also { audioBuffer = it }
     }
 
+    /**
+     * When auto OCR paused with a line still open (a lookup popup or the panel is up, and the video
+     * was usually paused with it). An open line's clip ends here instead of "now", or mining while
+     * paused would cut up to 30 s of silence after the sentence.
+     */
+    @Volatile
+    var openLinePausedAtMs: Long? = null
+
     private val screenshotDir: File get() = File(context.filesDir, "lines").apply { mkdirs() }
 
     suspend fun startLine(text: String, startMs: Long, source: String, frame: Bitmap?): Long = withContext(Dispatchers.IO) {
@@ -93,7 +101,7 @@ class TextLog(
         val manual = line.source == TextLineEntity.SOURCE_MANUAL
         ClipWindow.compute(
             lineStartMs = line.startMs,
-            lineEndMs = line.endMs,
+            lineEndMs = line.endMs ?: openLinePausedAtMs?.takeIf { it >= line.startMs },
             nextStartMs = next?.startMs,
             nowMs = nowMs,
             // A manual scan happens after the line was heard; look back further.

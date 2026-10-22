@@ -85,6 +85,7 @@ class AutoOcrController(
     fun stop() {
         job?.cancel()
         job = null
+        textLog.openLinePausedAtMs = null
     }
 
     private suspend fun loop() {
@@ -95,6 +96,7 @@ class AutoOcrController(
         var lastSignature: IntArray? = null
         var lastRead = ""
         var lastCrops: List<Bitmap> = emptyList()
+        var pausedSinceMs: Long? = null
 
         while (currentCoroutineContext().isActive) {
             val loopStart = System.currentTimeMillis()
@@ -113,6 +115,10 @@ class AutoOcrController(
             }
             if (paused()) {
                 // Our own screen/panel is showing: don't log it, keep the current line open.
+                if (pausedSinceMs == null) {
+                    pausedSinceMs = loopStart
+                    textLog.openLinePausedAtMs = loopStart
+                }
                 capture.pollNewFrame()
                 lastSignature = null
                 if (!holdLayer()) _screenText.value = emptyList()
@@ -121,6 +127,10 @@ class AutoOcrController(
                 continue
             }
 
+            if (pausedSinceMs != null) {
+                pausedSinceMs = null
+                textLog.openLinePausedAtMs = null
+            }
             val frame = capture.pollNewFrame()
             var frameBitmap: Bitmap? = null
             val atMs: Long
@@ -206,9 +216,26 @@ class AutoOcrController(
         areaIndex: Int,
     ): Pair<String, List<ScreenTextLine>> {
         val result = engine.recognize(crop)
-        val rows = SubtitleLineFilter.filter(OcrPostProcessor.merge(result.lines, dropNoise = dropNoise))
-        val layer = ScreenText.fromRead(result.lines, rows.map { it.box }, crop.width, crop.height, area, areaIndex)
+        val lines = SubtitleLineFilter.dropUnsure(result.lines)
+        val rows = SubtitleLineFilter.filter(OcrPostProcessor.merge(lines, dropNoise = dropNoise))
+        val layer = ScreenText.fromRead(lines, rows.map { it.box }, crop.width, crop.height, area, areaIndex)
         return OcrPostProcessor.toSentenceText(rows).trim() to layer
+    }
+
+    /**
+     * One read of the current frame for the screen dictionary, also while paused: a tap has just
+     * paused the video, and the layer it hit may be a read older than what is on screen now.
+     */
+    suspend fun readNow(): List<ScreenTextLine>? = withContext(Dispatchers.Default) {
+        val selected = TextArea.ordered(areas())
+        if (selected.isEmpty()) return@withContext null
+        val frame = capture.grabFrame(timeoutMs = 400, maxAgeMs = 400) ?: return@withContext null
+        val dropNoise = prefs.ocrDropNoise.first()
+        val engine = container.ocrEngine(twoPass = false, dropNoise = dropNoise)
+        selected.flatMapIndexed { i, a ->
+            val crop = capture.cropToRegion(frame, ScreenCaptureManager.RectFrac(a.left, a.top, a.right, a.bottom))
+            runCatching { dialogueRead(engine, crop, dropNoise, a, i).second }.getOrElse { emptyList() }
+        }
     }
 
     private suspend fun closeOpenLine(atMs: Long) {

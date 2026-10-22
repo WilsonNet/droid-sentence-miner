@@ -34,6 +34,27 @@ class SubtitleLineFilterTest {
     }
 
     @Test
+    fun dropsAGarbledRowNextToASureOne() {
+        // YouTube captions over a burned-in subtitle: the half-hidden hardsub reads as garbage.
+        val lines = listOf(
+            OcrLine("部屋が分かったところで探検タイム。これ", BoundingBox(0, 0, 900, 40), confidence = 0.97f),
+            OcrLine("メクルツセリいトヤ・トアルロは", BoundingBox(0, 50, 900, 90), confidence = 0.27f),
+        )
+        assertEquals(listOf("部屋が分かったところで探検タイム。これ"), SubtitleLineFilter.dropUnsure(lines).map { it.text })
+    }
+
+    @Test
+    fun keepsUniformlyHardReadsAndEnginesWithoutConfidence() {
+        val hard = listOf(
+            OcrLine("言うのが遅かったりして", BoundingBox(0, 0, 900, 40), confidence = 0.45f),
+            OcrLine("信用できない", BoundingBox(0, 50, 900, 90), confidence = 0.4f),
+        )
+        assertEquals(hard, SubtitleLineFilter.dropUnsure(hard))
+        val mlKit = hard.map { it.copy(confidence = null) }
+        assertEquals(mlKit, SubtitleLineFilter.dropUnsure(mlKit))
+    }
+
+    @Test
     fun leavesNonJapaneseOnlyResultsAlone() {
         val rows = listOf(row("OK", 0, 20), row("123", 40, 20))
         assertEquals(rows, SubtitleLineFilter.filter(rows))

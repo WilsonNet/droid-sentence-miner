@@ -23,8 +23,21 @@ object SubtitleLineFilter {
         }
     }
 
+    /**
+     * Drops engine lines read with very low confidence while another line in the same read is
+     * sure: a burned-in subtitle half hidden under a caption box comes back as garbage (0.27 next
+     * to 0.97) and would be glued onto the clean line. Engines without confidence are untouched.
+     */
+    fun dropUnsure(lines: List<OcrLine>): List<OcrLine> {
+        val best = lines.mapNotNull { it.confidence }.maxOrNull() ?: return lines
+        if (best < SURE_CONFIDENCE) return lines
+        return lines.filter { (it.confidence ?: 1f) >= UNSURE_CONFIDENCE }
+    }
+
     private fun japaneseCount(text: String) = text.count { JapaneseTextScore.isJapanese(it) }
 
+    private const val SURE_CONFIDENCE = 0.8f
+    private const val UNSURE_CONFIDENCE = 0.5f
     private const val MIN_JAPANESE = 3
     private const val MIN_HEIGHT_RATIO = 0.7f
     private const val MAX_HEIGHT_RATIO = 1.4f
