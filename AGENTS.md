@@ -10,7 +10,8 @@ numbers, update the markdown docs **in the same push**: `README.md`, this file, 
 owns what is in `.opencode/skills/dsm-docs/SKILL.md` — follow it before committing.
 
 Skills: `dsm-debug-api` (drive/validate the app over adb), `dsm-ocr-eval` (measure OCR accuracy
-with ground truth), `dsm-docs` (docs checklist).
+with ground truth), `dsm-docs` (docs checklist), `dsm-promo-media` (README screenshots and demo
+videos: phone-size capture on the tablet, scripted mining recordings, GIF previews).
 
 ## Git
 

@@ -8,15 +8,9 @@ Inspired by [GameSentenceMiner](https://github.com/bpwhelan/GameSentenceMiner), 
 with [Yomitan](https://github.com/yomidevs/yomitan) dictionary compatibility.
 
 <p align="center">
-  <img src="docs/screenshots/home.jpg" width="24%" alt="Home: setup checklist and recent cards" />
-  <img src="docs/screenshots/texts.jpg" width="24%" alt="Texts: logged lines with screenshot and voice clip" />
-  <img src="docs/screenshots/book.jpg" width="24%" alt="Book: manga page with detected text" />
-  <img src="docs/screenshots/book-reader.jpg" width="24%" alt="Book reader: tap a word on the photo" />
-</p>
-<p align="center">
-  <img src="docs/screenshots/settings-audio.jpg" width="24%" alt="Settings: sentence audio, microphone fallback" />
-  <img src="docs/screenshots/dictionaries.jpg" width="24%" alt="Dictionaries: one-tap installs, Yomitan imports" />
-  <img src="docs/screenshots/anki.jpg" width="24%" alt="Anki: backend, deck and note type" />
+  <img src="docs/screenshots/book-reader.jpg" width="30%" alt="Book reader: tap a word on a manga page" />
+  <img src="docs/screenshots/texts.jpg" width="30%" alt="Texts: logged lines with screenshot and voice clip" />
+  <img src="docs/screenshots/settings-audio.jpg" width="30%" alt="Settings: sentence audio, microphone fallback" />
 </p>
 
 ## Demo

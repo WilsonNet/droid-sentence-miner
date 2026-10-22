@@ -23,6 +23,7 @@ together). Stale docs cost the next agent hours: they trust AGENTS.md and the sk
 | Non-obvious behavior, pitfall, design invariant | `AGENTS.md` → *Gotchas learned the hard way* (what + why + where in code) |
 | New package/dir | `AGENTS.md` → *Project layout* |
 | Debug API endpoint/param/state field | `.opencode/skills/dsm-debug-api/SKILL.md` table + recipe, and the endpoint list in `AGENTS.md` |
+| README screenshots / demo videos | `docs/screenshots`, `docs/videos` — recipe in `.opencode/skills/dsm-promo-media/SKILL.md` |
 | OCR pipeline/engine or its benchmark | `.opencode/skills/dsm-ocr-eval/SKILL.md` (+ `tools/ocr-eval/`) |
 
 ## Checklist
