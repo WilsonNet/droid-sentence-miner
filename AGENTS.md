@@ -198,7 +198,24 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   Testing: `/autoocr?on=1` and consent bring DSM/the panel to the front (auto OCR pauses) — reopen
   the video with `am start -a VIEW -d <youtube url>` and close the panel first.
 - **Navigation**: Home · Book · Texts · Settings. Dictionaries and Anki are Settings sub-pages
-  (`MainActivity.SettingsSubPage`, back button/gesture returns to the list).
+  (`MainActivity.SettingsSubPage`, back button/gesture returns to the list). At ≥600 dp width
+  (tablets, landscape phones) the tabs move to a `NavigationRail` and screens sit in a centered
+  column ≤840 dp (`ReadableWidth`); cards are `fillMaxWidth` so they don't shrink to their content.
+- **Tap verify** (`ScreenDictionary.lookupFrom`): the popup opens at once from the layer (up to one
+  auto OCR interval old), then 250 ms later `AutoOcrController.readNow()` reads the paused frame;
+  if the word under the finger changed (rolling captions) the popup moves to it, if the read sees
+  other text but nothing there it closes, an empty read changes nothing.
+- **Clip end while paused**: an open line has no `endMs`, so its clip used to run to "now" (30 s
+  max) when mined from a lookup popup with the video paused. `TextLog.openLinePausedAtMs` (set when
+  auto OCR pauses) ends it there. `SubtitleLineFilter.dropUnsure` drops engine lines <0.5 confidence
+  when another is ≥0.8 (a hardsub half-hidden under YouTube captions read as garbage, 0.27 vs 0.97).
+- **Netflix**: the video surface is DRM-black, but subtitles are drawn as normal views and OCR fine.
+  Audio is silent (per-stream capture policy), so cards get no sentence clip. Not supported.
+- **Xiaomi Pad 7 / HyperOS 3** (adb `c2bd6564`): the first `adb install` is cancelled by
+  `com.miui.securitycenter` even with "Install via USB" on — install once from the file manager,
+  later `install -r` works. `appops set SYSTEM_ALERT_WINDOW allow` is reverted on next launch; the
+  user must enable "他のアプリの上に重ねて表示" in Settings once. App-private files only: `/book`
+  can't read files adb put in `Android/data` on Android 16 — copy with `run-as` into `files/`.
 - **Shared text selections** (`ProcessTextActivity` → `TextLog.lineForSharedText`): a word is
   matched to the newest of the last 300 lines containing it (earlier bare-word shares skipped),
   otherwise logged as a manual line, so Galaxy AI / Circle to Search selections mine with sentence

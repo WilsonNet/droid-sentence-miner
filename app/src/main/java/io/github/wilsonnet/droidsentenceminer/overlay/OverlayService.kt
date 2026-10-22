@@ -133,6 +133,7 @@ class OverlayService : Service() {
                 .collect { lines -> if (lines.isEmpty() && !screenDictionary.popupOpen) screenDictionary.clear() else screenDictionary.update(lines) }
         }
         scope.launch { container.prefs.pauseOnLookup.collect { screenDictionary.pauseMedia = it } }
+        screenDictionary.refresh = { autoOcr.readNow() }
         scope.launch { container.prefs.autoAreas(landscape = false).collect { portraitAreas = it } }
         scope.launch { container.prefs.autoAreas(landscape = true).collect { landscapeAreas = it } }
         scope.launch {

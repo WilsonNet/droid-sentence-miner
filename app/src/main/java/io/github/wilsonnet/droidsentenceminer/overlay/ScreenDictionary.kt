@@ -27,6 +27,7 @@ import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import io.github.wilsonnet.droidsentenceminer.AppContainer
 import io.github.wilsonnet.droidsentenceminer.capture.ScreenCaptureManager
+import io.github.wilsonnet.droidsentenceminer.capture.ScreenText
 import io.github.wilsonnet.droidsentenceminer.capture.ScreenTextLine
 import io.github.wilsonnet.droidsentenceminer.ui.components.AnchoredPopupPosition
 import io.github.wilsonnet.droidsentenceminer.ui.components.WordLookupCard
@@ -34,6 +35,7 @@ import io.github.wilsonnet.droidsentenceminer.ui.components.popupWidth
 import io.github.wilsonnet.droidsentenceminer.ui.components.rememberPopupPlan
 import io.github.wilsonnet.droidsentenceminer.ui.theme.DsmTheme
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.max
 import kotlin.math.min
@@ -66,12 +68,20 @@ class ScreenDictionary(
     /** Pause the playing video during a lookup. */
     var pauseMedia = true
 
+    /** A fresh read of the screen (auto OCR's [io.github.wilsonnet.droidsentenceminer.capture.AutoOcrController.readNow]). */
+    var refresh: suspend () -> List<ScreenTextLine>? = { null }
+    private var tapSeq = 0
+
     val popupOpen: Boolean get() = popup != null
 
     private val density = context.resources.displayMetrics.density
 
     fun update(newLines: List<ScreenTextLine>) {
         if (popupOpen || newLines == lines) return
+        setLayer(newLines)
+    }
+
+    private fun setLayer(newLines: List<ScreenTextLine>) {
         lines = newLines
         val metrics = ScreenCaptureManager.screenMetrics(context)
         val w = metrics.widthPixels.toFloat()
@@ -117,10 +127,38 @@ class ScreenDictionary(
         layers.remove(area)?.let { (view, _) -> runCatching { windowManager.removeView(view) } }
     }
 
-    /** Tap: the word that covers the tapped character (see [TermLookup.wordAt]). */
+    /**
+     * Tap: the word that covers the tapped character (see [TermLookup.wordAt]). The popup opens at
+     * once from the layer, which is the last read (up to an auto OCR interval old); then the paused
+     * screen is read again, and if the text under the finger changed in between (rolling captions,
+     * a subtitle that switched as you tapped) the popup moves to the word really there.
+     */
     private fun lookupFrom(line: Int, index: Int) {
-        val text = lines.getOrNull(line)?.text ?: return
-        scope.launch { show(line, container.lookup.wordAt(text, index)) }
+        val target = lines.getOrNull(line) ?: return
+        val glyph = target.glyphs.getOrNull(index) ?: return
+        val seq = ++tapSeq
+        scope.launch {
+            val range = container.lookup.wordAt(target.text, index)
+            show(line, range)
+            delay(VERIFY_DELAY_MS) // let the pause take effect so the frame is the one being looked at
+            // An empty read may just be a miss; only a read that sees other text overrides the tap.
+            val fresh = refresh()?.takeIf { it.isNotEmpty() } ?: return@launch
+            if (seq != tapSeq || !popupOpen) return@launch
+            val hit = ScreenText.glyphAt(fresh, glyph.centerX, glyph.centerY)
+            if (hit == null) {
+                // The subtitle changed and there is no text under the finger any more.
+                dismiss()
+                setLayer(fresh)
+                return@launch
+            }
+            val (freshLine, freshIndex) = hit
+            val freshText = fresh[freshLine].text
+            val freshRange = container.lookup.wordAt(freshText, freshIndex)
+            if (freshText.substring(freshRange) == target.text.substring(range.first, min(range.last, target.text.lastIndex) + 1)) return@launch
+            if (seq != tapSeq || !popupOpen) return@launch
+            setLayer(fresh)
+            show(freshLine, freshRange)
+        }
     }
 
     private fun show(line: Int, range: IntRange) {
@@ -226,6 +264,10 @@ class ScreenDictionary(
         layers.values.forEach { (layer, _) -> layer.highlight(-1, IntRange.EMPTY) }
         handler.removeCallbacks(resume)
         if (resumeLater) handler.postDelayed(resume, 350) else resumeMedia()
+    }
+
+    private companion object {
+        const val VERIFY_DELAY_MS = 250L
     }
 
     private fun pauseMediaPlayback() {
