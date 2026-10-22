@@ -34,8 +34,9 @@ with [Yomitan](https://github.com/yomidevs/yomitan) dictionary compatibility.
   a line to look up and mine it without leaving the game. Scroll back through the history (new
   lines only pull it down while you're at the bottom; *Latest* jumps back), drag the corner grip
   to resize, shrink it to a one-line ticker (⌃⌄), or open it fullscreen with big text to read
-  back (auto OCR pauses there, since it would cover the game). Size, position and mode are
-  remembered; fullscreen always reopens as the normal window.
+  back (auto OCR pauses there, since it would cover the game). Size and position are remembered
+  per orientation (a big portrait window would cover a landscape video), and so is the mode;
+  fullscreen always reopens as the normal window.
 - **App focus** — share "A single app" (Android 14+) and pick the game: only it is read, and
   auto OCR pauses while you are in other apps or in Droid Sentence Miner itself.
 - **Book mode (paper books, manga)** — the *Book* tab takes a photo with Samsung Camera on Galaxy

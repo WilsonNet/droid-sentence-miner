@@ -217,8 +217,11 @@ class OverlayService : Service() {
         super.onConfigurationChanged(newConfig)
         screenDictionary.clear()
         liveParams?.let { p ->
-            applyLiveMode(p)
-            liveView?.let { runCatching { windowManager.updateViewLayout(it, p) } }
+            scope.launch {
+                restoreLiveGeometry(p)
+                applyLiveMode(p)
+                liveView?.let { runCatching { windowManager.updateViewLayout(it, p) } }
+            }
         }
         // Games usually run in landscape: keep capturing across rotations by resizing the display.
         if (captureManager.isReady && !captureManager.onScreenSizeChanged()) {
@@ -522,7 +525,8 @@ class OverlayService : Service() {
                     onResize = { dx, dy -> resizeLiveWindow(dx, dy) },
                     onResizeEnd = {
                         val (w, h) = liveSizeDp
-                        scope.launch { container.prefs.setLiveWindowSizeDp(w, h) }
+                        val landscape = liveLandscape()
+                        scope.launch { container.prefs.setLiveWindowSizeDp(landscape, w, h) }
                     },
                     onEditAreas = { showAreaSelector() },
                     onClose = {
@@ -536,11 +540,7 @@ class OverlayService : Service() {
         liveView = view
         liveParams = params
         scope.launch {
-            container.prefs.liveWindowPosition.first()?.let { (x, y) ->
-                params.x = x
-                params.y = y
-            }
-            container.prefs.liveWindowSizeDp.first()?.let { liveSizeDp = it }
+            restoreLiveGeometry(params)
             liveMode.value = container.prefs.liveWindowMode.first()
                 ?.let { name -> LiveMode.entries.firstOrNull { it.name == name } }
                 // Fullscreen is for a quick look back; reopening it there would hide the game.
@@ -548,6 +548,27 @@ class OverlayService : Service() {
                 ?: LiveMode.NORMAL
             applyLiveMode(params)
             runCatching { windowManager.addView(view, params) }
+        }
+    }
+
+    /** From the real screen size: the service's Configuration can lag a rotation. */
+    private fun liveLandscape(): Boolean {
+        val metrics = ScreenCaptureManager.screenMetrics(this)
+        return metrics.widthPixels > metrics.heightPixels
+    }
+
+    /** Loads this orientation's saved position and size (defaults when there is none yet). */
+    private suspend fun restoreLiveGeometry(params: WindowManager.LayoutParams) {
+        val landscape = liveLandscape()
+        val density = resources.displayMetrics.density
+        val position = container.prefs.liveWindowPosition(landscape).first()
+            ?: ((12 * density).roundToInt() to (40 * density).roundToInt())
+        liveSizeDp = container.prefs.liveWindowSizeDp(landscape).first() ?: (DEFAULT_LIVE_WIDTH_DP to DEFAULT_LIVE_HEIGHT_DP)
+        if (liveMode.value == LiveMode.FULLSCREEN) {
+            liveRestorePosition = position
+        } else {
+            params.x = position.first
+            params.y = position.second
         }
     }
 
@@ -612,7 +633,8 @@ class OverlayService : Service() {
     }
 
     private fun saveLiveWindowPosition() {
-        liveParams?.let { p -> scope.launch { container.prefs.setLiveWindowPosition(p.x, p.y) } }
+        val landscape = liveLandscape()
+        liveParams?.let { p -> scope.launch { container.prefs.setLiveWindowPosition(landscape, p.x, p.y) } }
     }
 
     private fun resizeLiveWindow(dx: Float, dy: Float) {

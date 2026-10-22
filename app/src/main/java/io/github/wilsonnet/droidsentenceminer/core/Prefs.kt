@@ -48,6 +48,10 @@ class DsmPrefs(private val context: Context) {
         val liveWindowMode = stringPreferencesKey("live_window_mode")
         val liveWindowWidthDp = intPreferencesKey("live_window_width_dp")
         val liveWindowHeightDp = intPreferencesKey("live_window_height_dp")
+        val liveWindowXLand = intPreferencesKey("live_window_x_land")
+        val liveWindowYLand = intPreferencesKey("live_window_y_land")
+        val liveWindowWidthDpLand = intPreferencesKey("live_window_width_dp_land")
+        val liveWindowHeightDpLand = intPreferencesKey("live_window_height_dp_land")
 
         val captureLeft = floatPreferencesKey("capture_left")
         val captureTop = floatPreferencesKey("capture_top")
@@ -89,9 +93,10 @@ class DsmPrefs(private val context: Context) {
     val clipAfterMs: Flow<Int> = context.dataStore.data.map { it[Keys.clipAfterMs] ?: 500 }
     val autoOcrIntervalMs: Flow<Int> = context.dataStore.data.map { it[Keys.autoOcrIntervalMs] ?: 400 }
     val liveTextWindow: Flow<Boolean> = context.dataStore.data.map { it[Keys.liveTextWindow] ?: true }
-    val liveWindowPosition: Flow<Pair<Int, Int>?> = context.dataStore.data.map {
-        val x = it[Keys.liveWindowX] ?: return@map null
-        val y = it[Keys.liveWindowY] ?: return@map null
+    /** Live text window position in px, per orientation (a portrait spot is wrong in landscape). */
+    fun liveWindowPosition(landscape: Boolean): Flow<Pair<Int, Int>?> = context.dataStore.data.map {
+        val x = it[if (landscape) Keys.liveWindowXLand else Keys.liveWindowX] ?: return@map null
+        val y = it[if (landscape) Keys.liveWindowYLand else Keys.liveWindowY] ?: return@map null
         x to y
     }
 
@@ -116,24 +121,24 @@ class DsmPrefs(private val context: Context) {
     /** Pause the playing video while a screen-dictionary lookup is open. */
     val pauseOnLookup: Flow<Boolean> = context.dataStore.data.map { it[Keys.pauseOnLookup] ?: true }
     suspend fun setPauseOnLookup(value: Boolean) = edit { it[Keys.pauseOnLookup] = value }
-    suspend fun setLiveWindowPosition(x: Int, y: Int) = edit {
-        it[Keys.liveWindowX] = x
-        it[Keys.liveWindowY] = y
+    suspend fun setLiveWindowPosition(landscape: Boolean, x: Int, y: Int) = edit {
+        it[if (landscape) Keys.liveWindowXLand else Keys.liveWindowX] = x
+        it[if (landscape) Keys.liveWindowYLand else Keys.liveWindowY] = y
     }
 
     /** Live text window mode: an `overlay.LiveMode` name (compact, normal, fullscreen). */
     val liveWindowMode: Flow<String?> = context.dataStore.data.map { it[Keys.liveWindowMode] }
     suspend fun setLiveWindowMode(value: String) = edit { it[Keys.liveWindowMode] = value }
 
-    /** Live text window size in dp (normal mode; compact keeps the width). */
-    val liveWindowSizeDp: Flow<Pair<Int, Int>?> = context.dataStore.data.map {
-        val w = it[Keys.liveWindowWidthDp] ?: return@map null
-        val h = it[Keys.liveWindowHeightDp] ?: return@map null
+    /** Live text window size in dp (normal mode; compact keeps the width), per orientation. */
+    fun liveWindowSizeDp(landscape: Boolean): Flow<Pair<Int, Int>?> = context.dataStore.data.map {
+        val w = it[if (landscape) Keys.liveWindowWidthDpLand else Keys.liveWindowWidthDp] ?: return@map null
+        val h = it[if (landscape) Keys.liveWindowHeightDpLand else Keys.liveWindowHeightDp] ?: return@map null
         w to h
     }
-    suspend fun setLiveWindowSizeDp(width: Int, height: Int) = edit {
-        it[Keys.liveWindowWidthDp] = width
-        it[Keys.liveWindowHeightDp] = height
+    suspend fun setLiveWindowSizeDp(landscape: Boolean, width: Int, height: Int) = edit {
+        it[if (landscape) Keys.liveWindowWidthDpLand else Keys.liveWindowWidthDp] = width
+        it[if (landscape) Keys.liveWindowHeightDpLand else Keys.liveWindowHeightDp] = height
     }
 
     val captureRegion: Flow<CaptureRegion> = context.dataStore.data.map {

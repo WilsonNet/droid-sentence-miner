@@ -171,8 +171,10 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
 - **Live text window** (`overlay/LiveTextWindow.kt`, `LiveMode`): compact (one marquee line,
   WRAP_CONTENT height), normal (explicit px size from `liveWindowSizeDp`, corner-grip resize,
   reversed `LazyColumn` of 200 lines that follows the newest only while at the bottom) and
-  fullscreen (MATCH_PARENT, opaque; auto OCR pauses because it would OCR this window). Mode/size
-  live in prefs; fullscreen is never restored on reopen. `ScreenCaptureManager.screenMetrics`
+  fullscreen (MATCH_PARENT, opaque; auto OCR pauses because it would OCR this window). Position
+  and size are saved per orientation (`liveWindowPosition(landscape)`, decided from screen metrics)
+  and reloaded on rotation; mode is global, fullscreen is never restored on reopen. The window
+  draws one status-bar height below `params.y` in portrait — offset adb taps accordingly. `ScreenCaptureManager.screenMetrics`
   leaves `density` at 0 — take density from `resources.displayMetrics` (a 0 there made a 0×0
   window). Drive it with `/live?show=1&mode=`.
 - **Screen dictionary** (`overlay/ScreenDictionary.kt`, `capture/ScreenText.kt`): auto OCR's fast
