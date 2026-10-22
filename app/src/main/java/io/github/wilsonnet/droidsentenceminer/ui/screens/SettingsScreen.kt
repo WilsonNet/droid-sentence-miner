@@ -333,7 +333,7 @@ fun SettingsScreen(modifier: Modifier = Modifier, onOpen: (String) -> Unit = {})
                     )
                 }
                 Text(
-                    "Some apps opt out of audio capture and will stay silent (a lock icon appears on their media notification).",
+                    "Some apps opt out of audio capture and would only record silence; the microphone fallback above covers them.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
