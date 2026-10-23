@@ -120,7 +120,8 @@ GIF for the MP4; recorded on a Xiaomi Pad 7).
   (Settings or the bubble menu; off until you allow it) and DSM records the microphone whenever
   device audio is silent while something is playing, and switches back as soon as device audio
   returns. Android's voice **noise suppression** is applied to the mic (on by default, can be
-  turned off). Works with the speaker on; picks up room noise; records nothing with headphones.
+  turned off), then a **compressor** that squeezes loud peaks so normalization can lift thin,
+  quiet dialogue (on by default). Works with the speaker on; picks up room noise; records nothing with headphones.
 - **Mining history** — recent cards with a status showing whether they made it into Anki.
 - **Text selection lookup** — other apps can send selected text via `ACTION_PROCESS_TEXT`, including
   Samsung's text selection on screenshots/images and Circle to Search. A selected word is matched to
@@ -159,7 +160,7 @@ android sdk install platform-tools platforms/android-36 build-tools/35.0.0 emula
 echo "sdk.dir=$ANDROID_HOME" > local.properties
 
 # 3. Build & test
-./gradlew testDebugUnitTest          # 139 JVM unit tests
+./gradlew testDebugUnitTest          # 142 JVM unit tests
 ./gradlew connectedDebugAndroidTest  # 4 on-device tests (VAD + AAC encoding)
 ./gradlew assembleDebug              # app/build/outputs/apk/debug/app-debug.apk
 

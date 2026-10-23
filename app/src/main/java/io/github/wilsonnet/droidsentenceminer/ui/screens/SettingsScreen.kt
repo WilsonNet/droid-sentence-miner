@@ -80,6 +80,7 @@ fun SettingsScreen(modifier: Modifier = Modifier, onOpen: (String) -> Unit = {})
     val micFallback by container.prefs.audioMicFallback.collectAsState(initial = false)
     val normalize by container.prefs.audioNormalize.collectAsState(initial = true)
     val noiseSuppression by container.prefs.audioNoiseSuppression.collectAsState(initial = true)
+    val micCompressor by container.prefs.audioMicCompressor.collectAsState(initial = true)
     val firstDict by container.prefs.glossaryFirstDictionary.collectAsState(initial = false)
     val wordAudioUrl by container.prefs.wordAudioCustomUrl.collectAsState(initial = "")
     var wordAudioUrlDraft by remember(wordAudioUrl) { mutableStateOf(wordAudioUrl) }
@@ -263,6 +264,12 @@ fun SettingsScreen(modifier: Modifier = Modifier, onOpen: (String) -> Unit = {})
                                 "less fan and room noise, but it can also soften music and effects.",
                             checked = noiseSuppression,
                         ) { value -> scope.launch { container.prefs.setAudioNoiseSuppression(value) } }
+                        SettingSwitch(
+                            title = "Compressor",
+                            description = "Evens out the microphone after noise suppression: loud peaks are squeezed " +
+                                "so quiet, thin dialogue comes out fuller once the clip is normalized.",
+                            checked = micCompressor,
+                        ) { value -> scope.launch { container.prefs.setAudioMicCompressor(value) } }
                     }
                     SettingSwitch(
                         title = "Normalize volume",

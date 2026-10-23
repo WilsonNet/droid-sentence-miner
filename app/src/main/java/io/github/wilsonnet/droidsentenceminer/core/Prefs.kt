@@ -37,6 +37,7 @@ class DsmPrefs(private val context: Context) {
         val audioMicFallback = booleanPreferencesKey("audio_mic_fallback")
         val audioNormalize = booleanPreferencesKey("audio_normalize")
         val audioNoiseSuppression = booleanPreferencesKey("audio_noise_suppression")
+        val audioMicCompressor = booleanPreferencesKey("audio_mic_compressor")
         val wordAudio = booleanPreferencesKey("word_audio")
         val glossaryFirstDictionary = booleanPreferencesKey("glossary_first_dictionary")
         val wordAudioCustomUrl = stringPreferencesKey("word_audio_custom_url")
@@ -97,6 +98,7 @@ class DsmPrefs(private val context: Context) {
 
     /** Android's NoiseSuppressor on the microphone fallback. */
     val audioNoiseSuppression: Flow<Boolean> = context.dataStore.data.map { it[Keys.audioNoiseSuppression] ?: true }
+    val audioMicCompressor: Flow<Boolean> = context.dataStore.data.map { it[Keys.audioMicCompressor] ?: true }
 
     /** Like Yomitan's {glossary-first}: only the highest-priority dictionary on the card. */
     val glossaryFirstDictionary: Flow<Boolean> = context.dataStore.data.map { it[Keys.glossaryFirstDictionary] ?: false }
@@ -203,6 +205,7 @@ class DsmPrefs(private val context: Context) {
     suspend fun setAudioMicFallback(value: Boolean) = edit { it[Keys.audioMicFallback] = value }
     suspend fun setAudioNormalize(value: Boolean) = edit { it[Keys.audioNormalize] = value }
     suspend fun setAudioNoiseSuppression(value: Boolean) = edit { it[Keys.audioNoiseSuppression] = value }
+    suspend fun setAudioMicCompressor(value: Boolean) = edit { it[Keys.audioMicCompressor] = value }
     suspend fun setWordAudio(value: Boolean) = edit { it[Keys.wordAudio] = value }
     suspend fun setGlossaryFirstDictionary(value: Boolean) = edit { it[Keys.glossaryFirstDictionary] = value }
     suspend fun setWordAudioCustomUrl(value: String) = edit { it[Keys.wordAudioCustomUrl] = value.trim() }

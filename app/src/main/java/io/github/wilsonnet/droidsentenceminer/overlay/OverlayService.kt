@@ -97,6 +97,7 @@ class OverlayService : Service() {
     private var pendingAutoOcr = false
     private var micFallback = false
     private var noiseSuppression = false
+    private var micCompressor = false
 
     override fun onCreate() {
         super.onCreate()
@@ -142,11 +143,13 @@ class OverlayService : Service() {
             kotlinx.coroutines.flow.combine(
                 container.prefs.audioMicFallback,
                 container.prefs.audioNoiseSuppression,
-            ) { on, denoise -> on to denoise }.collect { (on, denoise) ->
+                container.prefs.audioMicCompressor,
+            ) { on, denoise, compress -> Triple(on, denoise, compress) }.collect { (on, denoise, compress) ->
                 panelState.micFallback = on
-                if (on == micFallback && denoise == noiseSuppression) return@collect
+                if (on == micFallback && denoise == noiseSuppression && compress == micCompressor) return@collect
                 micFallback = on
                 noiseSuppression = denoise
+                micCompressor = compress
                 // Restart capture so the microphone recorder (and its service type) follows the setting.
                 if (audioManager.isRunning) {
                     audioManager.stop()
@@ -724,8 +727,9 @@ class OverlayService : Service() {
             container.textLog.ensureAudioBuffer(container.prefs.audioBufferSeconds.first())
             micFallback = container.prefs.audioMicFallback.first()
             noiseSuppression = container.prefs.audioNoiseSuppression.first()
+            micCompressor = container.prefs.audioMicCompressor.first()
             if (micFallback) startForegroundCompat(includeProjection = true)
-            val started = audioManager.start(projection, micFallback, noiseSuppression)
+            val started = audioManager.start(projection, micFallback, noiseSuppression, micCompressor)
             if (!started) {
                 panelState.status = "Audio capture unavailable: ${audioManager.error.orEmpty()}"
             }

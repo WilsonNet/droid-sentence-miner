@@ -71,7 +71,12 @@ class AudioCaptureManager(
 
     // RECORD_AUDIO is checked via hasPermission() below; lint can't see through the helper.
     @SuppressLint("MissingPermission")
-    fun start(projection: MediaProjection, micFallback: Boolean = false, noiseSuppression: Boolean = false): Boolean {
+    fun start(
+        projection: MediaProjection,
+        micFallback: Boolean = false,
+        noiseSuppression: Boolean = false,
+        compressor: Boolean = false,
+    ): Boolean {
         if (!isSupported()) {
             lastError = "Audio capture needs Android 10 or newer"
             return false
@@ -111,7 +116,7 @@ class AudioCaptureManager(
                 priority = Thread.NORM_PRIORITY + 1
                 start()
             }
-            if (micFallback) startMic(sampleRate, noiseSuppression)
+            if (micFallback) startMic(sampleRate, noiseSuppression, compressor)
             true
         } catch (e: Exception) {
             lastError = e.message ?: "Audio capture failed"
@@ -121,7 +126,7 @@ class AudioCaptureManager(
     }
 
     @SuppressLint("MissingPermission")
-    private fun startMic(sampleRate: Int, noiseSuppression: Boolean) {
+    private fun startMic(sampleRate: Int, noiseSuppression: Boolean, compressor: Boolean) {
         // UNPROCESSED skips noise suppression and AGC, which pump game music; not every device has it.
         val unprocessed = context.getSystemService(AudioManager::class.java)
             ?.getProperty(AudioManager.PROPERTY_SUPPORT_AUDIO_SOURCE_UNPROCESSED) == "true"
@@ -145,7 +150,9 @@ class AudioCaptureManager(
             denoiser = runCatching { NoiseSuppressor.create(recorder.audioSessionId)?.apply { enabled = true } }.getOrNull()
         }
         recorder.startRecording()
-        micThread = Thread({ micLoop(recorder) }, "dsm-audio-mic").apply {
+        // After the suppressor (it sits in the recorder's input path), before the buffer.
+        val dynamics = if (compressor) AudioCompressor(sampleRate) else null
+        micThread = Thread({ micLoop(recorder, dynamics) }, "dsm-audio-mic").apply {
             priority = Thread.NORM_PRIORITY + 1
             start()
         }
@@ -184,7 +191,7 @@ class AudioCaptureManager(
         }
     }
 
-    private fun micLoop(recorder: AudioRecord) {
+    private fun micLoop(recorder: AudioRecord, compressor: AudioCompressor?) {
         val chunk = ShortArray(2048)
         val audio = context.getSystemService(AudioManager::class.java)
         while (running) {
@@ -198,6 +205,7 @@ class AudioCaptureManager(
                 if (!usingMic && now - deviceSoundAtMs >= SILENT_SWITCH_MS && audio?.isMusicActive == true) {
                     usingMic = true
                 }
+                compressor?.process(chunk, read) // every chunk, so its envelope is settled on switching
                 if (usingMic) buffer().write(chunk, read, now)
             } else if (read < 0) {
                 break
