@@ -16,8 +16,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -322,11 +320,8 @@ fun WordLookupDialog(
         onDismissRequest = onDismiss,
         title = { LookupHeader(state, entry.word, onBack = if (stack.size > 1) ({ stack.removeAt(stack.lastIndex) }) else null) },
         text = {
-            Column(
-                Modifier
-                    .heightIn(max = 420.dp)
-                    .verticalScroll(rememberScrollState()),
-            ) {
+            // No verticalScroll here: the WebView scrolls itself, and an outer scroll fought it for drags.
+            Column(Modifier.heightIn(max = 420.dp)) {
                 LookupBody(state, dark, maxHeight = 360.dp, onTextTap = onTap)
                 state.status?.let {
                     Spacer(Modifier.size(8.dp))
@@ -467,7 +462,11 @@ fun WordLookupCard(
                 Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
             }
             Spacer(Modifier.size(4.dp))
-            Box(Modifier.padding(end = 8.dp)) { LookupBody(state, dark, maxHeight = maxHeight - 90.dp, onTextTap = onTap) }
+            // The rest of the card, whatever the header took: a fixed guess for the header clipped the
+            // bottom of the definition when the header was taller (deinflection line, error, back).
+            Box(Modifier.weight(1f, fill = false).padding(end = 8.dp)) {
+                LookupBody(state, dark, maxHeight = maxHeight, onTextTap = onTap)
+            }
         }
     }
 }
