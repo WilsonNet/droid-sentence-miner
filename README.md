@@ -47,7 +47,8 @@ GIF for the MP4; recorded on a Xiaomi Pad 7).
   if you close the popup right after tapping *Anki*.
 - **Tablets and landscape** — tabs move to a side rail and screens sit in a centered column.
 - **Live text window** — a floating feed of the lines over the game, updated in real time. Tap
-  a line to look up and mine it without leaving the game. Scroll back through the history (new
+  a word in it and the definition pops up right next to it (same popup as the on-screen text
+  layer; mining uses that line's audio and screenshot); hold a line to open it in the full panel. Scroll back through the history (new
   lines only pull it down while you're at the bottom; *Latest* jumps back), drag the corner grip
   to resize, shrink it to a one-line ticker (⌃⌄), or open it fullscreen with big text to read
   back (auto OCR pauses there, since it would cover the game). Size and position are remembered
@@ -69,6 +70,8 @@ GIF for the MP4; recorded on a Xiaomi Pad 7).
   boxes). Tap any character on the photo, in a speech bubble or a column of print, and the word
   starting there lights up with its definition popping up beside it; hold and drag to select
   characters yourself; pinch to zoom, drag to pan.
+- **Mining feedback** — the popup's Anki button spins while the card is built, turns green
+  (*Added*) when it's in, and a toast confirms it (or says why not) even if the popup was closed.
 - **Texts page** (GSM's texthooker) — every recognized line, newest first. Tap a line, tap a word,
   and mine it: the card gets that line's sentence, its screenshot and its voice clip.
 - **Replay buffer sentence audio** — the last 5 minutes (configurable 1–10) of game audio are kept
@@ -184,8 +187,8 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
    them later (e.g. a different video), tap ✎ in the *Live text* window or long-press the bubble →
    *Auto OCR text areas*. If the screen capture ends (the captured app was closed, consent
    revoked), the bubble menu offers *Restart screen capture*. New lines
-   appear in the floating *Live text* window — tap one to look up words and mine it with its audio
-   and screenshot. Everything is also on the *Texts* tab.
+   appear in the floating *Live text* window — tap a word to look it up in place and mine it with
+   the line's audio and screenshot (hold a line for the full panel). Everything is also on the *Texts* tab.
    While it runs, just tap a word in the real subtitle on screen to look it up (the video pauses
    until you close the definition). Toggles: *Settings → Tap text on screen to look it up* and
    *Pause the video while looking up*.

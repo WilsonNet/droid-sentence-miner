@@ -176,7 +176,47 @@ class ScreenDictionary(
         val anchor = Rect(glyphs.left * w, glyphs.top * h, glyphs.right * w, glyphs.bottom * h)
         val word = target.text.substring(range.first, last + 1)
         val allText = lines.joinToString("\n") { it.text }
+        openPopup(anchor, word, allText) { details ->
+            // The log line has the sentence, its screenshot and its audio.
+            val logLine = container.textLog.lineForSharedText(allText)
+            container.miner.mineLine(logLine, word, details)
+        }
+    }
 
+    /**
+     * A tap on a line of the live text window: the same popup, next to the tapped word in that
+     * window, mining the logged line itself.
+     */
+    fun lookupInLiveLine(tap: CharTap) {
+        val seq = ++tapSeq
+        scope.launch {
+            val range = container.lookup.wordAt(tap.text, tap.index)
+            val last = min(range.last, tap.text.lastIndex)
+            if (range.first > last || seq != tapSeq) return@launch
+            dismiss(resumeLater = true)
+            handler.removeCallbacks(resume)
+            if (pauseMedia) pauseMediaPlayback()
+            val anchor = (range.first..last).map(tap.box).reduce { a, b ->
+                // Only the word's first row when it wraps, so the popup sits next to where the finger was.
+                if (b.top >= a.bottom) a else Rect(min(a.left, b.left), min(a.top, b.top), max(a.right, b.right), max(a.bottom, b.bottom))
+            }
+            val word = tap.text.substring(range.first, last + 1)
+            openPopup(anchor, word, tap.text) { details ->
+                val logLine = container.textLog.get(tap.lineId) ?: container.textLog.lineForSharedText(tap.text)
+                container.miner.mineLine(logLine, word, details)
+            }
+        }
+    }
+
+    private fun openPopup(
+        anchor: Rect,
+        word: String,
+        sentence: String,
+        onMine: suspend (io.github.wilsonnet.droidsentenceminer.dict.TermLookup.LookupDetails?) -> io.github.wilsonnet.droidsentenceminer.anki.AnkiResult<String>,
+    ) {
+        val metrics = ScreenCaptureManager.screenMetrics(context)
+        val w = metrics.widthPixels.toFloat()
+        val h = metrics.heightPixels.toFloat()
         val owner = OverlayLifecycleOwner().apply {
             onCreate()
             onStart()
@@ -211,14 +251,10 @@ class ScreenDictionary(
                     side = plan.side
                     WordLookupCard(
                         word = word,
-                        sentence = allText,
+                        sentence = sentence,
                         image = null,
                         onDismiss = { dismiss() },
-                        onMine = { details ->
-                            // The log line has the sentence, its screenshot and its audio.
-                            val logLine = container.textLog.lineForSharedText(allText)
-                            container.miner.mineLine(logLine, word, details)
-                        },
+                        onMine = onMine,
                         maxHeight = with(local) { plan.maxHeight.toDp() },
                         handleBack = false,
                         width = popupWidthDp,

@@ -187,6 +187,9 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   draws one status-bar height below `params.y` in portrait — offset adb taps accordingly. `ScreenCaptureManager.screenMetrics`
   leaves `density` at 0 — take density from `resources.displayMetrics` (a 0 there made a 0×0
   window). Drive it with `/live?show=1&mode=`.
+  A tap on a line maps the finger to a character (`TextLayoutResult` + `positionOnScreen`, `CharTap`)
+  and opens the ScreenDictionary popup there (`lookupInLiveLine`); only a long press opens the old
+  bottom panel (`showLatestLine`) — tap used to, and it pauses auto OCR, so the screen layer vanished.
 - **Screen dictionary** (`overlay/ScreenDictionary.kt`, `capture/ScreenText.kt`): auto OCR's fast
   read publishes `AutoOcrController.screenText` (lines with per-glyph screen fractions; meikiocr char
   x-intervals mapped back in `MeikiOcr`, ML Kit symbols). The service fits one touchable, transparent

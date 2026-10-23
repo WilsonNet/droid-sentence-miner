@@ -195,7 +195,7 @@ fun SettingsScreen(modifier: Modifier = Modifier, onOpen: (String) -> Unit = {})
                 }
                 SettingSwitch(
                     title = "Live text window",
-                    description = "Show a small floating feed of new lines over the game while auto OCR runs. Tap a line to mine it.",
+                    description = "Show a small floating feed of new lines over the game while auto OCR runs. Tap a word to look it up, hold a line for the panel.",
                     checked = liveWindow,
                 ) { value -> scope.launch { container.prefs.setLiveTextWindow(value) } }
                 SettingSwitch(

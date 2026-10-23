@@ -543,6 +543,7 @@ class OverlayService : Service() {
                     mode = liveMode.value,
                     onMode = { setLiveMode(it) },
                     onLineClick = { id -> showLatestLine(id) },
+                    onCharTap = { tap -> screenDictionary.lookupInLiveLine(tap) },
                     onDrag = { dx, dy -> moveLiveWindow(dx, dy) },
                     onDragEnd = { saveLiveWindowPosition() },
                     onResize = { dx, dy -> resizeLiveWindow(dx, dy) },

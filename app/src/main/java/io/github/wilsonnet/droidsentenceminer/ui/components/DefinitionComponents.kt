@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.Color
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,6 +24,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -149,6 +151,9 @@ private class WordLookupState {
     var status by mutableStateOf<String?>(null)
     var mining by mutableStateOf(false)
 
+    /** A card was just added from this popup (the button turns green). */
+    var added by mutableStateOf(false)
+
     /** The word already has an Anki note (Yomitan's duplicate tag); null until checked. */
     var inAnki by mutableStateOf<Boolean?>(null)
 }
@@ -180,18 +185,28 @@ private fun mineAction(
     val container = remember { AppContainer.from(context) }
     return {
         state.mining = true
-        state.status = "Adding to Anki…"
+        state.status = null
         // App scope, not the popup's: closing the popup right after tapping must not drop the card.
         container.appScope.launch {
             val result = onMine?.invoke(state.details) ?: container.miner.mine(word, sentence, image, state.details)
             withContext(Dispatchers.Main) {
-                if (result is AnkiResult.Success) state.inAnki = true
+                if (result is AnkiResult.Success) {
+                    state.inAnki = true
+                    state.added = true
+                }
                 state.status = when (result) {
-                    is AnkiResult.Success -> "Added to Anki"
+                    is AnkiResult.Success -> null
                     is AnkiResult.Error -> "Anki: ${result.message}"
                     AnkiResult.NotAvailable -> "Anki backend not available"
                 }
                 state.mining = false
+                // A toast too: the popup may be closed by now, and it is visible over the game either way.
+                val toast = when (result) {
+                    is AnkiResult.Success -> "✓ Added 「$word」 to Anki"
+                    is AnkiResult.Error -> "Anki card not added: ${result.message}"
+                    AnkiResult.NotAvailable -> "Anki card not added: backend not available"
+                }
+                Toast.makeText(context.applicationContext, toast, Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -250,17 +265,34 @@ private fun LookupBody(
     }
 }
 
+private val ADDED_GREEN = androidx.compose.ui.graphics.Color(0xFF2E7D32)
+
 @Composable
 private fun MineButton(state: WordLookupState, onClick: () -> Unit) {
     // Like Yomitan, a word that already has a note shows it instead of offering a duplicate.
     val inAnki = state.inAnki == true
+    val addedColors = ButtonDefaults.filledTonalButtonColors(
+        disabledContainerColor = ADDED_GREEN,
+        disabledContentColor = androidx.compose.ui.graphics.Color.White,
+    )
     FilledTonalButton(
         enabled = !inAnki && !state.mining && state.details?.terms?.isNotEmpty() == true,
         onClick = onClick,
+        colors = if (state.added) addedColors else ButtonDefaults.filledTonalButtonColors(),
     ) {
-        Icon(if (inAnki) Icons.Default.Check else Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+        when {
+            state.mining -> CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+            else -> Icon(if (inAnki) Icons.Default.Check else Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+        }
         Spacer(Modifier.width(6.dp))
-        Text(if (inAnki) "In Anki" else "Anki")
+        Text(
+            when {
+                state.mining -> "Adding…"
+                state.added -> "Added"
+                inAnki -> "In Anki"
+                else -> "Anki"
+            },
+        )
     }
 }
 
@@ -298,7 +330,7 @@ fun WordLookupDialog(
                 LookupBody(state, dark, maxHeight = 360.dp, onTextTap = onTap)
                 state.status?.let {
                     Spacer(Modifier.size(8.dp))
-                    Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                    Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                 }
             }
         },
@@ -432,7 +464,7 @@ fun WordLookupCard(
                 }
             }
             state.status?.let {
-                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
             }
             Spacer(Modifier.size(4.dp))
             Box(Modifier.padding(end = 8.dp)) { LookupBody(state, dark, maxHeight = maxHeight - 90.dp, onTextTap = onTap) }

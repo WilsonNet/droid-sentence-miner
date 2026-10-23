@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -42,9 +43,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionOnScreen
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -67,7 +73,8 @@ enum class LiveMode {
 
 /**
  * Always-on-top feed of the auto OCR lines, so you can follow and mine the text without leaving
- * the game. Tap a line to open it in the lookup panel. Scroll back through the history; new lines
+ * the game. Tap a word for the dictionary popup next to it ([ScreenDictionary.lookupInLiveLine]),
+ * hold a line to open it in the lookup panel. Scroll back through the history; new lines
  * only pull the list down while you are at the bottom ("Latest" brings you back otherwise).
  */
 @Composable
@@ -77,6 +84,7 @@ fun LiveTextWindow(
     mode: LiveMode,
     onMode: (LiveMode) -> Unit,
     onLineClick: (Long) -> Unit,
+    onCharTap: (CharTap) -> Unit,
     onDrag: (Float, Float) -> Unit,
     onDragEnd: () -> Unit,
     onResize: (Float, Float) -> Unit,
@@ -134,7 +142,7 @@ fun LiveTextWindow(
             }
         }
         Box(Modifier.weight(1f).fillMaxWidth()) {
-            LineList(lines.map { it.id to it.text }, fullscreen, onLineClick)
+            LineList(lines.map { it.id to it.text }, fullscreen, onLineClick, onCharTap)
             if (!fullscreen) {
                 ResizeHandle(
                     Modifier.align(Alignment.BottomEnd),
@@ -146,8 +154,11 @@ fun LiveTextWindow(
     }
 }
 
+/** A tap on character [index] of logged line [lineId]; [box] gives a character's screen rect in px. */
+class CharTap(val lineId: Long, val text: String, val index: Int, val box: (Int) -> Rect)
+
 @Composable
-private fun LineList(lines: List<Pair<Long, String>>, big: Boolean, onLineClick: (Long) -> Unit) {
+private fun LineList(lines: List<Pair<Long, String>>, big: Boolean, onLineClick: (Long) -> Unit, onCharTap: (CharTap) -> Unit) {
     val state = rememberLazyListState()
     val scope = rememberCoroutineScope()
     // Reversed layout: index 0 (the newest line) sits at the bottom, like a chat.
@@ -174,6 +185,8 @@ private fun LineList(lines: List<Pair<Long, String>>, big: Boolean, onLineClick:
         ) {
             items(lines, key = { it.first }) { (id, text) ->
                 val newest = id == lines.first().first
+                var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
+                var coords by remember { mutableStateOf<LayoutCoordinates?>(null) }
                 Text(
                     text = text,
                     color = if (newest) Color.White else DIM,
@@ -189,10 +202,25 @@ private fun LineList(lines: List<Pair<Long, String>>, big: Boolean, onLineClick:
                         newest -> 24.sp
                         else -> 19.sp
                     },
+                    onTextLayout = { layout = it },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { onLineClick(id) }
-                        .padding(horizontal = if (big) 20.dp else 12.dp, vertical = if (big) 6.dp else 3.dp),
+                        .padding(horizontal = if (big) 20.dp else 12.dp, vertical = if (big) 6.dp else 3.dp)
+                        .onGloballyPositioned { coords = it }
+                        // Tap a character: dictionary popup next to it, like the screen text layer.
+                        // Hold: the whole line in the panel (audio editor, word list).
+                        .pointerInput(id, text) {
+                            detectTapGestures(
+                                onLongPress = { onLineClick(id) },
+                                onTap = { offset ->
+                                    val result = layout ?: return@detectTapGestures
+                                    val origin = coords?.positionOnScreen() ?: return@detectTapGestures
+                                    if (text.isEmpty()) return@detectTapGestures
+                                    val index = result.getOffsetForPosition(offset).coerceIn(0, text.lastIndex)
+                                    onCharTap(CharTap(id, text, index) { i -> result.getBoundingBox(i.coerceIn(0, text.lastIndex)).translate(origin) })
+                                },
+                            )
+                        },
                 )
             }
         }
