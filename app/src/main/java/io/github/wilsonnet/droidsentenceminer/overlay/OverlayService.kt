@@ -353,6 +353,8 @@ class OverlayService : Service() {
             this,
             initial,
             onScan = { fraction -> applyRegion(fraction) },
+            onLive = { fraction -> toggleLiveFromBox(fraction) },
+            liveRunning = autoOcr.isRunning,
             onCancel = { closeCaptureOverlay() },
         )
         val params = WindowManager.LayoutParams(
@@ -678,6 +680,27 @@ class OverlayService : Service() {
         liveParams = null
         liveOwner?.onDestroy()
         liveOwner = null
+    }
+
+    /** Bubble tap → Live: one-tap auto OCR; the drawn box becomes the text area when this orientation has none. */
+    private fun toggleLiveFromBox(fraction: RectF) {
+        closeCaptureOverlay()
+        if (autoOcr.isRunning) {
+            autoOcr.stop()
+            return
+        }
+        if (currentAreas().isNotEmpty()) {
+            startAutoOcr()
+            return
+        }
+        val landscape = isLandscape()
+        val areas = listOf(TextArea(fraction.left, fraction.top, fraction.right, fraction.bottom).clamped())
+        // Set now: the prefs collectors update these later, and startAutoOcr opens the area editor when empty.
+        if (landscape) landscapeAreas = areas else portraitAreas = areas
+        scope.launch {
+            container.prefs.setAutoAreas(landscape, areas)
+            startAutoOcr()
+        }
     }
 
     private fun toggleAutoOcr() {

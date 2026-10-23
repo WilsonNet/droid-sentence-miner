@@ -7,6 +7,8 @@
     <string name="ov_service_text">Tap the bubble to scan text from the screen</string>
     <string name="ov_action_scan">Scan region</string>
     <string name="ov_action_full">Scan full screen</string>
+    <string name="ov_action_live">Live</string>
+    <string name="ov_action_live_stop">Stop live</string>
     <string name="ov_action_hide">Hide bubble</string>
     <string name="ov_action_stop">Stop overlay</string>
     <string name="ov_scanning">Scanning…</string>

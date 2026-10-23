@@ -26,6 +26,9 @@ class CaptureOverlayView(
     context: Context,
     initial: RectF,
     private val onScan: (RectF) -> Unit,
+    /** Live button: starts auto OCR with the box as text area if none is saved, or stops it ([liveRunning]). */
+    private val onLive: (RectF) -> Unit,
+    private val liveRunning: Boolean,
     private val onCancel: () -> Unit,
 ) : FrameLayout(context) {
 
@@ -86,6 +89,10 @@ class CaptureOverlayView(
             region.set(0f, 0f, width.toFloat(), height.toFloat())
             invalidate()
             onScan(regionFraction())
+        })
+        val liveLabel = if (liveRunning) R.string.ov_action_live_stop else R.string.ov_action_live
+        buttons.addView(weightedButton(context.getString(liveLabel), primary = false) {
+            onLive(regionFraction())
         })
         buttons.addView(weightedButton(context.getString(android.R.string.cancel), primary = false) {
             onCancel()

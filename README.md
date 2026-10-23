@@ -175,7 +175,9 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
    - *AnkiConnect*: start Anki with the AnkiConnect add-on and enter the URL
      (e.g. `http://192.168.1.10:8765`).
    Pick a deck and note type (a "Droid Sentence Miner" note type is created automatically).
-3. **Auto OCR (recommended)** — open the game, long-press the bubble → *Start auto OCR*. In the
+3. **Auto OCR (recommended)** — open the game, tap the bubble → *Live* (or long-press → *Start
+   auto OCR*); *Live* uses the box you drew as the text area when this orientation has none, and
+   turns into *Stop live* while auto OCR runs. In the
    share dialog choose *A single app* → your game. If no text area exists for the current
    orientation the area editor opens: drag boxes over the dialogue/subtitle area (drag to move,
    corners to resize, × to delete; drag the toolbar by ⠿ out of the way) and *Save*. To change
