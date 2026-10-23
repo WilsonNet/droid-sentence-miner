@@ -88,6 +88,31 @@ fun AnkiScreen(modifier: Modifier = Modifier) {
         scope.launch { ankiDroidAvailable = container.ankiDroid.isAvailable() }
     }
 
+    // Lists come from the backend selected on screen, which may not be saved yet.
+    fun loadOptions(
+        what: String,
+        fetch: suspend (io.github.wilsonnet.droidsentenceminer.anki.AnkiBridge) -> AnkiResult<List<String>>,
+        onLoaded: (List<String>) -> Unit,
+    ) {
+        scope.launch {
+            container.prefs.setAnkiProvider(provider)
+            container.prefs.setAnkiConnectUrl(url)
+            status = "Loading $what…"
+            status = when (val result = fetch(container.ankiClient.bridge())) {
+                is AnkiResult.Success -> {
+                    onLoaded(result.value)
+                    if (result.value.isEmpty()) "No $what found" else null
+                }
+                is AnkiResult.Error -> result.message
+                AnkiResult.NotAvailable -> if (provider == DsmPrefs.PROVIDER_ANKIDROID) {
+                    AnkiDroidBridge.PERMISSION_HINT
+                } else {
+                    "AnkiConnect is not reachable"
+                }
+            }
+        }
+    }
+
     fun saveSettings() {
         scope.launch {
             container.prefs.setAnkiProvider(provider)
@@ -183,28 +208,15 @@ fun AnkiScreen(modifier: Modifier = Modifier) {
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                         trailingIcon = {
-                            IconButton(onClick = { deckMenuOpen = true }) {
-                                Icon(Icons.Default.ArrowDropDown, contentDescription = "Load decks")
+                            IconButton(onClick = {
+                                deckMenuOpen = true
+                                loadOptions("decks", { it.deckNames() }) { deckOptions = it }
+                            }) {
+                                Icon(Icons.Default.ArrowDropDown, contentDescription = "Choose deck")
                             }
                         },
                     )
                     DropdownMenu(expanded = deckMenuOpen, onDismissRequest = { deckMenuOpen = false }) {
-                        DropdownMenuItem(
-                            text = { Text("Load deck list…") },
-                            onClick = {
-                                deckMenuOpen = false
-                                scope.launch {
-                                    when (val result = container.ankiClient.bridge().deckNames()) {
-                                        is AnkiResult.Success -> {
-                                            deckOptions = result.value
-                                            status = "${result.value.size} decks loaded"
-                                        }
-                                        is AnkiResult.Error -> status = result.message
-                                        AnkiResult.NotAvailable -> status = "Anki backend not available"
-                                    }
-                                }
-                            },
-                        )
                         deckOptions.forEach { option ->
                             DropdownMenuItem(
                                 text = { Text(option) },
@@ -225,28 +237,15 @@ fun AnkiScreen(modifier: Modifier = Modifier) {
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                         trailingIcon = {
-                            IconButton(onClick = { modelMenuOpen = true }) {
-                                Icon(Icons.Default.ArrowDropDown, contentDescription = "Load note types")
+                            IconButton(onClick = {
+                                modelMenuOpen = true
+                                loadOptions("note types", { it.modelNames() }) { modelOptions = it }
+                            }) {
+                                Icon(Icons.Default.ArrowDropDown, contentDescription = "Choose note type")
                             }
                         },
                     )
                     DropdownMenu(expanded = modelMenuOpen, onDismissRequest = { modelMenuOpen = false }) {
-                        DropdownMenuItem(
-                            text = { Text("Load note type list…") },
-                            onClick = {
-                                modelMenuOpen = false
-                                scope.launch {
-                                    when (val result = container.ankiClient.bridge().modelNames()) {
-                                        is AnkiResult.Success -> {
-                                            modelOptions = result.value
-                                            status = "${result.value.size} note types loaded"
-                                        }
-                                        is AnkiResult.Error -> status = result.message
-                                        AnkiResult.NotAvailable -> status = "Anki backend not available"
-                                    }
-                                }
-                            },
-                        )
                         modelOptions.forEach { option ->
                             DropdownMenuItem(
                                 text = { Text(option) },
