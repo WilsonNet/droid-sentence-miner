@@ -242,7 +242,8 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   debug API stops answering. Bring `MainActivity` forward before calling it.
 - **Rotation keeps the projection**: `ScreenCaptureManager.onScreenSizeChanged()` resizes the
   virtual display and swaps in a new `ImageReader`, so starting in portrait and switching to a
-  landscape game keeps capturing (no re-consent).
+  landscape game keeps capturing (no re-consent). `start()` re-reads the screen size: rotating while
+  not capturing left the stale size, and a landscape game came out as portrait frames (no text read).
 - **YouTube test bed**: softsub video `gM7sP8vT40o` + `yt-dlp --write-subs --sub-langs ja` gives
   ground truth; pick the plain "日本語" caption track (not auto-generated/translated) in the
   player settings. `yt-dlp -f bestaudio --download-sections "*0:00-8:00"` gives reference audio

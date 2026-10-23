@@ -91,6 +91,12 @@ class ScreenCaptureManager(private val context: Context) {
     @SuppressLint("WrongConstant")
     fun start(resultCode: Int, data: Intent, promoteForeground: () -> Unit) {
         release()
+        // The size from service start, or the last rotation while capturing, can be stale: rotating
+        // the tablet before (re)starting capture produced portrait frames of a landscape game.
+        val metrics = screenMetrics(context)
+        screenWidth = metrics.widthPixels
+        screenHeight = metrics.heightPixels
+        densityDpi = metrics.densityDpi
         val manager = context.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
 
         var created: MediaProjection? = null
