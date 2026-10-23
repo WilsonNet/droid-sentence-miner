@@ -102,4 +102,17 @@ class AudioPcmTest {
         val silent = AudioSegment(ShortArray(rate), rate, 1)
         assertTrue(AudioPcm.normalize(silent) === silent)
     }
+
+    @Test
+    fun `a single loud peak does not hold the clip down and is limited under the ceiling`() {
+        val rate = 24_000
+        // Quiet speech-like square wave with one near-full-scale click.
+        val pcm = ShortArray(rate) { if (it % 2 == 0) 1500 else -1500 }
+        pcm[rate / 2] = 20_000
+        val out = AudioPcm.normalize(AudioSegment(pcm, rate, 1))
+        // Peak-capped gain would be 0.89 * 32767 / 20000 = 1.46; the limiter allows twice that.
+        assertTrue(Math.abs(out.pcm[0].toInt()) > 1500 * 2.5)
+        val ceiling = Short.MAX_VALUE * AudioPcm.PEAK_CEILING
+        assertTrue(out.pcm.all { Math.abs(it.toInt()) <= ceiling + 1 })
+    }
 }

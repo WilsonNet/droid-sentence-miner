@@ -265,7 +265,8 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   session (pref, default on), then `AudioCompressor` (soft knee, −30 dBFS, 4:1, 5/150 ms; pref
   `audioMicCompressor`, default on) on every mic chunk in `micLoop` — no makeup gain, normalize
   lifts the squeezed clip; every clip goes through `AudioPcm.normalize` (pref, default on) in
-  `TextLog.clip`. DroidDeck pauses the game when it loses focus (consent dialog) — tap 再開.
+  `TextLog.clip`: voiced RMS to −14 dBFS, peaks allowed 6 dB over −1 dBFS and soft-limited
+  (tanh) back under it — capping gain at the loudest peak left clips with one shout quiet. DroidDeck pauses the game when it loses focus (consent dialog) — tap 再開.
 - **Media keys and games**: a game's audio makes `isMusicActive` true, but media keys go to the
   last media session (a paused YouTube) — the lookup popup's PLAY on close started YouTube in the
   background. `ScreenDictionary.pauseMediaPlayback` re-checks after 500 ms and skips the resume if

@@ -38,8 +38,9 @@ object AudioPcm {
 
     /**
      * Loudness normalization: scales the clip so its voiced part (20 ms frames above
-     * [GATE_DBFS], so pauses don't count) averages [targetDbfs] RMS, with the peak kept under
-     * [PEAK_CEILING] and the gain at most [MAX_GAIN]. Evens out quiet games, loud videos and the
+     * [GATE_DBFS], so pauses don't count) averages [targetDbfs] RMS, with the gain at most
+     * [MAX_GAIN]. Peaks may go up to [LIMIT_HEADROOM] over [PEAK_CEILING]: a soft limiter rounds
+     * them back under it, so one shout no longer keeps the whole line quiet. Evens out quiet games, loud videos and the
      * microphone fallback, which records from the speaker far quieter than device audio.
      */
     fun normalize(segment: AudioSegment, targetDbfs: Double = DEFAULT_TARGET_DBFS): AudioSegment {
@@ -69,20 +70,32 @@ object AudioPcm {
         val rms = sqrt(sum / count)
         val gain = minOf(
             Short.MAX_VALUE * 10.0.pow(targetDbfs / 20) / rms,
-            Short.MAX_VALUE * PEAK_CEILING / peak,
+            Short.MAX_VALUE * PEAK_CEILING * LIMIT_HEADROOM / peak,
             MAX_GAIN,
         )
         if (abs(gain - 1.0) < 0.05) return segment
         val out = ShortArray(pcm.size) { k ->
-            (pcm[k] * gain).roundToInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
+            (softLimit(pcm[k] * gain / Short.MAX_VALUE) * Short.MAX_VALUE).roundToInt()
+                .coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
         }
         return AudioSegment(out, segment.sampleRate, segment.channels)
     }
 
-    /** Speech loudness on cards, roughly -16 LUFS. */
-    const val DEFAULT_TARGET_DBFS = -18.0
+    /** Linear below [LIMIT_KNEE] of the ceiling, then a tanh curve that approaches [PEAK_CEILING]. */
+    private fun softLimit(x: Double): Double {
+        val knee = PEAK_CEILING * LIMIT_KNEE
+        val a = abs(x)
+        if (a <= knee) return x
+        val room = PEAK_CEILING - knee
+        return kotlin.math.sign(x) * (knee + room * kotlin.math.tanh((a - knee) / room))
+    }
+
+    /** Speech loudness on cards, roughly -12 LUFS (loud, like voice lines in commercial decks). */
+    const val DEFAULT_TARGET_DBFS = -14.0
     private const val GATE_DBFS = -50.0
-    private const val PEAK_CEILING = 0.89 // -1 dBFS
+    const val PEAK_CEILING = 0.89 // -1 dBFS
+    private const val LIMIT_HEADROOM = 2.0 // 6 dB of peaks squeezed by the limiter
+    private const val LIMIT_KNEE = 0.7
     private const val MAX_GAIN = 20.0
 
     /** Slices by time, clamped to bounds. Returns null when the slice is empty. */
