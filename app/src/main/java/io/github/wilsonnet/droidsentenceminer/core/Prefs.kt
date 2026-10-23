@@ -12,6 +12,8 @@ import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "dsm_settings")
 
@@ -24,6 +26,7 @@ class DsmPrefs(private val context: Context) {
         val ankiModel = stringPreferencesKey("anki_model")
         val ankiTags = stringPreferencesKey("anki_tags")
         val ankiIncludeImage = booleanPreferencesKey("anki_include_image")
+        val ankiFieldMaps = stringPreferencesKey("anki_field_maps")
         val ankiAnkiDroidPermissionRequested = booleanPreferencesKey("anki_permission_requested")
 
         val ocrTwoPass = booleanPreferencesKey("ocr_two_pass")
@@ -177,6 +180,19 @@ class DsmPrefs(private val context: Context) {
     suspend fun setAnkiModel(value: String) = edit { it[Keys.ankiModel] = value.trim() }
     suspend fun setAnkiTags(value: String) = edit { it[Keys.ankiTags] = value }
     suspend fun setAnkiIncludeImage(value: Boolean) = edit { it[Keys.ankiIncludeImage] = value }
+    /** Mapping picked in Settings → Anki → Fields for note type [model] (field -> CardFields name, "" = empty); null = automatic. */
+    suspend fun ankiFieldMap(model: String): Map<String, String>? =
+        parseFieldMaps(context.dataStore.data.first()[Keys.ankiFieldMaps])[model]
+
+    suspend fun setAnkiFieldMap(model: String, map: Map<String, String>?) = edit {
+        val all = parseFieldMaps(it[Keys.ankiFieldMaps]).toMutableMap()
+        if (map == null) all.remove(model) else all[model] = map
+        it[Keys.ankiFieldMaps] = Json.encodeToString<Map<String, Map<String, String>>>(all)
+    }
+
+    private fun parseFieldMaps(raw: String?): Map<String, Map<String, String>> =
+        raw?.let { runCatching { Json.decodeFromString<Map<String, Map<String, String>>>(it) }.getOrNull() }.orEmpty()
+
     suspend fun setAnkiPermissionRequested(value: Boolean) = edit { it[Keys.ankiAnkiDroidPermissionRequested] = value }
 
     suspend fun setOcrTwoPass(value: Boolean) = edit { it[Keys.ocrTwoPass] = value }

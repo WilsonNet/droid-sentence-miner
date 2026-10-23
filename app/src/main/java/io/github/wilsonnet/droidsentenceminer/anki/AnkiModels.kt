@@ -41,7 +41,10 @@ interface AnkiBridge {
     suspend fun modelNames(): AnkiResult<List<String>>
     suspend fun ensureDeck(name: String): AnkiResult<Unit>
     suspend fun ensureModel(name: String): AnkiResult<Unit>
-    suspend fun addNote(card: AnkiCard, deck: String, model: String): AnkiResult<String>
+    /** Field names of note type [model], in order. */
+    suspend fun fieldNames(model: String): AnkiResult<List<String>>
+    /** [fieldMap]: the note type's mapping from Settings → Anki → Fields, null = match fields by name. */
+    suspend fun addNote(card: AnkiCard, deck: String, model: String, fieldMap: Map<String, String>? = null): AnkiResult<String>
     /** Whether [model] already has a note for [word] (its first field), like Yomitan's duplicate check. */
     suspend fun isDuplicate(word: String, deck: String, model: String): AnkiResult<Boolean>
 }
@@ -58,6 +61,20 @@ object CardFields {
     const val PITCH_GRAPH = "PitchGraph"
 
     val ORDER = listOf(EXPRESSION, READING, MEANING, SENTENCE, IMAGE, AUDIO, SOURCE, WORD_AUDIO, PITCH_GRAPH)
+
+    /** Names shown in the Fields editor. */
+    fun label(canonical: String): String = when (canonical) {
+        EXPRESSION -> "Word"
+        READING -> "Reading"
+        MEANING -> "Glossary"
+        SENTENCE -> "Sentence"
+        IMAGE -> "Screenshot"
+        AUDIO -> "Sentence audio"
+        SOURCE -> "Source"
+        WORD_AUDIO -> "Word audio"
+        PITCH_GRAPH -> "Pitch graph"
+        else -> "Nothing"
+    }
 }
 
 object CardHtml {

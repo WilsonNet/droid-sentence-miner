@@ -96,6 +96,9 @@ GIF for the MP4; recorded on a Xiaomi Pad 7).
   screenshot), Audio (sentence voice line), **Word audio** and Source. Existing note types are
   filled by field name the way Yomitan/GSM fill them — e.g. Anime Cards: Word, Reading, Glossary,
   Context Sentence (Sentence stays empty so it stays a word card), Word Audio, Audio, Picture.
+  **Settings → Anki → Fields** shows what goes into each field of the chosen note type and lets you
+  pick the content per field (Word, Reading, Glossary, Sentence, Screenshot, Sentence/Word audio,
+  Pitch graph, Source or nothing); the mapping is saved per note type, *Reset to automatic* drops it.
 - **Word audio like Yomitan** — the word's pronunciation is fetched from the same sources Yomitan
   uses for Japanese, in the same order: JapanesePod101 (placeholder clip rejected by hash),
   JapanesePod101 dictionary search, Jisho; plus an optional custom URL (`{term}`/`{reading}`,
@@ -153,7 +156,7 @@ android sdk install platform-tools platforms/android-36 build-tools/35.0.0 emula
 echo "sdk.dir=$ANDROID_HOME" > local.properties
 
 # 3. Build & test
-./gradlew testDebugUnitTest          # 137 JVM unit tests
+./gradlew testDebugUnitTest          # 139 JVM unit tests
 ./gradlew connectedDebugAndroidTest  # 4 on-device tests (VAD + AAC encoding)
 ./gradlew assembleDebug              # app/build/outputs/apk/debug/app-debug.apk
 

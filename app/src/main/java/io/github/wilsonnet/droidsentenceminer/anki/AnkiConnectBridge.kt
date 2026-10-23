@@ -112,7 +112,11 @@ class AnkiConnectBridge(
         }
     }
 
-    override suspend fun addNote(card: AnkiCard, deck: String, model: String): AnkiResult<String> = withContext(Dispatchers.IO) {
+    override suspend fun fieldNames(model: String): AnkiResult<List<String>> = withContext(Dispatchers.IO) {
+        modelFieldNames(model)?.let { AnkiResult.Success(it) } ?: AnkiResult.Error("Note type '$model' not found")
+    }
+
+    override suspend fun addNote(card: AnkiCard, deck: String, model: String, fieldMap: Map<String, String>?): AnkiResult<String> = withContext(Dispatchers.IO) {
         ensureDeck(deck)
         ensureModel(model)
 
@@ -140,7 +144,7 @@ class AnkiConnectBridge(
             CardFields.PITCH_GRAPH to card.pitchGraphHtml,
         )
         val modelFields = modelFieldNames(model) ?: CardFields.ORDER
-        val mappedFields = AnkiFieldMapper.mapToNamedFields(modelFields, valueMap)
+        val mappedFields = AnkiFieldMapper.mapToNamedFields(modelFields, valueMap, fieldMap)
         val fields = buildJsonObject {
             mappedFields.forEach { (name, value) -> put(name, value) }
         }
@@ -283,12 +287,13 @@ class AnkiClient(
     suspend fun addNote(card: AnkiCard): AnkiResult<String> {
         val snapshot = prefs.snapshot()
         val primary = bridge()
-        val result = primary.addNote(card, snapshot.ankiDeck, snapshot.ankiModel)
+        val fieldMap = prefs.ankiFieldMap(snapshot.ankiModel)
+        val result = primary.addNote(card, snapshot.ankiDeck, snapshot.ankiModel, fieldMap)
         if (result is AnkiResult.Success) return result
         if (result is AnkiResult.NotAvailable || (result is AnkiResult.Error && result.message.contains("unreachable"))) {
             val other = fallback()
             if (other.isAvailable()) {
-                val fallbackResult = other.addNote(card, snapshot.ankiDeck, snapshot.ankiModel)
+                val fallbackResult = other.addNote(card, snapshot.ankiDeck, snapshot.ankiModel, fieldMap)
                 if (fallbackResult is AnkiResult.Success) return fallbackResult
             }
         }

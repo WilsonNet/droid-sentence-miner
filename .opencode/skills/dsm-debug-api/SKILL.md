@@ -62,7 +62,7 @@ All GET, all JSON (except `frame.png`). Regions are screen fractions unless note
 | `/word_audio?term=&reading=&custom=` | Fetch word audio like a card would; returns which source answered |
 | `/anki_sample?model=&limit=` | Read-only: newest notes of a note type with every field (see how the user fills it) |
 | `/anki_templates?model=` | Read-only: card templates (which fields the card shows) |
-| `/preview_card?word=&line=` or `&sentence=` | Build a card and map it onto the configured note type **without** adding it |
+| `/preview_card?word=&line=` or `&sentence=` | Build a card and map it onto the configured note type **without** adding it (honours a custom Fields mapping) |
 | `/select_areas` | Open the text-area editor overlay over whatever is on screen |
 | `/install_ocr_models` | Download the meikiocr models (blocking; ~31 MB) |
 | `/add_line?text=&ago=&dur=` | Log a synthetic line in the past (tests clip/mining without OCR) |

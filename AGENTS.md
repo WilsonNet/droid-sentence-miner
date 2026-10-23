@@ -141,7 +141,9 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   Audio is word audio; no word-audio field ⇒ the `[sound:]` is appended to Reading. Foreign note
   types get the sentence as plain text; the glossary is wrapped in `div.yomitan-glossary`.
   Inspect a deck read-only with `/anki_sample?model=` and `/anki_templates?model=`, and render a
-  card without adding it with `/preview_card?word=&line=`.
+  card without adding it with `/preview_card?word=&line=`. A mapping picked in Settings → Anki →
+  Fields (`DsmPrefs.ankiFieldMap(model)`, JSON per note type: field → `CardFields` name, "" = empty)
+  replaces all name matching for that note type, including the Reading word-audio fallback.
 - **Pitch graph** (`dict/PitchAccent.kt`): port of Yomitan's `createPronunciationGraph` with the
   inline styles Yomitan bakes into Anki fields; unit-tested byte-for-byte against SVGs from the
   user's own cards. Pitch comes from `term_meta` rows with mode `pitch` (any Yomitan pitch dict) —

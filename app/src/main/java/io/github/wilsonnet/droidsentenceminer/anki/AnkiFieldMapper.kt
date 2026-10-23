@@ -9,6 +9,9 @@ package io.github.wilsonnet.droidsentenceminer.anki
  *  2. A compact two-field layout (Front/Back) for plain Basic note types.
  *
  * Our canonical fields remain the fallback when nothing matches by name.
+ *
+ * A mapping picked in Settings → Anki → Fields ([custom]: model field -> canonical field, "" for
+ * empty) replaces all of this for its note type.
  */
 object AnkiFieldMapper {
 
@@ -51,6 +54,12 @@ object AnkiFieldMapper {
         return result
     }
 
+    /** The automatic choice as model field -> canonical field ("" = left empty), for the Fields editor. */
+    fun automaticAssignment(fieldNames: List<String>): Map<String, String> {
+        val mapping = canonicalToModelField(fieldNames)
+        return fieldNames.associateWith { name -> mapping.entries.firstOrNull { it.value == name }?.key.orEmpty() }
+    }
+
     /** Without a word-audio field the pronunciation rides along in the reading (a play button next to it). */
     private fun withWordAudioFallback(mapping: Map<String, String>, values: Map<String, String>): Map<String, String> {
         val wordAudio = values[CardFields.WORD_AUDIO].orEmpty()
@@ -60,7 +69,8 @@ object AnkiFieldMapper {
     }
 
     /** Ordered field values for the AnkiDroid content provider. */
-    fun mapToArray(fieldNames: List<String>, values: Map<String, String>): Array<String> {
+    fun mapToArray(fieldNames: List<String>, values: Map<String, String>, custom: Map<String, String>? = null): Array<String> {
+        if (custom != null) return fieldNames.map { name -> custom[name]?.let { values[it] }.orEmpty() }.toTypedArray()
         val mapping = canonicalToModelField(fieldNames)
         if (mapping.isNotEmpty()) {
             val filled = withWordAudioFallback(mapping, values)
@@ -78,7 +88,8 @@ object AnkiFieldMapper {
     }
 
     /** Field name -> value map for AnkiConnect (only fields the model knows about). */
-    fun mapToNamedFields(fieldNames: List<String>, values: Map<String, String>): Map<String, String> {
+    fun mapToNamedFields(fieldNames: List<String>, values: Map<String, String>, custom: Map<String, String>? = null): Map<String, String> {
+        if (custom != null) return fieldNames.associateWith { name -> custom[name]?.let { values[it] }.orEmpty() }
         val mapping = canonicalToModelField(fieldNames)
         if (mapping.isNotEmpty()) {
             val filled = withWordAudioFallback(mapping, values)

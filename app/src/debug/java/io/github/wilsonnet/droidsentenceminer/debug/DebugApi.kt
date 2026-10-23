@@ -186,7 +186,7 @@ object DebugApi {
                         io.github.wilsonnet.droidsentenceminer.anki.CardFields.WORD_AUDIO to (card.wordAudioBytes?.let { "[sound:${card.wordAudioName}] (${it.size} bytes)" } ?: ""),
                         io.github.wilsonnet.droidsentenceminer.anki.CardFields.PITCH_GRAPH to card.pitchGraphHtml,
                     )
-                    val mapped = io.github.wilsonnet.droidsentenceminer.anki.AnkiFieldMapper.mapToNamedFields(fieldNames, values)
+                    val mapped = io.github.wilsonnet.droidsentenceminer.anki.AnkiFieldMapper.mapToNamedFields(fieldNames, values, container.prefs.ankiFieldMap(model))
                     val fields = JSONObject()
                     fieldNames.forEach { fields.put(it, mapped[it] ?: "") }
                     JSONObject().put("ok", true).put("model", model).put("deck", container.prefs.ankiDeck.first()).put("fields", fields)

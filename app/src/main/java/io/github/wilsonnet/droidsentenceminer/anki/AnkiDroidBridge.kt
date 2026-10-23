@@ -54,6 +54,15 @@ class AnkiDroidBridge(private val context: Context) : AnkiBridge {
             .getOrElse { AnkiResult.Error(it.message ?: "Could not list note types") }
     }
 
+    override suspend fun fieldNames(model: String): AnkiResult<List<String>> = withContext(Dispatchers.IO) {
+        if (!isAvailable()) return@withContext AnkiResult.NotAvailable
+        runCatching {
+            val modelId = api.modelList.orEmpty().entries.firstOrNull { it.value == model }?.key
+                ?: return@runCatching AnkiResult.Error("Note type '$model' not found")
+            AnkiResult.Success(api.getFieldList(modelId)?.toList().orEmpty())
+        }.getOrElse { AnkiResult.Error(it.message ?: "Could not list fields") }
+    }
+
     override suspend fun ensureDeck(name: String): AnkiResult<Unit> = withContext(Dispatchers.IO) {
         if (!isAvailable()) return@withContext AnkiResult.NotAvailable
         runCatching {
@@ -83,7 +92,7 @@ class AnkiDroidBridge(private val context: Context) : AnkiBridge {
         }.getOrElse { AnkiResult.Error(it.message ?: "Could not create note type") }
     }
 
-    override suspend fun addNote(card: AnkiCard, deck: String, model: String): AnkiResult<String> = withContext(Dispatchers.IO) {
+    override suspend fun addNote(card: AnkiCard, deck: String, model: String, fieldMap: Map<String, String>?): AnkiResult<String> = withContext(Dispatchers.IO) {
         if (!isAvailable()) return@withContext AnkiResult.NotAvailable
         try {
             ensureDeck(deck)
@@ -118,7 +127,7 @@ class AnkiDroidBridge(private val context: Context) : AnkiBridge {
                 CardFields.PITCH_GRAPH to card.pitchGraphHtml,
             )
             val fieldNames = api.getFieldList(modelId)?.toList() ?: CardFields.ORDER
-            val fields = AnkiFieldMapper.mapToArray(fieldNames, values)
+            val fields = AnkiFieldMapper.mapToArray(fieldNames, values, fieldMap)
             val tags = card.tags.toSet()
 
             if (api.findDuplicateNotes(modelId, card.expression).isNotEmpty()) {

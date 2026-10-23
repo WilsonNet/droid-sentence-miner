@@ -109,4 +109,27 @@ class AnkiFieldMapperTest {
         assertEquals("Audio", mapping[CardFields.AUDIO])
         assertEquals("Picture", mapping[CardFields.IMAGE])
     }
+
+    @Test
+    fun `custom mapping replaces name matching`() {
+        val model = listOf("Front", "Back", "Notes")
+        val custom = mapOf("Front" to CardFields.SENTENCE, "Back" to CardFields.MEANING, "Notes" to "")
+        assertEquals(
+            listOf("フリーダは…継承した", "inheritance, succession", ""),
+            AnkiFieldMapper.mapToArray(model, values, custom).toList(),
+        )
+        assertEquals(
+            mapOf("Front" to "フリーダは…継承した", "Back" to "inheritance, succession", "Notes" to ""),
+            AnkiFieldMapper.mapToNamedFields(model, values, custom),
+        )
+    }
+
+    @Test
+    fun `automatic assignment shows what name matching picked`() {
+        val assignment = AnkiFieldMapper.automaticAssignment(listOf("Word", "Graph", "Context Sentence", "Sentence"))
+        assertEquals(CardFields.EXPRESSION, assignment["Word"])
+        assertEquals(CardFields.PITCH_GRAPH, assignment["Graph"])
+        assertEquals(CardFields.SENTENCE, assignment["Context Sentence"])
+        assertEquals("", assignment["Sentence"])
+    }
 }

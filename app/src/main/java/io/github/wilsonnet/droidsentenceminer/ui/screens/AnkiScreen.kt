@@ -46,6 +46,8 @@ import androidx.core.content.ContextCompat
 import com.ichi2.anki.api.AddContentApi
 import io.github.wilsonnet.droidsentenceminer.AppContainer
 import io.github.wilsonnet.droidsentenceminer.anki.AnkiDroidBridge
+import io.github.wilsonnet.droidsentenceminer.anki.AnkiFieldMapper
+import io.github.wilsonnet.droidsentenceminer.anki.CardFields
 import io.github.wilsonnet.droidsentenceminer.anki.AnkiResult
 import io.github.wilsonnet.droidsentenceminer.core.DsmPrefs
 import kotlinx.coroutines.flow.first
@@ -69,6 +71,44 @@ fun AnkiScreen(modifier: Modifier = Modifier) {
     var deckMenuOpen by remember { mutableStateOf(false) }
     var modelMenuOpen by remember { mutableStateOf(false) }
     var ankiDroidAvailable by remember { mutableStateOf(false) }
+    // Fields editor: the note type it shows, its fields and the content picked for each.
+    var fieldsModel by remember { mutableStateOf<String?>(null) }
+    var fieldNames by remember { mutableStateOf<List<String>>(emptyList()) }
+    var fieldAssignment by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+    var fieldMapCustom by remember { mutableStateOf(false) }
+    var fieldsStatus by remember { mutableStateOf<String?>(null) }
+
+    fun loadFields() {
+        val target = model.trim()
+        scope.launch {
+            container.prefs.setAnkiProvider(provider)
+            container.prefs.setAnkiConnectUrl(url)
+            fieldsStatus = "Loading fields…"
+            when (val result = container.ankiClient.bridge().fieldNames(target)) {
+                is AnkiResult.Success -> {
+                    val saved = container.prefs.ankiFieldMap(target)
+                    fieldNames = result.value
+                    fieldAssignment = saved?.let { map -> result.value.associateWith { map[it].orEmpty() } }
+                        ?: AnkiFieldMapper.automaticAssignment(result.value)
+                    fieldMapCustom = saved != null
+                    fieldsModel = target
+                    fieldsStatus = null
+                }
+                is AnkiResult.Error -> {
+                    fieldsModel = null
+                    fieldsStatus = if (target == DsmPrefs.DEFAULT_MODEL) {
+                        "${result.message}. It is created with the first card."
+                    } else {
+                        result.message
+                    }
+                }
+                AnkiResult.NotAvailable -> {
+                    fieldsModel = null
+                    fieldsStatus = if (provider == DsmPrefs.PROVIDER_ANKIDROID) AnkiDroidBridge.PERMISSION_HINT else "AnkiConnect is not reachable"
+                }
+            }
+        }
+    }
 
     LaunchedEffect(Unit) {
         val snapshot = container.prefs.snapshot()
@@ -79,6 +119,7 @@ fun AnkiScreen(modifier: Modifier = Modifier) {
         tags = snapshot.ankiTags
         includeImage = snapshot.ankiIncludeImage
         ankiDroidAvailable = container.ankiDroid.isAvailable()
+        loadFields()
     }
 
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -252,6 +293,8 @@ fun AnkiScreen(modifier: Modifier = Modifier) {
                                 onClick = {
                                     model = option
                                     modelMenuOpen = false
+                                    scope.launch { container.prefs.setAnkiModel(option) }
+                                    loadFields()
                                 },
                             )
                         }
@@ -303,10 +346,51 @@ fun AnkiScreen(modifier: Modifier = Modifier) {
         }
 
         Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("Fields", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                val shown = fieldsModel
+                if (shown == null || shown != model.trim()) {
+                    OutlinedButton(onClick = { loadFields() }) { Text("Load fields of \"${model.trim()}\"") }
+                }
+                fieldsStatus?.let {
+                    Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                }
+                if (shown != null) {
+                    Text(
+                        when {
+                            fieldMapCustom -> "Your mapping for \"$shown\"."
+                            fieldAssignment.values.all { it.isEmpty() } ->
+                                "No field of \"$shown\" matched by name, so cards fill fields in order. Pick what goes where."
+                            else -> "Matched by field name. Change any field to set your own mapping."
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    fieldNames.forEach { field ->
+                        FieldMappingRow(field, fieldAssignment[field].orEmpty()) { picked ->
+                            fieldAssignment = fieldAssignment + (field to picked)
+                            fieldMapCustom = true
+                            val map = fieldAssignment
+                            scope.launch { container.prefs.setAnkiFieldMap(shown, map) }
+                        }
+                    }
+                    if (fieldMapCustom) {
+                        OutlinedButton(onClick = {
+                            fieldAssignment = AnkiFieldMapper.automaticAssignment(fieldNames)
+                            fieldMapCustom = false
+                            scope.launch { container.prefs.setAnkiFieldMap(shown, null) }
+                        }) { Text("Reset to automatic") }
+                    }
+                }
+            }
+        }
+
+        Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("How cards are created", fontWeight = FontWeight.SemiBold)
                 Text(
                     "Fields: Expression, Reading, Meaning, Sentence (with the target word bold), Image, Audio, Source. " +
+                        "Other note types are matched by field name (Anime Cards, Lapis, Yomitan-style), or by the mapping above. " +
                         "A note type named \"${DsmPrefs.DEFAULT_MODEL}\" is created automatically if it does not exist.",
                     style = MaterialTheme.typography.bodySmall,
                 )
@@ -315,6 +399,31 @@ fun AnkiScreen(modifier: Modifier = Modifier) {
                         "AnkiDroid not ready — mine from the popup once permission and the API setting are done.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FieldMappingRow(field: String, canonical: String, onPick: (String) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(field, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+        Box {
+            OutlinedButton(onClick = { open = true }) {
+                Text(CardFields.label(canonical))
+                Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+            }
+            DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+                (listOf("") + CardFields.ORDER).forEach { option ->
+                    DropdownMenuItem(
+                        text = { Text(CardFields.label(option)) },
+                        onClick = {
+                            open = false
+                            onPick(option)
+                        },
                     )
                 }
             }
