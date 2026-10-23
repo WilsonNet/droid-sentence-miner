@@ -28,7 +28,27 @@ class TermLookup(
         val primaryDictionary: String? get() = primary?.dictionaryTitle
         val baseForm: String get() = primary?.expression ?: surface
         val reading: String? get() = terms.firstOrNull { it.reading.isNotBlank() }?.reading
+
+        /**
+         * Yomitan's "group" results: one entry per headword (term, reading, inflection chain), with
+         * the definitions of every dictionary for it, in the order the headwords first appear. Each
+         * entry gets its own add button, and its card only that headword's reading and glossary.
+         */
+        val entries: List<Entry> by lazy {
+            terms.groupBy { Triple(it.expression, kanaKey(it.reading.ifBlank { it.expression }), it.deinflectionReasons) }
+                .values
+                .map { group -> Entry(group.first().expression, group.firstOrNull { it.reading.isNotBlank() }?.reading.orEmpty(), group) }
+        }
+
+        /** These details narrowed to entry [index]: what a card for that headword is built from. */
+        fun forEntry(index: Int): LookupDetails {
+            val entry = entries.getOrNull(index) ?: return this
+            if (entries.size == 1) return this
+            return copy(terms = entry.terms, frequencies = frequencies.filter { it.expression == entry.expression })
+        }
     }
+
+    data class Entry(val expression: String, val reading: String, val terms: List<TermResult>)
 
     private data class FormSource(
         val position: Int,
@@ -322,4 +342,9 @@ class TermLookup(
 
         fun containsJapanese(text: String): Boolean = text.any { isKanji(it) || isKana(it) }
     }
+}
+
+/** Katakana folded to hiragana, so トル and とる group together (Yomitan's reading normalizer). */
+internal fun kanaKey(reading: String): String = buildString(reading.length) {
+    for (c in reading) append(if (c in '\u30A1'..'\u30F6') c - 0x60 else c)
 }

@@ -172,8 +172,48 @@ class CardMiner(
     suspend fun buildPopupHtml(word: String, details: TermLookup.LookupDetails, darkMode: Boolean): String = withContext(Dispatchers.Default) {
         val dicts = db.dictionaryDao().getEnabled().associateBy { it.id }
         val sb = StringBuilder()
+        val entries = details.entries
+        if (entries.size > 1) {
+            sb.append(ENTRY_STYLE)
+            entries.forEachIndexed { index, entry ->
+                sb.append("<div class=\"dsm-entry\"><div class=\"dsm-entry-head\">")
+                sb.append("<span class=\"dsm-headword\">").append(GlossaryHtml.escape(entry.expression)).append("</span>")
+                if (entry.reading.isNotBlank() && entry.reading != entry.expression) {
+                    sb.append("<span class=\"dsm-reading\">").append(GlossaryHtml.escape(entry.reading)).append("</span>")
+                }
+                sb.append("<button class=\"dsm-add\" data-index=\"").append(index).append("\">+ Anki</button></div>")
+                entry.terms.first().deinflectionReasons.takeIf { it.isNotEmpty() }?.let {
+                    sb.append("<div class=\"gloss-deinflection\">").append(GlossaryHtml.escape(it.joinToString(" « "))).append("</div>")
+                }
+                CardHtml.frequencyLine(details.forEntry(index))?.let {
+                    sb.append("<div class=\"gloss-header\"><span class=\"gloss-frequency\">").append(GlossaryHtml.escape(it)).append("</span></div>")
+                }
+                appendTerms(sb, entry.terms, dicts)
+                sb.append("</div>")
+            }
+        } else {
+            appendTerms(sb, details.terms, dicts)
+        }
+        val frequencies = CardHtml.frequencyLine(details).takeIf { entries.size <= 1 }
+        val freqHtml = if (frequencies != null) {
+            "<div class=\"gloss-header\"><span class=\"gloss-frequency\">${GlossaryHtml.escape(frequencies)}</span></div>"
+        } else {
+            ""
+        }
+        val dictStyles = details.terms.mapNotNull { dicts[it.dictId] }.distinctBy { it.id }
+            .mapNotNull { DictArchive.styles(context, it)?.takeIf { s -> s.isNotBlank() } }
+            .joinToString("\n")
+            .take(20_000)
+        GlossaryHtml.wrapDocument(freqHtml + sb.toString(), styles = dictStyles.ifBlank { null }, darkMode = darkMode)
+    }
+
+    private fun appendTerms(
+        sb: StringBuilder,
+        terms: List<io.github.wilsonnet.droidsentenceminer.dict.TermResult>,
+        dicts: Map<Long, io.github.wilsonnet.droidsentenceminer.dict.DictionaryEntity>,
+    ) {
         var currentDictId = -1L
-        for (term in details.terms) {
+        for (term in terms) {
             if (term.dictId != currentDictId) {
                 currentDictId = term.dictId
                 sb.append("<div class=\"gloss-dictionary\">")
@@ -194,17 +234,23 @@ class CardMiner(
                 ),
             )
         }
-        val frequencies = CardHtml.frequencyLine(details)
-        val freqHtml = if (frequencies != null) {
-            "<div class=\"gloss-header\"><span class=\"gloss-frequency\">${GlossaryHtml.escape(frequencies)}</span></div>"
-        } else {
-            ""
-        }
-        val dictStyles = details.terms.mapNotNull { dicts[it.dictId] }.distinctBy { it.id }
-            .mapNotNull { DictArchive.styles(context, it)?.takeIf { s -> s.isNotBlank() } }
-            .joinToString("\n")
-            .take(20_000)
-        GlossaryHtml.wrapDocument(freqHtml + sb.toString(), styles = dictStyles.ifBlank { null }, darkMode = darkMode)
+    }
+
+    private companion object {
+        /** Entry headers with their add buttons (states set by the popup, see WebViewBlock). */
+        const val ENTRY_STYLE = """<style>
+.dsm-entry { margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(128,128,128,0.35); }
+.dsm-entry:first-of-type { margin-top: 0; padding-top: 0; border-top: none; }
+.dsm-entry-head { display: flex; align-items: baseline; gap: 8px; }
+.dsm-headword { font-size: 1.3em; font-weight: 700; }
+.dsm-reading { opacity: 0.75; }
+.dsm-add { margin-left: auto; align-self: center; border: none; border-radius: 16px; padding: 5px 14px;
+  font: inherit; font-size: 0.9em; background: rgba(128,128,128,0.25); color: inherit; }
+.dsm-add[data-state=mining] { opacity: 0.7; }
+.dsm-add[data-state=added] { background: #2E7D32; color: #fff; }
+.dsm-add[data-state=in-anki] { background: transparent; opacity: 0.7; }
+.dsm-add[data-state=failed] { background: #B3261E; color: #fff; }
+</style>"""
     }
 
     private fun sanitizeForFilename(text: String): String {

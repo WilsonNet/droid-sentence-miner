@@ -58,24 +58,40 @@ fun WebViewBlock(
     modifier: Modifier = Modifier,
     /** Tap on glossary text: (text from the tapped character on, its surrounding sentence). */
     onTextTap: ((String, String) -> Unit)? = null,
+    /** Per-entry add buttons (`.dsm-add[data-index]`, see [CardMiner.buildPopupHtml]): tap → index. */
+    onEntryMine: ((Int) -> Unit)? = null,
+    /** Button state per entry index: new, mining, added, in-anki, failed. */
+    entryStates: Map<Int, String> = emptyMap(),
 ) {
     val tapHandler = androidx.compose.runtime.rememberUpdatedState(onTextTap)
+    val mineHandler = androidx.compose.runtime.rememberUpdatedState(onEntryMine)
+    val scripted = onTextTap != null || onEntryMine != null
     Box(modifier = modifier.background(if (dark) ComposeColor(0xFF1E1E1E) else ComposeColor.White)) {
         AndroidView(
             modifier = Modifier.fillMaxWidth(),
             factory = { context ->
-                WebView(context).apply {
-                    settings.javaScriptEnabled = onTextTap != null
+                DefinitionWebView(context).apply {
+                    settings.javaScriptEnabled = scripted
                     settings.allowFileAccess = true
                     settings.allowContentAccess = true
                     setBackgroundColor(Color.TRANSPARENT)
-                    webViewClient = WebViewClient()
-                    if (onTextTap != null) {
+                    webViewClient = object : WebViewClient() {
+                        override fun onPageFinished(view: WebView, url: String?) {
+                            loaded = true
+                            applyStates()
+                        }
+                    }
+                    if (scripted) {
                         addJavascriptInterface(
                             object {
                                 @android.webkit.JavascriptInterface
                                 fun tap(text: String, context: String) {
                                     post { tapHandler.value?.invoke(text, context) }
+                                }
+
+                                @android.webkit.JavascriptInterface
+                                fun mine(index: Int) {
+                                    post { mineHandler.value?.invoke(index) }
                                 }
                             },
                             "dsm",
@@ -86,13 +102,45 @@ fun WebViewBlock(
             update = { view ->
                 if (view.tag != html) {
                     view.tag = html
-                    val page = if (onTextTap != null) html + TAP_SCRIPT else html
+                    view.loaded = false
+                    val page = html + (if (onTextTap != null) TAP_SCRIPT else "") + (if (onEntryMine != null) ENTRY_SCRIPT else "")
                     view.loadDataWithBaseURL("file:///", page, "text/html", "UTF-8", null)
                 }
+                view.states = entryStates.entries.joinToString(",", "{", "}") { (i, st) -> "\"$i\":\"$st\"" }
+                view.applyStates()
             },
         )
     }
 }
+
+/** Remembers the entry button states until the page has loaded, then pushes them into it. */
+private class DefinitionWebView(context: android.content.Context) : WebView(context) {
+    var loaded = false
+    var states = "{}"
+
+    fun applyStates() {
+        if (loaded) evaluateJavascript("window.dsmSetStates && dsmSetStates($states)", null)
+    }
+}
+
+/** Yomitan's per-entry add button: capture phase, so the tap never reaches the lookup scanner. */
+private const val ENTRY_SCRIPT = """<script>
+var dsmLabels = {'new': '+ Anki', 'mining': 'Adding…', 'added': '✓ Added', 'in-anki': '✓ In Anki', 'failed': 'Retry'};
+function dsmSetStates(states) {
+  document.querySelectorAll('.dsm-add').forEach(function (b) {
+    var st = states[b.dataset.index] || 'new';
+    b.dataset.state = st;
+    b.disabled = !(st === 'new' || st === 'failed');
+    b.textContent = dsmLabels[st] || dsmLabels['new'];
+  });
+}
+document.addEventListener('click', function (e) {
+  var b = e.target.closest && e.target.closest('.dsm-add');
+  if (!b) return;
+  e.stopPropagation(); e.preventDefault();
+  if (!b.disabled) dsm.mine(parseInt(b.dataset.index, 10));
+}, true);
+</script>"""
 
 /**
  * Yomitan-style scanning inside a definition: the text from the tapped character to the end of
@@ -147,13 +195,29 @@ private class WordLookupState {
     var details by mutableStateOf<TermLookup.LookupDetails?>(null)
     var html by mutableStateOf<String?>(null)
     var status by mutableStateOf<String?>(null)
-    var mining by mutableStateOf(false)
 
-    /** A card was just added from this popup (the button turns green). */
-    var added by mutableStateOf(false)
+    /** Per entry of [TermLookup.LookupDetails.entries]; missing until the duplicate check ran. */
+    val entryStates = androidx.compose.runtime.mutableStateMapOf<Int, EntryState>()
+
+    // The header button stands for the first entry.
+    val mining: Boolean get() = entryStates[0] == EntryState.MINING
+    val added: Boolean get() = entryStates[0] == EntryState.ADDED
 
     /** The word already has an Anki note (Yomitan's duplicate tag); null until checked. */
-    var inAnki by mutableStateOf<Boolean?>(null)
+    val inAnki: Boolean?
+        get() = when (entryStates[0]) {
+            null -> null
+            EntryState.IN_ANKI, EntryState.ADDED -> true
+            else -> false
+        }
+}
+
+private enum class EntryState(val js: String) {
+    NEW("new"),
+    MINING("mining"),
+    ADDED("added"),
+    IN_ANKI("in-anki"),
+    FAILED("failed"),
 }
 
 @Composable
@@ -166,7 +230,10 @@ private fun rememberWordLookup(word: String, dark: Boolean): WordLookupState {
         state.details = result
         state.html = container.miner.buildPopupHtml(word, result, dark)
         state.loading = false
-        if (result.terms.isNotEmpty()) state.inAnki = container.miner.isInAnki(word, result)
+        result.entries.indices.forEach { i ->
+            val dup = container.miner.isInAnki(word, result.forEntry(i)) == true
+            if (state.entryStates[i] == null) state.entryStates[i] = if (dup) EntryState.IN_ANKI else EntryState.NEW
+        }
     }
     return state
 }
@@ -178,29 +245,28 @@ private fun mineAction(
     sentence: String,
     image: Bitmap?,
     onMine: (suspend (TermLookup.LookupDetails?) -> AnkiResult<String>)?,
-): () -> Unit {
+): (Int) -> Unit {
     val context = LocalContext.current
     val container = remember { AppContainer.from(context) }
-    return {
-        state.mining = true
+    return { index ->
+        // Only this entry's headword, reading and definitions go on the card (Yomitan's per-entry add).
+        val details = state.details?.forEntry(index)
+        val headword = details?.baseForm ?: word
+        state.entryStates[index] = EntryState.MINING
         state.status = null
         // App scope, not the popup's: closing the popup right after tapping must not drop the card.
         container.appScope.launch {
-            val result = onMine?.invoke(state.details) ?: container.miner.mine(word, sentence, image, state.details)
+            val result = onMine?.invoke(details) ?: container.miner.mine(word, sentence, image, details)
             withContext(Dispatchers.Main) {
-                if (result is AnkiResult.Success) {
-                    state.inAnki = true
-                    state.added = true
-                }
+                state.entryStates[index] = if (result is AnkiResult.Success) EntryState.ADDED else EntryState.FAILED
                 state.status = when (result) {
                     is AnkiResult.Success -> null
                     is AnkiResult.Error -> "Anki: ${result.message}"
                     AnkiResult.NotAvailable -> "Anki backend not available"
                 }
-                state.mining = false
                 // A toast too: the popup may be closed by now, and it is visible over the game either way.
                 val toast = when (result) {
-                    is AnkiResult.Success -> "✓ Added 「$word」 to Anki"
+                    is AnkiResult.Success -> "✓ Added 「$headword」 to Anki"
                     is AnkiResult.Error -> "Anki card not added: ${result.message}"
                     AnkiResult.NotAvailable -> "Anki card not added: backend not available"
                 }
@@ -239,6 +305,7 @@ private fun LookupBody(
     dark: Boolean,
     maxHeight: androidx.compose.ui.unit.Dp,
     onTextTap: ((String, String) -> Unit)? = null,
+    onEntryMine: ((Int) -> Unit)? = null,
 ) {
     if (state.loading) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -259,6 +326,9 @@ private fun LookupBody(
                 .fillMaxWidth()
                 .heightIn(max = maxHeight),
             onTextTap = onTextTap,
+            // Buttons only exist in the page when there is more than one entry.
+            onEntryMine = onEntryMine.takeIf { (state.details?.entries?.size ?: 0) > 1 },
+            entryStates = state.entryStates.mapValues { it.value.js },
         )
     }
 }
@@ -322,14 +392,14 @@ fun WordLookupDialog(
         text = {
             // No verticalScroll here: the WebView scrolls itself, and an outer scroll fought it for drags.
             Column(Modifier.heightIn(max = 420.dp)) {
-                LookupBody(state, dark, maxHeight = 360.dp, onTextTap = onTap)
+                LookupBody(state, dark, maxHeight = 360.dp, onTextTap = onTap, onEntryMine = mine)
                 state.status?.let {
                     Spacer(Modifier.size(8.dp))
                     Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                 }
             }
         },
-        confirmButton = { MineButton(state, mine) },
+        confirmButton = { MineButton(state) { mine(0) } },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Close") }
         },
@@ -453,7 +523,7 @@ fun WordLookupCard(
                     Modifier.weight(1f).padding(top = 6.dp),
                     onBack = if (stack.size > 1) ({ stack.removeAt(stack.lastIndex) }) else null,
                 )
-                MineButton(state, mine)
+                MineButton(state) { mine(0) }
                 androidx.compose.material3.IconButton(onClick = onDismiss) {
                     Icon(Icons.Default.Close, contentDescription = "Close")
                 }
@@ -465,7 +535,7 @@ fun WordLookupCard(
             // The rest of the card, whatever the header took: a fixed guess for the header clipped the
             // bottom of the definition when the header was taller (deinflection line, error, back).
             Box(Modifier.weight(1f, fill = false).padding(end = 8.dp)) {
-                LookupBody(state, dark, maxHeight = maxHeight, onTextTap = onTap)
+                LookupBody(state, dark, maxHeight = maxHeight, onTextTap = onTap, onEntryMine = mine)
             }
         }
     }

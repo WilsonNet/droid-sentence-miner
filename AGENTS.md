@@ -165,6 +165,12 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   split-sentence joins. NFKC turns …… into dots, so `PageLayout.clean` restores ……. Test page
   source: Black Jack ni Yoroshiku, free reuse, PDFs at densho810.com/free (`dl/001bj.zip`). The
   page lives in `AppContainer.bookPage`, so it survives tab switches.
+- **Per-headword entries** (`TermLookup.LookupDetails.entries` / `forEntry`, unit-tested): Yomitan's
+  "group" mode — terms grouped by (expression, kana-folded reading, deinflection reasons) in first
+  appearance order. With >1 entry `CardMiner.buildPopupHtml` renders a header + `.dsm-add` button per
+  entry; `ENTRY_SCRIPT` (capture-phase click, so the tap scanner never sees it) calls `dsm.mine(i)`
+  and `DefinitionWebView` pushes states back with `dsmSetStates` after `onPageFinished`. Mining
+  entry i builds the card from `forEntry(i)` only.
 - **Lookup popup** (`WordLookupPopup`, `DefinitionComponents.kt`): non-focusable `Popup` placed by
   `AnchoredPopupPosition` from the word's window rect (`getPathForRange` + `positionInWindow`), so
   taps pass through to the text. Book tab pre-creates a WebView after the first frame (Chromium cold

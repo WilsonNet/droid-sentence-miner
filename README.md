@@ -70,6 +70,10 @@ GIF for the MP4; recorded on a Xiaomi Pad 7).
   boxes). Tap any character on the photo, in a speech bubble or a column of print, and the word
   starting there lights up with its definition popping up beside it; hold and drag to select
   characters yourself; pinch to zoom, drag to pan.
+- **One add button per reading, like Yomitan** — when a lookup finds several headwords (呼び and
+  呼ぶ, 取り and 取る, different readings of one kanji), the popup lists each with its own
+  *+ Anki* button and in-Anki state; the card gets only that headword's reading, glossary,
+  pitch and frequency. The header button adds the first one.
 - **Mining feedback** — the popup's Anki button spins while the card is built, turns green
   (*Added*) when it's in, and a toast confirms it (or says why not) even if the popup was closed.
 - **Texts page** (GSM's texthooker) — every recognized line, newest first. Tap a line, tap a word,
@@ -160,7 +164,7 @@ android sdk install platform-tools platforms/android-36 build-tools/35.0.0 emula
 echo "sdk.dir=$ANDROID_HOME" > local.properties
 
 # 3. Build & test
-./gradlew testDebugUnitTest          # 143 JVM unit tests
+./gradlew testDebugUnitTest          # 146 JVM unit tests
 ./gradlew connectedDebugAndroidTest  # 4 on-device tests (VAD + AAC encoding)
 ./gradlew assembleDebug              # app/build/outputs/apk/debug/app-debug.apk
 
