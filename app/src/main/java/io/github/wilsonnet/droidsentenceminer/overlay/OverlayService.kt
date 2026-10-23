@@ -80,6 +80,7 @@ class OverlayService : Service() {
     private var liveOwner: OverlayLifecycleOwner? = null
     private var liveParams: WindowManager.LayoutParams? = null
     private var liveDismissed = false
+    private val handler = android.os.Handler(android.os.Looper.getMainLooper())
     private val liveMode = androidx.compose.runtime.mutableStateOf(LiveMode.NORMAL)
     private var liveSizeDp = DEFAULT_LIVE_WIDTH_DP to DEFAULT_LIVE_HEIGHT_DP
     /** Where the window sat before going fullscreen. */
@@ -169,7 +170,7 @@ class OverlayService : Service() {
                         liveDismissed = false
                         if (container.prefs.liveTextWindow.first()) showLiveWindow()
                     } else {
-                        hideLiveWindow()
+                        hideLiveWindow("auto OCR stopped: ${it.error}")
                     }
                 }
             }
@@ -238,6 +239,8 @@ class OverlayService : Service() {
 
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
+        val m = ScreenCaptureManager.screenMetrics(this)
+        android.util.Log.i(LIVE_TAG, "config change: ${m.widthPixels}x${m.heightPixels}, live window ${liveView != null}")
         screenDictionary.clear()
         liveParams?.let { p ->
             scope.launch {
@@ -263,7 +266,7 @@ class OverlayService : Service() {
         closeCaptureOverlay()
         closeAreaSelector()
         hidePanel()
-        hideLiveWindow()
+        hideLiveWindow("service destroyed")
         screenDictionary.clear()
         autoOcr.stop()
         audioManager.stop()
@@ -558,11 +561,27 @@ class OverlayService : Service() {
                     onEditAreas = { showAreaSelector() },
                     onClose = {
                         liveDismissed = true
-                        hideLiveWindow()
+                        hideLiveWindow("closed by user")
                     },
                 )
             }
         }
+        // The system can drop an overlay window on its own (seen as the window vanishing after an app
+        // switch): if it detaches while still ours, put it back.
+        view.addOnAttachStateChangeListener(object : android.view.View.OnAttachStateChangeListener {
+            override fun onViewAttachedToWindow(v: android.view.View) = Unit
+            override fun onViewDetachedFromWindow(v: android.view.View) {
+                if (liveView !== v) return
+                android.util.Log.w(LIVE_TAG, "window detached by the system, re-adding")
+                handler.postDelayed({
+                    val p = liveParams
+                    if (liveView === v && !v.isAttachedToWindow && p != null) {
+                        runCatching { windowManager.addView(v, p) }
+                            .onFailure { e -> android.util.Log.w(LIVE_TAG, "re-add failed", e) }
+                    }
+                }, 300)
+            }
+        })
         liveOwner = owner
         liveView = view
         liveParams = params
@@ -678,9 +697,11 @@ class OverlayService : Service() {
         runCatching { windowManager.updateViewLayout(view, params) }
     }
 
-    private fun hideLiveWindow() {
-        liveView?.let { runCatching { windowManager.removeView(it) } }
+    private fun hideLiveWindow(reason: String) {
+        if (liveView != null) android.util.Log.i(LIVE_TAG, "hide: $reason")
+        val view = liveView
         liveView = null
+        view?.let { runCatching { windowManager.removeView(it) } }
         liveParams = null
         liveOwner?.onDestroy()
         liveOwner = null
@@ -1085,7 +1106,7 @@ class OverlayService : Service() {
 
     private fun stopSelfSafely() {
         hidePanel()
-        hideLiveWindow()
+        hideLiveWindow("overlay stopped")
         closeAreaSelector()
         closeCaptureOverlay()
         removeBubble()
@@ -1133,6 +1154,7 @@ class OverlayService : Service() {
     }
 
     companion object {
+        private const val LIVE_TAG = "DSM-Live"
         private const val DEFAULT_LIVE_WIDTH_DP = 340
         private const val DEFAULT_LIVE_HEIGHT_DP = 200
         private const val MIN_LIVE_WIDTH_DP = 200

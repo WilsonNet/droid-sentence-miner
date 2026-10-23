@@ -190,6 +190,8 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   A tap on a line maps the finger to a character (`TextLayoutResult` + `positionOnScreen`, `CharTap`)
   and opens the ScreenDictionary popup there (`lookupInLiveLine`); only a long press opens the old
   bottom panel (`showLatestLine`) — tap used to, and it pauses auto OCR, so the screen layer vanished.
+  Every hide logs its reason under `DSM-Live` (`hideLiveWindow(reason)`), as do config changes; a
+  window detached by the system (not by us) is re-added. Live window vanishing → `adb logcat -s DSM-Live`.
 - **Screen dictionary** (`overlay/ScreenDictionary.kt`, `capture/ScreenText.kt`): auto OCR's fast
   read publishes `AutoOcrController.screenText` (lines with per-glyph screen fractions; meikiocr char
   x-intervals mapped back in `MeikiOcr`, ML Kit symbols). The service fits one touchable, transparent
