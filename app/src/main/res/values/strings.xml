@@ -5,6 +5,8 @@
     <string name="overlay_channel_description">Keeps the floating OCR bubble alive</string>
     <string name="ov_service_title">Droid Sentence Miner is running</string>
     <string name="ov_service_text">Tap the bubble to scan text from the screen</string>
+    <string name="accessibility_label">Quick lookup screenshots</string>
+    <string name="accessibility_description">Lets the bubble\'s quick lookup and one-off scans take a screenshot of the screen without asking for screen sharing every time. It only captures the screen when you box a word with the bubble; it reads no app content and nothing leaves your phone. Auto OCR and sentence audio still use screen sharing.</string>
     <string name="ov_action_scan">Scan region</string>
     <string name="ov_action_full">Scan full screen</string>
     <string name="ov_action_live">Live</string>

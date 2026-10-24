@@ -48,7 +48,7 @@ All GET, all JSON (except `frame.png`). Regions are screen fractions unless note
 | `/scan?l=&t=&r=&b=` | Full pipeline: grab frame → crop → OCR → dictionary lookup. Omit the region to reuse the saved one |
 | `/frame.png?l=&t=&r=&b=` | PNG of what MediaProjection actually sees (omit region for the raw full frame) |
 | `/ocr?file=/sdcard/...&engine=meiki\|mlkit&twoPass=1&noise=1&l=&t=&r=&b=` | OCR an image file (optionally cropped) with the chosen engine; returns text, engine, per-line boxes + confidences, and dictionary matches |
-| `/quick?l=&t=&r=&b=` | Quick lookup of a box (screen fractions) as if drawn after a bubble tap: OCRs it and opens the screen dictionary popup on its first word; returns `lines` read (0 = toast "No Japanese text") |
+| `/quick?l=&t=&r=&b=` | Quick lookup of a box (screen fractions) as if drawn after a bubble tap (accessibility screenshot when `/state.accessibilityScreenshots`, else the projection frame): OCRs it and opens the screen dictionary popup on its first word; returns `lines` read (0 = toast "No Japanese text") |
 | `/live?show=1&mode=compact\|normal\|fullscreen` | Live text window: open it and/or switch mode; returns `shown`, `mode`, `rect` ([x, y, w, h] px) |
 | `/book?file=/sdcard/...` | Book mode: read a page photo (EXIF-rotated, ≤3000 px) with ML Kit into ordered paragraphs (`text`, `vertical`, `box`) and show it in the Book tab — validates tategaki order without a camera |
 | `/lookup?word=<urlencoded>` | Dictionary lookup summary (reading, term count, base form, term_meta rows incl. pitch) |

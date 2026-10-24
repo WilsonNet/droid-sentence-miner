@@ -268,6 +268,14 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   player settings. `yt-dlp -f bestaudio --download-sections "*0:00-8:00"` gives reference audio
   to cross-correlate `/clip.wav` output against.
 
+- **Screenshots without consent** (`capture/ScreenshotAccessibilityService`, API 30+): an
+  accessibility service with only `canTakeScreenshot` (no window content, no events). Android 14+
+  makes MediaProjection consent single-session, so `OverlayService.grabStill` takes the
+  accessibility screenshot for quick lookups and one-off scans and falls back to the projection
+  frame; auto OCR stays on MediaProjection (audio). Not enabled + no projection → the bubble
+  opens Accessibility settings (below API 30 it requests projection as before). Enabling it is
+  the user's call — don't flip `enabled_accessibility_services` over adb on a personal phone.
+  `/state.accessibilityScreenshots` shows whether it is bound.
 - **Typewriter text / static-region skip** (`FrameSignature` in `AutoOcrController.kt`): a frame
   is OCR'd only if it differs from the frame *last OCR'd* (not the previous frame), by mean or by
   any single cell of a 96×24 area-averaged grid. Comparing consecutive frames with a mean of a

@@ -295,6 +295,7 @@ object DebugApi {
         val screen = service?.debugCaptureManager
         json.put("screen", JSONArray(listOf(screen?.screenWidth, screen?.screenHeight)))
         dictInstall?.let { install ->
+        json.put("accessibilityScreenshots", io.github.wilsonnet.droidsentenceminer.capture.ScreenshotAccessibilityService.isConnected)
             json.put(
                 "dictInstall",
                 JSONObject()

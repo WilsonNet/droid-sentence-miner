@@ -38,6 +38,7 @@ import io.github.wilsonnet.droidsentenceminer.AppVisibility
 import io.github.wilsonnet.droidsentenceminer.capture.AutoOcrController
 import io.github.wilsonnet.droidsentenceminer.capture.TextArea
 import io.github.wilsonnet.droidsentenceminer.capture.ScreenText
+import io.github.wilsonnet.droidsentenceminer.capture.ScreenshotAccessibilityService
 import io.github.wilsonnet.droidsentenceminer.ocr.SubtitleLineFilter
 import io.github.wilsonnet.droidsentenceminer.capture.ScreenCaptureManager
 import io.github.wilsonnet.droidsentenceminer.ocr.JapaneseTextScore
@@ -396,12 +397,29 @@ class OverlayService : Service() {
         screenDictionary.clear()
         hidePanel()
         closeCaptureOverlay()
-        if (!captureManager.isReady) {
+        if (!ScreenshotAccessibilityService.isConnected && !captureManager.isReady) {
+            if (ScreenshotAccessibilityService.supported) {
+                // Screenshots via accessibility: switched on once, no screen-sharing prompt per session.
+                toast("Turn on \"${getString(R.string.accessibility_label)}\" (Installed apps → ${getString(R.string.app_name)}) to look up without the screen-sharing prompt")
+                ScreenshotAccessibilityService.openSettings(this)
+                return
+            }
             pendingQuick = true
             requestProjection()
             return
         }
         showQuickSelect()
+    }
+
+    /**
+     * A still of the screen for quick lookups and one-off scans: the accessibility screenshot when
+     * that service is on (no consent needed), else the screen capture's latest frame.
+     */
+    private suspend fun grabStill(timeoutMs: Long = 2000L, maxAgeMs: Long = 350L): Bitmap? {
+        if (ScreenshotAccessibilityService.isConnected) {
+            ScreenshotAccessibilityService.screenshot()?.let { return it }
+        }
+        return if (captureManager.isReady) captureManager.grabFrame(timeoutMs, maxAgeMs) else null
     }
 
     private fun showQuickSelect() {
@@ -444,12 +462,12 @@ class OverlayService : Service() {
     internal suspend fun quickLookup(box: RectF): Int {
         // The box cursor was just removed: wait for a frame without it.
         delay(QUICK_FRAME_DELAY_MS)
-        val frame = captureManager.grabFrame(timeoutMs = 800, maxAgeMs = QUICK_FRAME_DELAY_MS) ?: run {
+        val frame = grabStill(timeoutMs = 800, maxAgeMs = QUICK_FRAME_DELAY_MS) ?: run {
             toast("Could not capture the screen")
             return 0
         }
-        val padX = QUICK_PAD_DP * resources.displayMetrics.density / captureManager.screenWidth.coerceAtLeast(1)
-        val padY = QUICK_PAD_DP * resources.displayMetrics.density / captureManager.screenHeight.coerceAtLeast(1)
+        val padX = QUICK_PAD_DP * resources.displayMetrics.density / frame.width
+        val padY = QUICK_PAD_DP * resources.displayMetrics.density / frame.height
         val area = TextArea(box.left - padX, box.top - padY, box.right + padX, box.bottom + padY).clamped()
         val lines = withContext(Dispatchers.Default) {
             val crop = captureManager.cropToRegion(frame, ScreenCaptureManager.RectFrac(area.left, area.top, area.right, area.bottom))
@@ -553,7 +571,7 @@ class OverlayService : Service() {
         showPanel()
         panelState.mode = PanelMode.RESULT
         panelState.status = null
-        if (!captureManager.isReady) {
+        if (!captureManager.isReady && !ScreenshotAccessibilityService.isConnected) {
             pendingScan = region
             requestProjection()
             panelState.scanning = false
@@ -932,7 +950,7 @@ class OverlayService : Service() {
         panelState.audioReady = false
         panelState.audioSkipped = false
 
-        val frame = captureManager.grabFrame()
+        val frame = grabStill()
         if (frame == null) {
             panelState.scanning = false
             val status = "Could not capture the screen. Try again."

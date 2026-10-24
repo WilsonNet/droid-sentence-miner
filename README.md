@@ -188,6 +188,12 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 3. **Quick lookup** — tap the bubble, drag a box over a word, lift: the definition pops up next
    to it with *+ Anki* (sentence = the boxed text, audio from the replay buffer). Tap another word
    in the box to look that one up; tap anywhere else to close. A tap without a drag cancels.
+   Turn on *Accessibility → Installed apps → Quick lookup screenshots* once (Android 11+; the
+   first bubble tap opens that page) and quick lookups and one-off scans never ask for screen
+   sharing again — the service only takes a screenshot when you box a word and reads no app
+   content. If the switch is greyed out (APK installed from a browser/file manager, Android 13+):
+   *App info → ⋮ → Allow restricted settings*. Auto OCR still asks for screen sharing each
+   session: Android has no other way to record the playback audio for sentence cards.
 4. **Auto OCR (recommended for games/video)** — open the game, long-press the bubble → *Start
    auto OCR* (or set *Bubble tap* to *Scan region* and tap the bubble → *Live*); *Live* uses the box you drew as the text area when this orientation has none, and
    turns into *Stop live* while auto OCR runs. In the

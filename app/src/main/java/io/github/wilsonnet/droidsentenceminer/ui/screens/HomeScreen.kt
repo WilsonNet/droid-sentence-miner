@@ -55,6 +55,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
+import io.github.wilsonnet.droidsentenceminer.capture.ScreenshotAccessibilityService
 import androidx.lifecycle.LifecycleEventObserver
 import io.github.wilsonnet.droidsentenceminer.AppContainer
 import io.github.wilsonnet.droidsentenceminer.dict.ScannedWord
@@ -76,6 +77,7 @@ fun HomeScreen(modifier: Modifier = Modifier) {
     val scope = rememberCoroutineScope()
 
     var hasOverlay by remember { mutableStateOf(Settings.canDrawOverlays(context)) }
+    var hasScreenshots by remember { mutableStateOf(ScreenshotAccessibilityService.isEnabled(context)) }
     var hasNotifications by remember {
         mutableStateOf(
             Build.VERSION.SDK_INT < 33 ||
@@ -93,6 +95,7 @@ fun HomeScreen(modifier: Modifier = Modifier) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 hasOverlay = Settings.canDrawOverlays(context)
+                hasScreenshots = ScreenshotAccessibilityService.isEnabled(context)
                 hasNotifications = Build.VERSION.SDK_INT < 33 ||
                     ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
             }
@@ -170,6 +173,21 @@ fun HomeScreen(modifier: Modifier = Modifier) {
                 Text("Floating overlay", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 StatusLine("Overlay permission", hasOverlay)
                 StatusLine("Notifications", hasNotifications)
+                if (ScreenshotAccessibilityService.supported) {
+                    StatusLine("Quick lookup without screen-sharing prompt", hasScreenshots)
+                    if (!hasScreenshots) {
+                        Text(
+                            "Accessibility → Installed apps → ${context.getString(io.github.wilsonnet.droidsentenceminer.R.string.accessibility_label)}. " +
+                                "Only takes a screenshot when you box a word; auto OCR still asks for screen sharing (it records the audio too). " +
+                                "If it's greyed out: App info → ⋮ → Allow restricted settings.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        OutlinedButton(onClick = { ScreenshotAccessibilityService.openSettings(context) }) {
+                            Text("Open accessibility settings")
+                        }
+                    }
+                }
                 StatusLine("Dictionaries installed", dictionaries.isNotEmpty(), "${dictionaries.size}")
                 val hasPitch = dictionaries.any {
                     it.title == io.github.wilsonnet.droidsentenceminer.dict.RecommendedDictionaries.KANJIUM_TITLE ||
