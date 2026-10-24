@@ -247,6 +247,11 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   differently per read on stylized hardsubs, so this fixes most single-character errors.
 - **Samsung freezes cached apps**: with DSM in the background and no foreground service, the
   debug API stops answering. Bring `MainActivity` forward before calling it.
+- **Bubble position is a side, not a pixel**: the saved x (`DsmPrefs.bubblePosition`) is a snapped
+  edge, so `OverlayService.fitBubble` reads it as left/right and re-fits it to the current screen on
+  add and on every config change. A right-edge x saved in landscape (2148) left the bubble off a
+  1080-wide portrait screen — invisible but still "there". Screen size comes from
+  `ScreenCaptureManager.screenMetrics`, not `captureManager.screenWidth` (stale while not capturing).
 - **Rotation keeps the projection**: `ScreenCaptureManager.onScreenSizeChanged()` resizes the
   virtual display and swaps in a new `ImageReader`, so starting in portrait and switching to a
   landscape game keeps capturing (no re-consent). `start()` re-reads the screen size: rotating while

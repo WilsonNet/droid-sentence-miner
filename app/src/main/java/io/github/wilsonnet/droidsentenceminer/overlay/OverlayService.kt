@@ -242,6 +242,10 @@ class OverlayService : Service() {
         val m = ScreenCaptureManager.screenMetrics(this)
         android.util.Log.i(LIVE_TAG, "config change: ${m.widthPixels}x${m.heightPixels}, live window ${liveView != null}")
         screenDictionary.clear()
+        bubbleParams?.let { p ->
+            fitBubble(p)
+            bubbleView?.let { runCatching { windowManager.updateViewLayout(it, p) } }
+        }
         liveParams?.let { p ->
             scope.launch {
                 restoreLiveGeometry(p)
@@ -292,8 +296,9 @@ class OverlayService : Service() {
             PixelFormat.TRANSLUCENT,
         ).apply {
             gravity = Gravity.TOP or Gravity.START
-            x = (captureManager.screenWidth - size - (12 * density).toInt()).coerceAtLeast(0)
-            y = (captureManager.screenHeight * 0.42f).roundToInt()
+            val screen = ScreenCaptureManager.screenMetrics(this@OverlayService)
+            x = screen.widthPixels
+            y = (screen.heightPixels * 0.42f).roundToInt()
         }
 
         scope.launch {
@@ -301,6 +306,7 @@ class OverlayService : Service() {
                 params.x = x
                 params.y = y
             }
+            fitBubble(params)
             val view = BubbleView(
                 this@OverlayService,
                 onTap = { showCaptureOverlay() },
@@ -315,23 +321,38 @@ class OverlayService : Service() {
         }
     }
 
+    /**
+     * Puts the bubble on the left or right edge of the *current* screen. The saved x is a snapped
+     * edge, so it only tells the side: a right-edge x saved in landscape is off-screen in portrait.
+     */
+    private fun fitBubble(params: WindowManager.LayoutParams) {
+        val screen = ScreenCaptureManager.screenMetrics(this)
+        val density = resources.displayMetrics.density
+        val size = (56 * density).roundToInt()
+        val edge = (12 * density).roundToInt()
+        params.x = if (params.x <= edge) edge else max(0, screen.widthPixels - size - edge)
+        params.y = params.y.coerceIn(0, max(0, screen.heightPixels - size))
+    }
+
     private fun moveBubble(dx: Float, dy: Float) {
         val view = bubbleView ?: return
         val params = bubbleParams ?: return
+        val screen = ScreenCaptureManager.screenMetrics(this)
         val density = resources.displayMetrics.density
         val size = (56 * density).roundToInt()
-        params.x = (params.x + dx).roundToInt().coerceIn(0, max(0, captureManager.screenWidth - size))
-        params.y = (params.y + dy).roundToInt().coerceIn(0, max(0, captureManager.screenHeight - size))
+        params.x = (params.x + dx).roundToInt().coerceIn(0, max(0, screen.widthPixels - size))
+        params.y = (params.y + dy).roundToInt().coerceIn(0, max(0, screen.heightPixels - size))
         runCatching { windowManager.updateViewLayout(view, params) }
     }
 
     private fun snapBubbleAndSave() {
         val view = bubbleView ?: return
         val params = bubbleParams ?: return
+        val screen = ScreenCaptureManager.screenMetrics(this)
         val density = resources.displayMetrics.density
         val size = (56 * density).roundToInt()
         val edge = (12 * density).roundToInt()
-        params.x = if (params.x + size / 2 < captureManager.screenWidth / 2) edge else captureManager.screenWidth - size - edge
+        params.x = if (params.x + size / 2 < screen.widthPixels / 2) edge else screen.widthPixels - size - edge
         runCatching { windowManager.updateViewLayout(view, params) }
         scope.launch { container.prefs.setBubblePosition(params.x, params.y) }
     }
