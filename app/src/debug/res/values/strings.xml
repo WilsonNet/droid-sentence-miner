@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Debug builds install next to the release app (.debug suffix); tell them apart in the launcher. -->
+    <string name="app_name">Droid Sentence Miner (Dev)</string>
+</resources>

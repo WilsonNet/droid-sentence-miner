@@ -52,7 +52,8 @@ UI dumps and docs: `android sdk install platforms/android-36 build-tools/35.0.0 
 Use the SDK's `adb` (first on `PATH` above). A distro `/usr/bin/adb` of a different version
 kills the server on every call and devices flap between `device` and `offline`.
 
-Debug builds are signed with the committed `app/debug.keystore`, so APKs built on any machine
+Debug builds are named "Droid Sentence Miner (Dev)" (`app/src/debug/res/values/strings.xml`), so
+they're told apart from a release install in the launcher. They are signed with the committed `app/debug.keystore`, so APKs built on any machine
 upgrade each other in place (no uninstall, dictionaries survive).
 
 Versions: AGP 8.13.2, Kotlin 2.3.21, KSP 2.3.12, compileSdk 36, minSdk 26, targetSdk 35,
@@ -76,7 +77,7 @@ ANDROID_SERIAL=emulator-5554 $GRADLE connectedDebugAndroidTest \
 QT_QPA_PLATFORM=xcb $ANDROID_HOME/emulator/emulator -avd dsm_test -gpu host -no-snapshot-save -no-boot-anim &
 $ADB -s emulator-5554 wait-for-device shell 'while [ "$(getprop sys.boot_completed)" != 1 ]; do sleep 1; done'
 
-# Install / permissions (debug builds are suffixed .debug)
+# Install / permissions (debug builds are suffixed .debug and labeled "Droid Sentence Miner (Dev)")
 $ADB -s emulator-5554 install -r app/build/outputs/apk/debug/app-debug.apk
 $ADB -s emulator-5554 shell appops set io.github.wilsonnet.droidsentenceminer.debug SYSTEM_ALERT_WINDOW allow
 $ADB -s emulator-5554 shell pm grant io.github.wilsonnet.droidsentenceminer.debug android.permission.RECORD_AUDIO
