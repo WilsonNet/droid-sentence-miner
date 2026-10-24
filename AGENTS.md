@@ -6,7 +6,7 @@ Notes for CLI/agent-driven development of this Android app. No Android Studio is
 
 After any change to behavior, UI, settings, toolchain, debug API, dependencies or measured
 numbers, update the markdown docs **in the same push**: `README.md`, this file, and the skills in
-`.opencode/skills/` (also visible to Claude Code via `.claude/skills`). The checklist of which file
+`.opencode/skills/` (also visible to Claude Code via `.claude/skills` and Antigravity via `.agents/skills`). The checklist of which file
 owns what is in `.opencode/skills/dsm-docs/SKILL.md` — follow it before committing.
 
 Skills: `dsm-debug-api` (drive/validate the app over adb), `dsm-ocr-eval` (measure OCR accuracy
@@ -382,5 +382,5 @@ app/src/main/java/io/github/wilsonnet/droidsentenceminer/
 
 tools/ocr-eval/   OCR benchmark scripts (desktop meikiocr, on-device runner/A-B timing, scorer, subtitle burner, hand GT)
 tools/meiki-variants/  builds the meikiocr model cuts in app/src/main/assets/meiki (make_assets.py)
-.opencode/skills/ dsm-debug-api, dsm-ocr-eval, dsm-docs (symlinked as .claude/skills)
+.opencode/skills/ dsm-debug-api, dsm-ocr-eval, dsm-docs, dsm-promo-media, dsm-release (symlinked as .claude/skills and .agents/skills)
 ```
