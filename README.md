@@ -82,9 +82,11 @@ GIF for the MP4; recorded on a Xiaomi Pad 7).
   in memory. Any line still inside the buffer can be mined with audio cut from when it appeared to
   when it was replaced (± configurable offsets). Preview or fine-tune it in the waveform editor
   before mining; optional (experimental) silence trimming is in Settings.
-- **Floating popup overlay** — a draggable bubble that lets you select any screen region, OCR it,
-  and look up words without leaving the game. Long-press opens a menu; the notification stays
-  available as a shortcut.
+- **Floating popup overlay** — a draggable bubble that stays on screen. Tap it, drag a box over a
+  word and its definition pops up right next to it (*Quick lookup*, the default); other words in
+  the box can be tapped too. Long-press opens the menu, where *Bubble tap* switches to *Scan
+  region* (the region editor with Scan / Full screen / Live and the results panel). The
+  notification stays available as a shortcut.
 - **Japanese OCR trained on games** — on-device [meikiocr](https://github.com/rtr46/meikiocr)
   (ONNX Runtime), a detector + recognizer trained on Japanese video-game text: 3–19× fewer
   character errors than ML Kit on stylized, outlined game/subtitle fonts (small kana, dakuten).
@@ -183,8 +185,11 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
    - *AnkiConnect*: start Anki with the AnkiConnect add-on and enter the URL
      (e.g. `http://192.168.1.10:8765`).
    Pick a deck and note type (a "Droid Sentence Miner" note type is created automatically).
-3. **Auto OCR (recommended)** — open the game, tap the bubble → *Live* (or long-press → *Start
-   auto OCR*); *Live* uses the box you drew as the text area when this orientation has none, and
+3. **Quick lookup** — tap the bubble, drag a box over a word, lift: the definition pops up next
+   to it with *+ Anki* (sentence = the boxed text, audio from the replay buffer). Tap another word
+   in the box to look that one up; tap anywhere else to close. A tap without a drag cancels.
+4. **Auto OCR (recommended for games/video)** — open the game, long-press the bubble → *Start
+   auto OCR* (or set *Bubble tap* to *Scan region* and tap the bubble → *Live*); *Live* uses the box you drew as the text area when this orientation has none, and
    turns into *Stop live* while auto OCR runs. In the
    share dialog choose *A single app* → your game. If no text area exists for the current
    orientation the area editor opens: drag boxes over the dialogue/subtitle area (drag to move,
@@ -197,10 +202,11 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
    While it runs, just tap a word in the real subtitle on screen to look it up (the video pauses
    until you close the definition). Toggles: *Settings → Tap text on screen to look it up* and
    *Pause the video while looking up*.
-4. **Manual scan (one-off)** — tap the bubble (or long-press → *Scan once: pick a region*), adjust
+5. **Manual scan (one-off)** — long-press the bubble → *Scan once: pick a region* (or tap it in
+   *Scan region* mode), adjust
    the capture box and hit *Scan region*. This box is separate from the auto OCR text areas. Tap a
    highlighted word for definitions, then *Anki*. Manual scans are logged on *Texts* too.
-5. **Audio** — on by default; grant the microphone permission when asked (Android requires it for
+6. **Audio** — on by default; grant the microphone permission when asked (Android requires it for
    playback capture). *Settings* has the buffer length, start/end offsets, silence trimming and
    volume normalization. Apps that opt out of capture (DroidDeck, Netflix) record silence unless
    you enable *Microphone fallback* (Settings or the bubble menu).

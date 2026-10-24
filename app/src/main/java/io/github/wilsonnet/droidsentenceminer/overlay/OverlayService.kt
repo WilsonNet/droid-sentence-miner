@@ -37,12 +37,16 @@ import io.github.wilsonnet.droidsentenceminer.audio.AudioSegment
 import io.github.wilsonnet.droidsentenceminer.AppVisibility
 import io.github.wilsonnet.droidsentenceminer.capture.AutoOcrController
 import io.github.wilsonnet.droidsentenceminer.capture.TextArea
+import io.github.wilsonnet.droidsentenceminer.capture.ScreenText
+import io.github.wilsonnet.droidsentenceminer.ocr.SubtitleLineFilter
 import io.github.wilsonnet.droidsentenceminer.capture.ScreenCaptureManager
 import io.github.wilsonnet.droidsentenceminer.ocr.JapaneseTextScore
 import io.github.wilsonnet.droidsentenceminer.ocr.MlKitJapaneseOcr
 import io.github.wilsonnet.droidsentenceminer.textlog.TextLineEntity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -73,6 +77,8 @@ class OverlayService : Service() {
 
     private var captureOverlay: CaptureOverlayView? = null
     private var captureParams: WindowManager.LayoutParams? = null
+    private var quickSelect: QuickSelectView? = null
+    private var pendingQuick = false
 
     private var panelView: ComposeView? = null
 
@@ -135,9 +141,17 @@ class OverlayService : Service() {
         )
         scope.launch {
             kotlinx.coroutines.flow.combine(autoOcr.screenText, container.prefs.screenDictionary) { lines, on -> if (on) lines else emptyList() }
-                .collect { lines -> if (lines.isEmpty() && !screenDictionary.popupOpen) screenDictionary.clear() else screenDictionary.update(lines) }
+                .collect { lines ->
+                    if (screenDictionary.quickActive) return@collect
+                    if (lines.isEmpty() && !screenDictionary.popupOpen) screenDictionary.clear() else screenDictionary.update(lines)
+                }
         }
         scope.launch { container.prefs.pauseOnLookup.collect { screenDictionary.pauseMedia = it } }
+        scope.launch {
+            container.prefs.bubbleMode.collect { name ->
+                panelState.bubbleMode = BubbleMode.entries.firstOrNull { it.name.equals(name, true) } ?: BubbleMode.QUICK
+            }
+        }
         screenDictionary.refresh = { autoOcr.readNow() }
         scope.launch { container.prefs.autoAreas(landscape = false).collect { portraitAreas = it } }
         scope.launch {
@@ -268,6 +282,7 @@ class OverlayService : Service() {
         if (activeInstance === this) activeInstance = null
         removeBubble()
         closeCaptureOverlay()
+        closeQuickSelect()
         closeAreaSelector()
         hidePanel()
         hideLiveWindow("service destroyed")
@@ -309,7 +324,7 @@ class OverlayService : Service() {
             fitBubble(params)
             val view = BubbleView(
                 this@OverlayService,
-                onTap = { showCaptureOverlay() },
+                onTap = { onBubbleTap() },
                 onMove = { dx, dy -> moveBubble(dx, dy) },
                 onLongPress = { showMenu() },
                 onRelease = { snapBubbleAndSave() },
@@ -361,6 +376,116 @@ class OverlayService : Service() {
         bubbleView?.let { runCatching { windowManager.removeView(it) } }
         bubbleView = null
         bubbleParams = null
+    }
+
+    private fun onBubbleTap() {
+        when (panelState.bubbleMode) {
+            BubbleMode.QUICK -> startQuickLookup()
+            BubbleMode.REGION -> showCaptureOverlay()
+        }
+    }
+
+    // ------------------------------------------------------------ quick lookup
+
+    /** Bubble tap → box a word → its definition pops up next to it (screen dictionary popup). */
+    private fun startQuickLookup() {
+        if (quickSelect != null) {
+            closeQuickSelect()
+            return
+        }
+        screenDictionary.clear()
+        hidePanel()
+        closeCaptureOverlay()
+        if (!captureManager.isReady) {
+            pendingQuick = true
+            requestProjection()
+            return
+        }
+        showQuickSelect()
+    }
+
+    private fun showQuickSelect() {
+        if (quickSelect != null || !Settings.canDrawOverlays(this)) return
+        val view = QuickSelectView(
+            this,
+            onSelect = { box ->
+                closeQuickSelect()
+                scope.launch { quickLookup(box) }
+            },
+            onCancel = { closeQuickSelect() },
+        )
+        val params = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+            PixelFormat.TRANSLUCENT,
+        ).apply {
+            gravity = Gravity.TOP or Gravity.START
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+            }
+        }
+        quickSelect = view
+        runCatching { windowManager.addView(view, params) }
+    }
+
+    private fun closeQuickSelect() {
+        quickSelect?.let { runCatching { windowManager.removeView(it) } }
+        quickSelect = null
+    }
+
+    /**
+     * OCRs the boxed [box] (screen fractions) and opens the screen dictionary on its first word.
+     * Every row the engine read is kept: the box is the user's pick, there is no subtitle to find.
+     */
+    internal suspend fun quickLookup(box: RectF): Int {
+        // The box cursor was just removed: wait for a frame without it.
+        delay(QUICK_FRAME_DELAY_MS)
+        val frame = captureManager.grabFrame(timeoutMs = 800, maxAgeMs = QUICK_FRAME_DELAY_MS) ?: run {
+            toast("Could not capture the screen")
+            return 0
+        }
+        val padX = QUICK_PAD_DP * resources.displayMetrics.density / captureManager.screenWidth.coerceAtLeast(1)
+        val padY = QUICK_PAD_DP * resources.displayMetrics.density / captureManager.screenHeight.coerceAtLeast(1)
+        val area = TextArea(box.left - padX, box.top - padY, box.right + padX, box.bottom + padY).clamped()
+        val lines = withContext(Dispatchers.Default) {
+            val crop = captureManager.cropToRegion(frame, ScreenCaptureManager.RectFrac(area.left, area.top, area.right, area.bottom))
+            val dropNoise = container.prefs.ocrDropNoise.first()
+            val result = runCatching { container.ocrEngine(twoPass = false, dropNoise = dropNoise).recognize(padForOcr(crop)) }.getOrNull()
+                ?: return@withContext emptyList()
+            // Padding sits right/below the crop, so boxes are still crop px; drop reads in the padding.
+            val read = SubtitleLineFilter.dropUnsure(result.lines)
+                .filter { it.box.centerX < crop.width && it.box.centerY < crop.height }
+            ScreenText.fromRead(read, read.map { it.box }, crop.width, crop.height, area, 0)
+        }
+        if (lines.isEmpty()) {
+            toast("No Japanese text in the box")
+            return 0
+        }
+        screenDictionary.showQuick(lines)
+        return lines.size
+    }
+
+    /**
+     * A word-sized box on a canvas of at least meikiocr's 960×544 input, at its real size (top-left,
+     * filled with the corner color): meikiocr scales a small crop up to that size and then finds no
+     * line in the giant glyphs (a 118×93 crop of 無料 read as nothing, padded it reads).
+     */
+    private fun padForOcr(crop: Bitmap): Bitmap {
+        if (crop.width >= QUICK_MIN_OCR_W && crop.height >= QUICK_MIN_OCR_H) return crop
+        val canvas = Bitmap.createBitmap(max(crop.width, QUICK_MIN_OCR_W), max(crop.height, QUICK_MIN_OCR_H), Bitmap.Config.ARGB_8888)
+        android.graphics.Canvas(canvas).apply {
+            drawColor(crop.getPixel(0, 0) or 0xFF000000.toInt())
+            drawBitmap(crop, 0f, 0f, null)
+        }
+        return canvas
+    }
+
+    private fun toast(text: String) {
+        android.widget.Toast.makeText(this, text, android.widget.Toast.LENGTH_SHORT).show()
     }
 
     // ----------------------------------------------------- capture region mode
@@ -444,6 +569,7 @@ class OverlayService : Service() {
         if (resultCode != android.app.Activity.RESULT_OK || data == null) {
             pendingScan = null
             pendingAutoOcr = false
+            pendingQuick = false
             panelState.scanning = false
             panelState.status = "Screen capture permission denied"
             return
@@ -464,6 +590,11 @@ class OverlayService : Service() {
         if (pendingAutoOcr) {
             pendingAutoOcr = false
             autoOcr.start()
+        }
+        if (pendingQuick) {
+            pendingQuick = false
+            // Let the consent dialog close first, or the box would be drawn over it.
+            handler.postDelayed({ showQuickSelect() }, QUICK_FRAME_DELAY_MS * 2)
         }
     }
 
@@ -941,6 +1072,10 @@ class OverlayService : Service() {
             liveDismissed = false
             showLiveWindow()
         },
+        onBubbleMode = { mode ->
+            panelState.bubbleMode = mode
+            scope.launch { container.prefs.setBubbleMode(mode.name.lowercase()) }
+        },
     )
 
     private fun applyAudio(segment: AudioSegment) {
@@ -1169,6 +1304,9 @@ class OverlayService : Service() {
 
     internal val debugLandscape: Boolean get() = isLandscape()
 
+    /** Quick lookup of [box] without drawing it; returns the number of lines read. */
+    internal suspend fun debugQuickLookup(box: RectF): Int = withContext(Dispatchers.Main) { quickLookup(box) }
+
     /** Kicks off a scan (requesting projection consent when needed). */
     internal fun debugRequestScan(region: RectF) {
         android.os.Handler(mainLooper).post { performScan(region) }
@@ -1180,6 +1318,10 @@ class OverlayService : Service() {
         private const val DEFAULT_LIVE_HEIGHT_DP = 200
         private const val MIN_LIVE_WIDTH_DP = 200
         private const val MIN_LIVE_HEIGHT_DP = 96
+        private const val QUICK_FRAME_DELAY_MS = 150L
+        private const val QUICK_PAD_DP = 4
+        private const val QUICK_MIN_OCR_W = 960
+        private const val QUICK_MIN_OCR_H = 544
 
         @Volatile
         internal var activeInstance: OverlayService? = null

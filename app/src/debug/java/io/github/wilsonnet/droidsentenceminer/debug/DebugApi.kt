@@ -149,6 +149,13 @@ object DebugApi {
                 val (shown, current, rect) = service.debugLiveWindow
                 JSONObject().put("shown", shown).put("mode", current.name.lowercase()).put("rect", JSONArray(rect))
             }
+            "/quick" -> respondApi(socket) {
+                // Quick lookup of a box (screen fractions l,t,r,b) as if drawn after a bubble tap.
+                val service = OverlayService.activeInstance ?: return@respondApi errorJson("overlay not running")
+                val region = regionParam(params) ?: return@respondApi errorJson("l,t,r,b required")
+                val lines = runBlocking { service.debugQuickLookup(region) }
+                JSONObject().put("ok", lines > 0).put("lines", lines)
+            }
             "/lines" -> respondApi(socket) { lines(params) }
             "/clip.wav" -> {
                 val wav = clipWav(params)

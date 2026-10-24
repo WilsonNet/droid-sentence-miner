@@ -103,7 +103,7 @@ curl -s "localhost:9099/mine?word=%E3%81%AA%E3%81%84&sentence=..."   # Anki card
 Endpoints: `/state`, `/scan`, `/frame.png`, `/ocr` (`l,t,r,b` crops the file first), `/lookup`, `/mine`, `/dicts`,
 `/autoocr?on=1|0`, `/lines?limit=`, `/clip.wav?id=&trim=0|1`, `/line_shot.jpg?id=`, `/mine_line?id=&word=`,
 `/set_region?l=&t=&r=&b=&orientation=`, `/clear_lines`, `/add_line?text=&ago=&dur=`,
-`/install_ocr_models` (meikiocr download), `/ocr?engine=meiki|mlkit`, `/select_areas` (opens the area editor),
+`/quick?l=&t=&r=&b=` (bubble quick lookup of a box), `/install_ocr_models` (meikiocr download), `/ocr?engine=meiki|mlkit`, `/select_areas` (opens the area editor),
 `/install_dict?id=jitendex` (background install; progress in `/state.dictInstall`),
 `/anki_notes?word=` (field-level card verification via the AnkiDroid provider),
 `/anki_meta` (decks + note types), `/book?file=` (book-mode page OCR → paragraphs, shown in the Book tab), `/live?show=1&mode=` (live text window), `/mic_fallback?on=`, `/startoverlay`, `/stopoverlay`, `/request_projection`.
@@ -247,6 +247,13 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   differently per read on stylized hardsubs, so this fixes most single-character errors.
 - **Samsung freezes cached apps**: with DSM in the background and no foreground service, the
   debug API stops answering. Bring `MainActivity` forward before calling it.
+- **Bubble modes** (`BubbleMode`, pref `bubbleMode`, picked under *Bubble tap* in the long-press
+  menu): QUICK (default) opens `QuickSelectView` — drag a box, `OverlayService.quickLookup` OCRs it
+  and `ScreenDictionary.showQuick` lays the box's lines as a layer and pops up the first scanned
+  word. The quick layer (`quickActive`) ignores auto OCR updates, skips the tap re-read and goes
+  away 400 ms after the popup closes (so a tap on another boxed word still lands). REGION is the
+  old `CaptureOverlayView`. meikiocr reads nothing on a word-sized crop (it scales it up to
+  960×544 and the glyphs get huge): `padForOcr` puts it top-left on a ≥960×544 canvas at real size.
 - **Bubble position is a side, not a pixel**: the saved x (`DsmPrefs.bubblePosition`) is a snapped
   edge, so `OverlayService.fitBubble` reads it as left/right and re-fits it to the current screen on
   add and on every config change. A right-edge x saved in landscape (2148) left the bubble off a

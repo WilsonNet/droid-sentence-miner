@@ -72,13 +72,36 @@ class ScreenDictionary(
     var refresh: suspend () -> List<ScreenTextLine>? = { null }
     private var tapSeq = 0
 
+    /** The layer is a quick lookup's boxed region, not auto OCR's read: it goes away with the popup. */
+    var quickActive = false
+        private set
+    private val clearQuick = Runnable { if (quickActive && !popupOpen) clear() }
+
     val popupOpen: Boolean get() = popup != null
 
     private val density = context.resources.displayMetrics.density
 
     fun update(newLines: List<ScreenTextLine>) {
-        if (popupOpen || newLines == lines) return
+        if (popupOpen || quickActive || newLines == lines) return
         setLayer(newLines)
+    }
+
+    /**
+     * Quick lookup: [newLines] were read from the box the user drew over a word. The first word
+     * found pops up at once; the rest of the box is laid as a layer too, so another word in it can
+     * be tapped while the popup is open.
+     */
+    fun showQuick(newLines: List<ScreenTextLine>) {
+        clear()
+        if (newLines.isEmpty()) return
+        quickActive = true
+        setLayer(newLines)
+        scope.launch {
+            val (line, range) = newLines.withIndex().firstNotNullOfOrNull { (i, l) ->
+                container.lookup.scan(l.text).firstOrNull()?.let { i to (it.start until it.end) }
+            } ?: (0 to container.lookup.wordAt(newLines[0].text, 0))
+            if (quickActive) show(line, range)
+        }
     }
 
     private fun setLayer(newLines: List<ScreenTextLine>) {
@@ -117,6 +140,8 @@ class ScreenDictionary(
     }
 
     fun clear() {
+        quickActive = false
+        handler.removeCallbacks(clearQuick)
         dismiss()
         layers.keys.toList().forEach { removeLayer(it) }
         lines = emptyList()
@@ -139,6 +164,7 @@ class ScreenDictionary(
         scope.launch {
             val range = container.lookup.wordAt(target.text, index)
             show(line, range)
+            if (quickActive) return@launch // read from a fresh frame just now, and auto OCR's areas are elsewhere
             delay(VERIFY_DELAY_MS) // let the pause take effect so the frame is the one being looked at
             // An empty read may just be a miss; only a read that sees other text overrides the tap.
             val fresh = refresh()?.takeIf { it.isNotEmpty() } ?: return@launch
@@ -283,6 +309,7 @@ class ScreenDictionary(
         }
         popup = view
         popupOwner = owner
+        handler.removeCallbacks(clearQuick)
         runCatching { windowManager.addView(view, params) }
     }
 
@@ -299,10 +326,13 @@ class ScreenDictionary(
         layers.values.forEach { (layer, _) -> layer.highlight(-1, IntRange.EMPTY) }
         handler.removeCallbacks(resume)
         if (resumeLater) handler.postDelayed(resume, 350) else resumeMedia()
+        // A tap outside may be on another word of the box: keep the layer until it had its chance.
+        if (quickActive) handler.postDelayed(clearQuick, QUICK_LINGER_MS)
     }
 
     private companion object {
         const val VERIFY_DELAY_MS = 250L
+        const val QUICK_LINGER_MS = 400L
         const val PAUSE_CHECK_MS = 500L
     }
 

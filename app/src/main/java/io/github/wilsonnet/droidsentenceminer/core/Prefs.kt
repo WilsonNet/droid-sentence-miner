@@ -49,6 +49,7 @@ class DsmPrefs(private val context: Context) {
         val autoAreasLandscape = stringPreferencesKey("auto_areas_landscape")
         val liveTextWindow = booleanPreferencesKey("live_text_window")
         val screenDictionary = booleanPreferencesKey("screen_dictionary")
+        val bubbleMode = stringPreferencesKey("bubble_mode")
         val pauseOnLookup = booleanPreferencesKey("pause_on_lookup")
         val liveWindowX = intPreferencesKey("live_window_x")
         val liveWindowY = intPreferencesKey("live_window_y")
@@ -142,6 +143,10 @@ class DsmPrefs(private val context: Context) {
         it[if (landscape) Keys.liveWindowXLand else Keys.liveWindowX] = x
         it[if (landscape) Keys.liveWindowYLand else Keys.liveWindowY] = y
     }
+
+    /** What a bubble tap does: an `overlay.BubbleMode` name (quick, region); quick lookup by default. */
+    val bubbleMode: Flow<String?> = context.dataStore.data.map { it[Keys.bubbleMode] }
+    suspend fun setBubbleMode(value: String) = edit { it[Keys.bubbleMode] = value }
 
     /** Live text window mode: an `overlay.LiveMode` name (compact, normal, fullscreen). */
     val liveWindowMode: Flow<String?> = context.dataStore.data.map { it[Keys.liveWindowMode] }

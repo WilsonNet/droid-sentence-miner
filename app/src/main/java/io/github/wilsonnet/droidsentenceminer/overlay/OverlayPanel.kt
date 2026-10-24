@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -82,6 +83,7 @@ data class OverlayCallbacks(
     val onShowLiveText: () -> Unit = {},
     val onRestartCapture: () -> Unit = {},
     val onToggleMicFallback: () -> Unit = {},
+    val onBubbleMode: (BubbleMode) -> Unit = {},
 )
 
 @Composable
@@ -158,6 +160,19 @@ private fun Header(state: OverlayPanelState, callbacks: OverlayCallbacks) {
 private fun MenuContent(state: OverlayPanelState, callbacks: OverlayCallbacks) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Spacer(Modifier.height(4.dp))
+        Text("Bubble tap", style = MaterialTheme.typography.labelLarge)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilterChip(
+                selected = state.bubbleMode == BubbleMode.QUICK,
+                onClick = { callbacks.onBubbleMode(BubbleMode.QUICK) },
+                label = { Text("Quick lookup") },
+            )
+            FilterChip(
+                selected = state.bubbleMode == BubbleMode.REGION,
+                onClick = { callbacks.onBubbleMode(BubbleMode.REGION) },
+                label = { Text("Scan region") },
+            )
+        }
         if (state.autoOcrRunning && state.captureStopped) {
             Button(onClick = callbacks.onRestartCapture, modifier = Modifier.fillMaxWidth()) {
                 Text("Restart screen capture")

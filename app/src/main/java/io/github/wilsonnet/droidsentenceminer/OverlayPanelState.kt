@@ -31,6 +31,9 @@ class OverlayPanelState {
     /** Auto OCR is on but the screen capture ended (consent revoked, captured app closed). */
     var captureStopped by mutableStateOf(false)
 
+    /** What a bubble tap does, picked in the bubble menu. */
+    var bubbleMode by mutableStateOf(io.github.wilsonnet.droidsentenceminer.overlay.BubbleMode.QUICK)
+
     /** Microphone fallback setting, toggled from the bubble menu too. */
     var micFallback by mutableStateOf(false)
 
