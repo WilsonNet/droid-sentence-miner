@@ -100,7 +100,8 @@ curl -s "localhost:9099/lookup?word=%E3%81%AA%E3%81%84"
 curl -s "localhost:9099/mine?word=%E3%81%AA%E3%81%84&sentence=..."   # Anki card via configured backend
 ```
 
-Endpoints: `/state`, `/scan`, `/frame.png`, `/ocr` (`l,t,r,b` crops the file first), `/lookup`, `/mine`, `/dicts`,
+Endpoints: `/state`, `/scan`, `/frame.png`, `/ocr` (`l,t,r,b` crops the file first),
+`/ocr_bench?dir=&n=&threads=&variants=&anyw=&xnnpack=&cfg=` (meikiocr per-stage timings over a folder), `/lookup`, `/mine`, `/dicts`,
 `/autoocr?on=1|0`, `/lines?limit=`, `/clip.wav?id=&trim=0|1`, `/line_shot.jpg?id=`, `/mine_line?id=&word=`,
 `/set_region?l=&t=&r=&b=&orientation=`, `/clear_lines`, `/add_line?text=&ago=&dur=`,
 `/quick?l=&t=&r=&b=` (bubble quick lookup of a box), `/install_ocr_models` (meikiocr download), `/ocr?engine=meiki|mlkit`, `/select_areas` (opens the area editor),
@@ -126,6 +127,19 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   falls back to ML Kit. One shared instance, `synchronized`: auto OCR and `/ocr` calls serialize,
   so benchmark with auto OCR stopped. Measured 3–19× fewer character errors than ML Kit on game
   and subtitle fonts — numbers and recipe in `.opencode/skills/dsm-ocr-eval/SKILL.md`.
+- **meikiocr model cuts** (`tools/meiki-variants`, `assets/meiki`): both ONNX models bake their
+  input size into constants (pos-embed, anchors, level sizes). The cuts keep the original
+  normalized frame — the detector "sees the top H rows of a 544 frame" (anchor/pos-embed rows
+  sliced, GridSample y scaled by 544/H), the recognizer any width W (AIFI still gets all 30
+  tokens, the missing ones are the original's black-padding tokens) — so `orig_target_sizes`
+  stays (960/scale, 544/scale) and (960, 32). Regenerating the constants for the small frame
+  instead garbles text (box heights come out 3.4× short). The graphs' initializers are external
+  data pointing *into the downloaded originals* (offsets), so `MeikiModels.installVariants` only
+  copies them when the originals' SHA-256 match. Height = smallest cut ≥ content + 32 rows
+  (`MeikiDecoder.detectorHeight`; tighter drifts), width = widest line + 64 (`recognizerWidth`).
+  Not bit-exact (the original's padding rows/columns feed back into features): differences are
+  frame-to-frame noise, measured on GT sets and live YouTube. Tried and slower on the S24+:
+  XNNPACK EP (2×), thread affinity, `allow_spinning=0`, 2/3/5/6 threads (also under CPU load).
   `OcrTextFixes` (applied in `OcrPostProcessor.toSentenceText`) turns 一 after kana into ー,
   except before counters (もう一つ, お一人).
 - **Text areas are per orientation** (`DsmPrefs.autoAreas(landscape)`, encoded by `TextArea`):
@@ -254,6 +268,14 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   away 400 ms after the popup closes (so a tap on another boxed word still lands). REGION is the
   old `CaptureOverlayView`. meikiocr reads nothing on a word-sized crop (it scales it up to
   960×544 and the glyphs get huge): `padForOcr` puts it top-left on a ≥960×544 canvas at real size.
+- **Screenshots without consent** (`capture/ScreenshotAccessibilityService`, API 30+): an
+  accessibility service with only `canTakeScreenshot` (no window content, no events). Android 14+
+  makes MediaProjection consent single-session, so `OverlayService.grabStill` takes the
+  accessibility screenshot for quick lookups and one-off scans and falls back to the projection
+  frame; auto OCR stays on MediaProjection (audio). Not enabled + no projection → the bubble
+  opens Accessibility settings (below API 30 it requests projection as before). Enabling it is
+  the user's call — don't flip `enabled_accessibility_services` over adb on a personal phone.
+  `/state.accessibilityScreenshots` shows whether it is bound.
 - **Bubble position is a side, not a pixel**: the saved x (`DsmPrefs.bubblePosition`) is a snapped
   edge, so `OverlayService.fitBubble` reads it as left/right and re-fits it to the current screen on
   add and on every config change. A right-edge x saved in landscape (2148) left the bubble off a
@@ -268,14 +290,6 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   player settings. `yt-dlp -f bestaudio --download-sections "*0:00-8:00"` gives reference audio
   to cross-correlate `/clip.wav` output against.
 
-- **Screenshots without consent** (`capture/ScreenshotAccessibilityService`, API 30+): an
-  accessibility service with only `canTakeScreenshot` (no window content, no events). Android 14+
-  makes MediaProjection consent single-session, so `OverlayService.grabStill` takes the
-  accessibility screenshot for quick lookups and one-off scans and falls back to the projection
-  frame; auto OCR stays on MediaProjection (audio). Not enabled + no projection → the bubble
-  opens Accessibility settings (below API 30 it requests projection as before). Enabling it is
-  the user's call — don't flip `enabled_accessibility_services` over adb on a personal phone.
-  `/state.accessibilityScreenshots` shows whether it is bound.
 - **Typewriter text / static-region skip** (`FrameSignature` in `AutoOcrController.kt`): a frame
   is OCR'd only if it differs from the frame *last OCR'd* (not the previous frame), by mean or by
   any single cell of a 96×24 area-averaged grid. Comparing consecutive frames with a mean of a
@@ -366,6 +380,7 @@ app/src/main/java/io/github/wilsonnet/droidsentenceminer/
 ├── ui/        Compose screens, theme, lookup dialogs, audio editor
 └── core/      Settings (DataStore)
 
-tools/ocr-eval/   OCR benchmark scripts (desktop meikiocr, on-device runner, scorer, subtitle burner)
+tools/ocr-eval/   OCR benchmark scripts (desktop meikiocr, on-device runner/A-B timing, scorer, subtitle burner, hand GT)
+tools/meiki-variants/  builds the meikiocr model cuts in app/src/main/assets/meiki (make_assets.py)
 .opencode/skills/ dsm-debug-api, dsm-ocr-eval, dsm-docs (symlinked as .claude/skills)
 ```

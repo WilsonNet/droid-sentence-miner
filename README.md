@@ -166,7 +166,7 @@ android sdk install platform-tools platforms/android-36 build-tools/35.0.0 emula
 echo "sdk.dir=$ANDROID_HOME" > local.properties
 
 # 3. Build & test
-./gradlew testDebugUnitTest          # 146 JVM unit tests
+./gradlew testDebugUnitTest          # 148 JVM unit tests
 ./gradlew connectedDebugAndroidTest  # 4 on-device tests (VAD + AAC encoding)
 ./gradlew assembleDebug              # app/build/outputs/apk/debug/app-debug.apk
 
@@ -247,7 +247,11 @@ MediaProjection ──► ScreenCaptureManager ──► AutoOcrController ─�
 
 - **OCR**: meikiocr by default — a D-FINE text-line detector (960×544) finds lines, and a
   recognizer that treats recognition as *character detection* reads each 960×32 line; characters
-  are de-duplicated by overlap and read left to right (`MeikiOcr`, `MeikiDecoder`). With ML Kit
+  are de-duplicated by overlap and read left to right (`MeikiOcr`, `MeikiDecoder`). Wide, short
+  crops (a subtitle band) run a shorter cut of the same detector (960×160…448) and short lines a
+  narrower recognizer input, so the zero padding isn't computed: 2–2.7× faster, same accuracy.
+  The cuts are tiny graphs shipped in the APK that read their weights from the downloaded models
+  (`tools/meiki-variants`). With ML Kit
   instead: pass 1 recognizes the region, pass 2 re-reads each line upscaled and keeps the better
   reading. Either way rows are merged, furigana and off-size background text are dropped, and auto
   OCR stores the consensus of all reads of a line.
@@ -309,7 +313,12 @@ Glossaries may be strings, arrays, image definitions, deinflection entries or st
   | Real subtitles burned on footage, bold outlined, 102 frames | 4.6 % / 60 % | 0.24 % / 97 % |
   | Same, boxed (YouTube-like), 102 frames | 0.65 % / 92 % | 0.16 % / 98 % |
 
-  ~150 ms per subtitle-band crop on the phone. Live auto OCR on the hardsub vlog with meikiocr:
+  meikiocr speed per 1920×238 subtitle-band crop on the phone (debug build, `/ocr_bench`):
+  135–150 ms with the full 960×544 detector, 63–67 ms with the shorter detector cut and the
+  any-width recognizer, at identical CER on both burned-subtitle sets and within frame-to-frame
+  noise on the hardsub vlog (re-labelled 240-frame set: 2.62 % → 2.68 % CER, 10 frames better,
+  10 worse). Live auto OCR, YouTube portrait player, same 4 minutes of the hardsub vlog: 214 →
+  80 ms per read, 111 lines each, 102 exact each. Live auto OCR on the hardsub vlog with meikiocr:
   84 lines, 0 duplicates, 82 % exact, 1.9 % CER (several "errors" are meikiocr fixing the
   creator's own typos). Auto OCR with soft subs: 54/54 lines, 0 junk, 0 duplicates.
 
@@ -325,7 +334,7 @@ Glossaries may be strings, arrays, image definitions, deinflection entries or st
   digital zeros (`AudioRecord … [mute]`); with the microphone fallback the voiced lines are
   audible in the clips (speech at ~2000 RMS after normalization vs ~15 raw at the tablet's
   volume). Cards mined from the popup (手薄, 術) had sentence, screenshot, word audio and clip.
-- 137 JVM unit tests: frame change detection (one typewriter glyph counts), loudness
+- 148 JVM unit tests: meikiocr detector/recognizer input sizing, frame change detection (one typewriter glyph counts), loudness
   normalization, popup placement (flip/size/shift), screen text layer (subtitle glyphs → screen fractions, signage skipped), book page layout (tategaki order, ruby filter incl. real manga ruby, split sentences, per-character photo positions), H→エ fix, pitch graphs (byte-identical to Yomitan), word audio sources, Anki field mapping, meikiocr decoding, OCR text fixes (一→ー), text areas, line consensus, replay buffer, voice trimming, line tracking, clip windows, subtitle-row
   filtering, deinflector (conjugations across godan/ichidan/suru/kuru/adjectives),
   glossary parsing/rendering, OCR post-processing (merge, furigana filter, normalization),
@@ -379,7 +388,14 @@ Glossaries may be strings, arrays, image definitions, deinflection entries or st
 - Pitch accent in the lookup popup (the card already gets the graph); jidoujisho-style graph option.
 - Hotkey toggle for the live/lookup overlay (gamepad button or volume key via an accessibility
   service), as meikidroid does — handy on Android handhelds.
-- Faster auto OCR on low-end devices: detector only when the area changes, smaller detector option.
+- OCR speed while a game runs (DroidDeck, emulators): the numbers above are with the phone
+  otherwise idle (YouTube playing). With 4 busy loops on the big cores, 4 ORT threads stayed the
+  fastest (232 ms vs 266–357 ms for 2/3/6, full detector); validate the new cuts under a real game
+  and look at ORT thread spinning (it burns cores the game needs between reads).
+- Skip the detector on visual novels: a simulation (static background, typewriter text) showed
+  reusing the last line boxes, grown rightwards for typewriter text and verified by the
+  recognizer, cuts detector runs by ~65 % with identical lines; on video it saves nothing (the
+  band changes everywhere every frame).
 - Optional ASR engines (e.g. whisper.cpp or Moonshine via JNI) as an alternative/complement to OCR
   for games with hard-to-read fonts.
 - Per-dictionary frequency display modes and pitch-accent graphs.
@@ -402,7 +418,9 @@ This project stands on the shoulders of these projects — thank you:
   [meiki.text.detect.v0](https://huggingface.co/rtr46/meiki.text.detect.v0) and
   [meiki.txt.recognition.v0](https://huggingface.co/rtr46/meiki.txt.recognition.v0), LGPL-3.0) —
   the default OCR engine; the models are downloaded from Hugging Face at runtime and the
-  pre/post-processing in `MeikiDecoder.kt` is ported from its reference pipeline.
+  pre/post-processing in `MeikiDecoder.kt` is ported from its reference pipeline. The APK ships
+  modified graphs of both models (shorter detector inputs, any-width recognizer; LGPL-3.0, built
+  by `tools/meiki-variants` from the originals, whose weights they read at runtime).
 - **[meikidroid](https://github.com/rtr46/meikidroid)** by rtr46 — Android game OCR overlay that
   served as a reference for the region-capture + overlay workflow and the hotkey idea.
 - **[ONNX Runtime](https://onnxruntime.ai/)** (MIT) — runs meikiocr on device.

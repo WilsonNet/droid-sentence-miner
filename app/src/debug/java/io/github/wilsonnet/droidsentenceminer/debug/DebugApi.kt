@@ -14,6 +14,8 @@ import io.github.wilsonnet.droidsentenceminer.anki.AnkiResult
 import io.github.wilsonnet.droidsentenceminer.capture.ScreenCaptureManager
 import io.github.wilsonnet.droidsentenceminer.dict.RecommendedDictionaries
 import io.github.wilsonnet.droidsentenceminer.overlay.OverlayService
+import io.github.wilsonnet.droidsentenceminer.ocr.MeikiModels
+import io.github.wilsonnet.droidsentenceminer.ocr.MeikiOcr
 import io.github.wilsonnet.droidsentenceminer.ocr.MlKitJapaneseOcr
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
@@ -114,6 +116,7 @@ object DebugApi {
                 else respondBytes(socket, "image/png", png)
             }
             "/ocr" -> respondApi(socket) { ocrFile(params) }
+            "/ocr_bench" -> respondApi(socket) { ocrBench(params) }
                 "/book" -> respondApi(socket) { bookFile(params) }
             "/lookup" -> respondApi(socket) { lookup(params) }
             "/mine" -> respondApi(socket) { mine(params) }
@@ -292,10 +295,10 @@ object DebugApi {
         val json = JSONObject()
         json.put("overlayService", service != null)
         json.put("captureReady", service?.debugCaptureManager?.isReady == true)
+        json.put("accessibilityScreenshots", io.github.wilsonnet.droidsentenceminer.capture.ScreenshotAccessibilityService.isConnected)
         val screen = service?.debugCaptureManager
         json.put("screen", JSONArray(listOf(screen?.screenWidth, screen?.screenHeight)))
         dictInstall?.let { install ->
-        json.put("accessibilityScreenshots", io.github.wilsonnet.droidsentenceminer.capture.ScreenshotAccessibilityService.isConnected)
             json.put(
                 "dictInstall",
                 JSONObject()
@@ -324,6 +327,8 @@ object DebugApi {
                 .put("reads", auto.reads)
                 .put("lines", auto.lines)
                 .put("lastRead", auto.lastRead)
+                .put("ocrRuns", auto.ocrRuns)
+                .put("ocrMsAvg", if (auto.ocrRuns > 0) auto.ocrMs / auto.ocrRuns else 0)
                 .put("error", auto.error),
         )
         // Screen dictionary: the invisible text layer over the real text (screen fractions).
@@ -404,6 +409,56 @@ object DebugApi {
             Bitmap.createBitmap(decoded, left, top, (r.right * decoded.width).toInt() - left, (r.bottom * decoded.height).toInt() - top)
         } ?: decoded
         return ocrBitmap(bitmap, params)
+    }
+
+    /**
+     * meikiocr benchmark: every image in `dir`, `n` timed runs each after one warm-up, with the
+     * session options given (threads, xnnpack, det/rec model file names). Leaves those options loaded.
+     */
+    private fun ocrBench(params: Map<String, String>): JSONObject {
+        val dir = File(params["dir"] ?: return errorJson("missing 'dir'"))
+        val files = dir.listFiles { f -> f.name.endsWith(".png") || f.name.endsWith(".jpg") }?.sortedBy { it.name }
+            ?: return errorJson("cannot list $dir")
+        val defaults = MeikiOcr.Options()
+        val options = MeikiOcr.Options(
+            threads = params["threads"]?.toIntOrNull() ?: defaults.threads,
+            xnnpack = params["xnnpack"] == "1",
+            detector = params["det"] ?: defaults.detector,
+            recognizer = params["rec"] ?: defaults.recognizer,
+            variants = params["variants"] != "0",
+            anyWidthRecognizer = params["anyw"] != "0",
+            // cfg=key:value|key:value → ORT session config entries
+            config = params["cfg"]?.split("|")?.filter { it.contains(":") }?.associate { it.substringBefore(":") to it.substringAfter(":") }
+                ?: defaults.config,
+        )
+        MeikiModels.installVariants(app)
+        val engine = MeikiOcr.load(MeikiModels.dir(app), options) ?: return errorJson("could not load $options")
+        val runs = params["n"]?.toIntOrNull() ?: 3
+        val texts = JSONObject()
+        val samples = mutableMapOf<String, MutableList<Double>>()
+        fun sample(key: String, value: Double) = samples.getOrPut(key) { mutableListOf() }.add(value)
+        for (file in files) {
+            val bitmap = BitmapFactory.decodeFile(file.absolutePath) ?: continue
+            val first = runBlocking { engine.recognize(bitmap) }
+            texts.put(file.name, first.text)
+            repeat(runs) {
+                val start = System.nanoTime()
+                runBlocking { engine.recognize(bitmap) }
+                val t = engine.lastTimings
+                sample("total", (System.nanoTime() - start) / 1e6)
+                sample("detPrep", t.detPrep)
+                sample("detRun", t.detRun)
+                sample("recPrep", t.recPrep)
+                sample("recRun", t.recRun)
+                sample("detHeight", t.detHeight.toDouble())
+            }
+        }
+        val stats = JSONObject()
+        samples.forEach { (key, values) ->
+            val sorted = values.sorted()
+            stats.put(key, JSONObject().put("median", sorted[sorted.size / 2]).put("mean", values.average()).put("p90", sorted[(sorted.size * 9) / 10]))
+        }
+        return JSONObject().put("ok", true).put("options", options.toString()).put("images", files.size).put("stats", stats).put("texts", texts)
     }
 
     /** Book mode: reads a page photo into paragraphs and shows it in the Book tab. */

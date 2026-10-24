@@ -51,6 +51,9 @@ class AutoOcrController(
         val lines: Long = 0,
         val lastRead: String = "",
         val lastReadMs: Long = 0,
+        /** Frames actually OCR'd (not skipped as static) and the time they took. */
+        val ocrRuns: Long = 0,
+        val ocrMs: Long = 0,
         val error: String? = null,
     )
 
@@ -153,9 +156,14 @@ class AutoOcrController(
                 } else {
                     lastSignature = signature
                     lastCrops = crops
+                    val ocrStart = System.currentTimeMillis()
                     val reads = crops.mapIndexed { i, crop ->
                         runCatching { dialogueRead(fast, crop, dropNoise, selected[i], i) }.getOrElse { "" to emptyList() }
                     }
+                    _status.value = _status.value.copy(
+                        ocrRuns = _status.value.ocrRuns + 1,
+                        ocrMs = _status.value.ocrMs + System.currentTimeMillis() - ocrStart,
+                    )
                     val raw = reads.joinToString("\n") { it.first }.trim()
                     val japanese = looksJapanese(raw)
                     _screenText.value = if (japanese) reads.flatMap { it.second } else emptyList()

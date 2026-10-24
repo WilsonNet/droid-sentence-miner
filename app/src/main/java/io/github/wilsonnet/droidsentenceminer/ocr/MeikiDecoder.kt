@@ -35,6 +35,23 @@ object MeikiDecoder {
         return Letterbox(scale, (imageWidth * scale).toInt().coerceAtLeast(1), (imageHeight * scale).toInt().coerceAtLeast(1))
     }
 
+    /** Empty rows kept below the content: variants cut tighter than this drift from the original. */
+    private const val DET_MARGIN = 32
+
+    /**
+     * Detector input height for letterboxed content [contentHeight] rows tall: the smallest of
+     * [variants] that leaves [DET_MARGIN] empty rows below it, else the original 544.
+     */
+    fun detectorHeight(contentHeight: Int, variants: Collection<Int>): Int =
+        variants.filter { it >= contentHeight + DET_MARGIN && it < DET_HEIGHT }.minOrNull() ?: DET_HEIGHT
+
+    /**
+     * Input width for the any-width recognizer, from the widest line in the batch: with less than
+     * 64 empty columns after the text it reads more differently from the 960-wide original.
+     */
+    fun recognizerWidth(widestLine: Int): Int =
+        (32 * ((widestLine + 64 + 31) / 32)).coerceIn(128, REC_WIDTH)
+
     /** Recognizer input size for a line crop: height 32 keeping aspect, capped at width 960. */
     fun recSize(cropWidth: Int, cropHeight: Int): Pair<Int, Int> {
         var h = REC_HEIGHT

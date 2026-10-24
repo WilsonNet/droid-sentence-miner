@@ -40,6 +40,22 @@ class MeikiDecoderTest {
     }
 
     @Test
+    fun picksTheShortestDetectorThatLeavesAMargin() {
+        val variants = listOf(160, 224, 288, 352, 448)
+        assertEquals(160, MeikiDecoder.detectorHeight(119, variants)) // 1920x238 subtitle band
+        assertEquals(224, MeikiDecoder.detectorHeight(129, variants)) // 160 would leave 31 rows
+        assertEquals(544, MeikiDecoder.detectorHeight(420, variants))
+        assertEquals(544, MeikiDecoder.detectorHeight(119, emptyList()))
+    }
+
+    @Test
+    fun sizesTheRecognizerToTheWidestLinePlusAMargin() {
+        assertEquals(128, MeikiDecoder.recognizerWidth(20))
+        assertEquals(576, MeikiDecoder.recognizerWidth(500)) // 564 rounded up to 32
+        assertEquals(960, MeikiDecoder.recognizerWidth(900))
+    }
+
+    @Test
     fun fixesKnownSwappedPairs() {
         assertEquals("ただの冗談だよ", MeikiDecoder.fixSwappedPairs("ただの談冗だよ"))
     }

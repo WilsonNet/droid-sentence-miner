@@ -70,6 +70,7 @@ class AppContainer(private val context: Context) {
     suspend fun ocrEngine(twoPass: Boolean, dropNoise: Boolean = true, preferred: String? = null): OcrEngine {
         val choice = preferred ?: prefs.ocrEngine.first()
         if (choice == DsmPrefs.ENGINE_MEIKI) {
+            io.github.wilsonnet.droidsentenceminer.ocr.MeikiModels.installVariants(context)
             io.github.wilsonnet.droidsentenceminer.ocr.MeikiOcr.load(
                 io.github.wilsonnet.droidsentenceminer.ocr.MeikiModels.dir(context),
             )?.let { return it }

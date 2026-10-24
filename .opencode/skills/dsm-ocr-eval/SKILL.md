@@ -23,7 +23,10 @@ on the **same crops**.
    Used: `gM7sP8vT40o` (manual JA subs).
 2. **Real hardsubs** — `yt-dlp` a hardsub video (`MH6JpXmv4zI`, 2:30–6:30), `ffmpeg -vf fps=1`,
    crop the bottom 22 %, ground truth by hand. Subtitles may contain the creator's own typos
-   (年李, すこい清掃か): ground truth is what is on screen.
+   (年李, すこい清掃か): ground truth is what is on screen. Hand GT for that exact extraction
+   (`ffmpeg -i clip.mp4 -vf "fps=1,crop=iw:ih*0.22:0:ih*0.78" frames/f%03d.png`, 240 frames, 235
+   with a subtitle, 121 distinct lines) is committed: `tools/ocr-eval/data/MH6JpXmv4zI_2m30_gt.json`
+   (+ `_uncertain.json`: mostly a two-row caption's top row clipped by the band).
 
 ## Engines
 
@@ -38,6 +41,34 @@ python3 tools/ocr-eval/score.py out/gt.json desktop=meiki_A.json device=dev_meik
 
 `score.py` also reports multi-frame fusion (medoid / ROVER per on-screen line, frames named
 `fNNN` consecutively).
+
+## Speed (on the phone, never on the desktop)
+
+`/ocr_bench` times each stage on device; `tools/ocr-eval/bench_device.py` alternates configs
+with cool-downs (the S24+ throttles 135 → 186 ms within minutes of back-to-back runs, so
+sequential A-then-B runs lie). Push sets to `files/bench/<set>/`; a 40-frame subset
+(`h40` = every 6th hardsub frame) is enough for timing.
+
+Galaxy S24+, 1920×238 bands, 4 threads (2026-10-24):
+
+| Config | total | det prep | det run | rec run |
+| --- | --- | --- | --- | --- |
+| original 960×544 detector, heap input buffers | 135 ms | 11.4 | 100 | 21 |
+| + reused direct input buffers | 129 ms | 7.3 | 98 | 21 |
+| + detector cut 960×160 | 76 ms | 8.4 | 34 | 31* |
+| + any-width recognizer | 67 ms | 8.5 | 34 | 22 |
+
+\* mean over frames incl. 2-line ones; rows are separate alternating runs. Accuracy: bandsA/B
+CER identical (0.24 / 0.16 %); hardsub (new GT) 2.62 → 2.68 % CER, 10 frames better / 10
+worse — the same spread as the original on a 1-px-shifted or JPEG-q95 copy of the frame. Live
+YouTube auto OCR (portrait player, area over the subtitle band, same 4 min twice, switched with
+`/ocr_bench?variants=`): 214 → 80 ms per read (`/state.autoOcr.ocrMsAvg`), 111 lines / 102
+exact both; line scoring = closest GT line per logged line.
+
+Dead ends: XNNPACK EP 2× slower (only Conv/MatMul, no GridSample); thread affinity to the big
+cores, `allow_spinning=0` and 2/3/5/6/8 threads all slower (also with 4 busy loops pinned to the
+big cores: 4 threads 232 ms, 6 → 266, 3 → 325, 2 → 357); NNAPI is deprecated and lacks
+GridSample/TopK; Exynos 2400 NPU has no public path.
 
 ## Results so far (Galaxy S24+, 2026-10-18)
 

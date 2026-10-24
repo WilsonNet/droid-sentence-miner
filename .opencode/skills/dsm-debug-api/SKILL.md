@@ -48,6 +48,7 @@ All GET, all JSON (except `frame.png`). Regions are screen fractions unless note
 | `/scan?l=&t=&r=&b=` | Full pipeline: grab frame → crop → OCR → dictionary lookup. Omit the region to reuse the saved one |
 | `/frame.png?l=&t=&r=&b=` | PNG of what MediaProjection actually sees (omit region for the raw full frame) |
 | `/ocr?file=/sdcard/...&engine=meiki\|mlkit&twoPass=1&noise=1&l=&t=&r=&b=` | OCR an image file (optionally cropped) with the chosen engine; returns text, engine, per-line boxes + confidences, and dictionary matches |
+| `/ocr_bench?dir=/sdcard/...&n=3&threads=4&variants=1&anyw=1&xnnpack=0&cfg=key:value\|key:value` | meikiocr benchmark: every image in `dir`, one warm-up + `n` timed runs each; median/mean/p90 of `total`, `detPrep`, `detRun`, `recPrep`, `recRun`, `detHeight`, plus the text per image. `variants=0` = original 960×544 detector, `anyw=0` = 960-wide recognizer, `cfg` = ORT session config entries. **The options stay loaded** and auto OCR then uses them — switch back with `variants=1` and never call it while auto OCR runs (the old sessions are closed) |
 | `/quick?l=&t=&r=&b=` | Quick lookup of a box (screen fractions) as if drawn after a bubble tap (accessibility screenshot when `/state.accessibilityScreenshots`, else the projection frame): OCRs it and opens the screen dictionary popup on its first word; returns `lines` read (0 = toast "No Japanese text") |
 | `/live?show=1&mode=compact\|normal\|fullscreen` | Live text window: open it and/or switch mode; returns `shown`, `mode`, `rect` ([x, y, w, h] px) |
 | `/book?file=/sdcard/...` | Book mode: read a page photo (EXIF-rotated, ≤3000 px) with ML Kit into ordered paragraphs (`text`, `vertical`, `box`) and show it in the Book tab — validates tategaki order without a camera |
@@ -75,7 +76,7 @@ All GET, all JSON (except `frame.png`). Regions are screen fractions unless note
 | `/clear_lines` | Delete the whole text log |
 | `/mic_fallback?on=1\|0` | Read/set the microphone fallback setting (restarts audio capture); returns `on` |
 
-`/state` also reports `autoOcr` (`running`, `reads`, `lines`, `lastRead`, `error`),
+`/state` also reports `autoOcr` (`running`, `reads`, `lines`, `lastRead`, `ocrRuns` = frames actually OCR'd, `ocrMsAvg` = their mean OCR time, `error`),
 `areasPortrait`/`areasLandscape` (box counts) and `audioBuffer`
 (`capturing`, `source` = `device` or `mic` — `mic` while the microphone fallback fills the buffer
 because the captured app blocks playback capture, `bufferedMs`, `newestAgeMs`).
