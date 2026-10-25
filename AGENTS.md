@@ -9,10 +9,13 @@ numbers, update the markdown docs **in the same push**: `README.md`, this file, 
 `.opencode/skills/` (also visible to Claude Code via `.claude/skills` and Antigravity via `.agents/skills`). The checklist of which file
 owns what is in `.opencode/skills/dsm-docs/SKILL.md` — follow it before committing.
 
-Skills: `dsm-debug-api` (drive/validate the app over adb), `dsm-ocr-eval` (measure OCR accuracy
-with ground truth), `dsm-docs` (docs checklist), `dsm-promo-media` (README screenshots and demo
-videos: phone-size capture on the tablet, scripted mining recordings, GIF previews), `dsm-release`
-(signed APK → GitHub Releases on a pushed `v*` tag).
+Skills: `dsm-debug-api` (drive/validate the app over adb), `dsm-navigation` (navigate DroidDeck,
+Nightshade, MediaProjection consent dialogs and DSM UI over adb with exact coordinates), `dsm-ocr-eval`
+(measure OCR accuracy and latency/CPU with ground truth), `dsm-docs` (docs checklist),
+`wisdom-increaser` (harvest lessons, coordinates and measured numbers into skills/docs after every
+long task), `dsm-promo-media` (README screenshots and demo videos: phone-size capture on the tablet,
+scripted mining recordings, GIF previews), `dsm-release` (signed APK → GitHub Releases on a pushed
+`v*` tag).
 
 ## Releases — only when asked
 
@@ -138,8 +141,13 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   copies them when the originals' SHA-256 match. Height = smallest cut ≥ content + 32 rows
   (`MeikiDecoder.detectorHeight`; tighter drifts), width = widest line + 64 (`recognizerWidth`).
   Not bit-exact (the original's padding rows/columns feed back into features): differences are
-  frame-to-frame noise, measured on GT sets and live YouTube. Tried and slower on the S24+:
-  XNNPACK EP (2×), thread affinity, `allow_spinning=0`, 2/3/5/6 threads (also under CPU load).
+  frame-to-frame noise, measured on GT sets and live YouTube. Tried and slower on the S24+ (idle):
+  XNNPACK EP (2×), thread affinity, `allow_spinning=0`, 2/3/5/6 threads (also under synthetic CPU load).
+  On Xiaomi Pad 7 while Nightshade runs in DroidDeck (`Nightshade.exe` ~80 % CPU): cuts drop wall
+  time from 196 → 114–122 ms (`ocrMsAvg` 185 → 114 ms live) and CPU core-time per OCR from 768 →
+  493 CPU-ms; under real game contention `threads=3` (114 ms, 376 CPU-ms), `threads=2` (125 ms,
+  293 CPU-ms; 116 ms live with `allow_spinning=0`) or `threads=4, allow_spinning=0` (130 ms, 350
+  CPU-ms) match 4 spinning threads while sparing big cores for FEX/Wine.
   `OcrTextFixes` (applied in `OcrPostProcessor.toSentenceText`) turns 一 after kana into ー,
   except before counters (もう一つ, お一人).
 - **Text areas are per orientation** (`DsmPrefs.autoAreas(landscape)`, encoded by `TextArea`):
@@ -293,7 +301,17 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
 - **Typewriter text / static-region skip** (`FrameSignature` in `AutoOcrController.kt`): a frame
   is OCR'd only if it differs from the frame *last OCR'd* (not the previous frame), by mean or by
   any single cell of a 96×24 area-averaged grid. Comparing consecutive frames with a mean of a
-  bilinear 48×12 downscale froze visual novel lines at the first half-typed read.
+  bilinear 48×12 downscale froze visual novel lines at the first half-typed read. Note: under a
+  60–144 Hz compositor (`gamescope` in DroidDeck), `ImageReader.setOnImageAvailableListener` +
+  `pollNewFrame()` converting the full 3200×2136 `Image` into `Bitmap`s every 400 ms just to run
+  `FrameSignature` still burns ~26–44 % of one core and ~150 MB/s of Bitmap/GC churn on a static
+  line.
+- **DroidDeck / Nightshade navigation** (`.opencode/skills/dsm-navigation/SKILL.md`): exact coordinates
+  on the Xiaomi Pad 7 (3200×2136 landscape) for launching Nightshade (`ゲーム` `(127, 320)` →
+  `▶ 起動` `(500, 738)`), unpausing `Steam 一時停止中` (`再開` is below center at `(1600, 1265)`,
+  not `(1600, 1068)`), advancing dialogue above `ScreenTextLayerView` (`(1600, 600)`), deterministic
+  replays via Quicksave `(3100, 1440)` / Quickload `(3100, 1890)` → `はい` `(1280, 1100)`, and the
+  MediaProjection consent picker (`次へ` `(1830, 1465)` → first top-row thumbnail `(1230, 764)`).
 - **`SubtitleLineFilter` anchors on the row with the most Japanese**: game buttons inside the text
   area (Nightshade's スキップ/クイックロード) became the anchor and the short, bigger dialogue line
   was dropped as "wrong size". Keep areas on the dialogue box. `JapaneseTextScore` ignores
@@ -382,5 +400,5 @@ app/src/main/java/io/github/wilsonnet/droidsentenceminer/
 
 tools/ocr-eval/   OCR benchmark scripts (desktop meikiocr, on-device runner/A-B timing, scorer, subtitle burner, hand GT)
 tools/meiki-variants/  builds the meikiocr model cuts in app/src/main/assets/meiki (make_assets.py)
-.opencode/skills/ dsm-debug-api, dsm-ocr-eval, dsm-docs, dsm-promo-media, dsm-release (symlinked as .claude/skills and .agents/skills)
+.opencode/skills/ dsm-debug-api, dsm-navigation, dsm-ocr-eval, dsm-docs, wisdom-increaser, dsm-promo-media, dsm-release (symlinked as .claude/skills and .agents/skills)
 ```

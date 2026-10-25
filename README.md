@@ -327,11 +327,18 @@ Glossaries may be strings, arrays, image definitions, deinflection entries or st
   recipe): every subtitle cue in the run was logged (61/61, 56 exact, mean character accuracy
   0.99), line start times within ±300 ms (p90) of the cue, and every voice clip located in the
   original audio at correlation ≥0.97, starting 160–1080 ms (median ~400 ms) before the subtitle.
-- Visual novel on a Xiaomi Pad 7 (HyperOS 3): Nightshade through DroidDeck, meikiocr, text area
-  on the dialogue box. Before: lines froze at the first half-typed read (戦乱の世におい). After:
-  every line of the prologue and first scene logged complete (3-line narration included), short
-  exclamations like 「百花……っ」 kept, 一筋 no longer turned into ー筋. Device audio came back as
-  digital zeros (`AudioRecord … [mute]`); with the microphone fallback the voiced lines are
+- Visual novel on a Xiaomi Pad 7 (HyperOS 3, Snapdragon 7+ Gen 3): Nightshade through DroidDeck,
+  meikiocr, text area on the dialogue box (`2272×427` crops, `detHeight=224`). Before: lines froze
+  at the first half-typed read (戦乱の世におい). After: every line of the prologue and first scene
+  logged complete (3-line narration included), short exclamations like 「百花……っ」 kept, 一筋 no
+  longer turned into ー筋. With Nightshade actively running (`Nightshade.exe` ~80 % CPU +
+  `surfaceflinger` ~36 % + `gamescope` ~18 %), the shorter detector cut and any-width recognizer
+  drop `/ocr_bench` wall time from 195–196 ms to 114–122 ms (live auto OCR on a 9-line scene
+  replayed via Quicksave/Quickload: 185 → 114 ms per read, 0 % Japanese character difference) and
+  CPU core-time per OCR from 768 → 493 CPU-ms; toning down to 2–3 threads or
+  `allow_spinning=0` keeps wall time at 114–130 ms (116 ms live auto OCR with 2 threads,
+  `allow_spinning=0`) while cutting CPU core-time per OCR to 293–376 CPU-ms. Device audio came back
+  as digital zeros (`AudioRecord … [mute]`); with the microphone fallback the voiced lines are
   audible in the clips (speech at ~2000 RMS after normalization vs ~15 raw at the tablet's
   volume). Cards mined from the popup (手薄, 術) had sentence, screenshot, word audio and clip.
 - 148 JVM unit tests: meikiocr detector/recognizer input sizing, frame change detection (one typewriter glyph counts), loudness
@@ -388,10 +395,13 @@ Glossaries may be strings, arrays, image definitions, deinflection entries or st
 - Pitch accent in the lookup popup (the card already gets the graph); jidoujisho-style graph option.
 - Hotkey toggle for the live/lookup overlay (gamepad button or volume key via an accessibility
   service), as meikidroid does — handy on Android handhelds.
-- OCR speed while a game runs (DroidDeck, emulators): the numbers above are with the phone
-  otherwise idle (YouTube playing). With 4 busy loops on the big cores, 4 ORT threads stayed the
-  fastest (232 ms vs 266–357 ms for 2/3/6, full detector); validate the new cuts under a real game
-  and look at ORT thread spinning (it burns cores the game needs between reads).
+- Lower idle battery/CPU drain while auto OCR runs over 60–144 Hz games (DroidDeck/`gamescope`):
+  validated the meikiocr cuts under Nightshade on the Xiaomi Pad 7 (196 → 114–122 ms wall, 768 →
+  293–376 CPU-ms with 2–3 threads or `allow_spinning=0`), and found that even on a static dialogue
+  line `ImageReader.setOnImageAvailableListener` + `pollNewFrame()` copying the full 3200×2136
+  frame into `Bitmap`s every 400 ms just to run `FrameSignature` burns ~26–44 % of one core and
+  ~150 MB/s of Bitmap/GC churn. Compute `FrameSignature` directly from the `Image` plane / acquire
+  on poll instead of every VSYNC, and expose/tune thread count & spinning.
 - Skip the detector on visual novels: a simulation (static background, typewriter text) showed
   reusing the last line boxes, grown rightwards for typewriter text and verified by the
   recognizer, cuts detector runs by ~65 % with identical lines; on video it saves nothing (the

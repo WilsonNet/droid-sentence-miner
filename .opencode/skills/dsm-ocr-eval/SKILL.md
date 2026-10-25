@@ -65,10 +65,36 @@ YouTube auto OCR (portrait player, area over the subtitle band, same 4 min twice
 `/ocr_bench?variants=`): 214 → 80 ms per read (`/state.autoOcr.ocrMsAvg`), 111 lines / 102
 exact both; line scoring = closest GT line per logged line.
 
-Dead ends: XNNPACK EP 2× slower (only Conv/MatMul, no GridSample); thread affinity to the big
+Dead ends on S24+ (idle/YouTube): XNNPACK EP 2× slower (only Conv/MatMul, no GridSample); thread affinity to the big
 cores, `allow_spinning=0` and 2/3/5/6/8 threads all slower (also with 4 busy loops pinned to the
 big cores: 4 threads 232 ms, 6 → 266, 3 → 325, 2 → 357); NNAPI is deprecated and lacks
 GridSample/TopK; Exynos 2400 NPU has no public path.
+
+Xiaomi Pad 7 (`c2bd6564`, Snapdragon 7+ Gen 3, 4× Cortex-X4 + 3× A720 + 1× A520) while Nightshade
+runs live in DroidDeck (`Nightshade.exe` ~75–82 % CPU, `surfaceflinger` ~36 %, `gamescope` ~18 %),
+2272×427 dialogue crops (`l=0.17, t=0.70, r=0.88, b=0.90`, `detHeight=224`, 2026-10-25):
+
+| Config | wall mean | wall p90 | det run | rec run | DSM CPU ms/ocr (`/proc/pid/stat`) |
+| --- | --- | --- | --- | --- | --- |
+| original 960×544 + 960×32, 4 threads, spin=1 | 196 ms | 225 ms | 137 ms | 51 ms | 768 CPU-ms |
+| cuts, 4 threads, spin=1 | 122 ms | 150 ms | 67 ms | 47 ms | 493 CPU-ms |
+| cuts, 3 threads, spin=1 | 114 ms | 137 ms | 66 ms | 42 ms | 376 CPU-ms |
+| cuts, 2 threads, spin=1 | 125 ms | 171 ms | 75 ms | 44 ms | 293 CPU-ms |
+| cuts, 4 threads, `allow_spinning=0` | 130 ms | 147 ms | 74 ms | 50 ms | 350 CPU-ms |
+| cuts, 2 threads, `allow_spinning=0` | 152 ms | 186 ms | 94 ms | 51 ms | 296 CPU-ms |
+| cuts, 1 thread, `allow_spinning=0` | 167 ms | 250 ms | 109 ms | 52 ms | 205 CPU-ms |
+
+- **Live Auto OCR in Nightshade** (9-line scene replayed deterministically via Quicksave/Quickload,
+  see `dsm-navigation`): original `t=4, spin=1` = **185 ms** (`ocrMsAvg`), cuts `t=4, spin=1` =
+  **114 ms**, cuts `t=2, allow_spinning=0` = **116 ms** (all 9 lines logged in every run, 0 %
+  Japanese character difference between original and cuts). Under a real multi-process game, 2–3
+  threads or `allow_spinning=0` match 4 spinning threads in wall time while cutting CPU core-time
+  per OCR from 768 → 293–376 CPU-ms (leaving big cores for FEX/Wine).
+- **Idle CPU / battery drain on static game screens**: even when Nightshade sits on a static line
+  (`ocrRuns` unchanged), `gamescope` flips the `VirtualDisplay` at 60–144 Hz, so `dsm-capture`
+  acquiring every `ImageReader` buffer plus `pollNewFrame()` copying the full 3200×2136 `Image` into
+  `Bitmap`s (`54.6 MB` when `rowPadding > 0`) and cropping `2272×427` every 400 ms just to compute
+  `FrameSignature` burns ~26–44 % of one core and ~150 MB/s of Bitmap/GC churn.
 
 ## Results so far (Galaxy S24+, 2026-10-18)
 
