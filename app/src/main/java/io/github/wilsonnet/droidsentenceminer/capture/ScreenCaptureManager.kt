@@ -44,11 +44,22 @@ class ScreenCaptureManager(private val context: Context) {
     @Volatile
     private var heldImage: Image? = null
 
+    /**
+     * Last frame whose text regions were already checked by [pollRegionCrops], kept as an [Image]
+     * so static frames don't allocate a full-screen [Bitmap] unless a line actually starts or
+     * [grabFrame] is called. At most one [Image] is held across [heldImage] and [retainedImage].
+     */
+    @Volatile
+    private var retainedImage: Image? = null
+
     @Volatile
     private var lastFrameBitmap: Bitmap? = null
 
     @Volatile
     private var lastFrameAt: Long = 0L
+
+    @Volatile
+    private var acquireScheduled: Boolean = false
 
     var isReady: Boolean = false
         private set
@@ -127,7 +138,7 @@ class ScreenCaptureManager(private val context: Context) {
             h,
         )
 
-        val reader = ImageReader.newInstance(screenWidth, screenHeight, PixelFormat.RGBA_8888, 2)
+        val reader = ImageReader.newInstance(screenWidth, screenHeight, PixelFormat.RGBA_8888, 3)
         val display = newProjection.createVirtualDisplay(
             "dsm-capture",
             screenWidth,
@@ -162,7 +173,7 @@ class ScreenCaptureManager(private val context: Context) {
         densityDpi = metrics.densityDpi
         val display = virtualDisplay ?: return false
         val h = handler ?: return false
-        val reader = ImageReader.newInstance(screenWidth, screenHeight, PixelFormat.RGBA_8888, 2)
+        val reader = ImageReader.newInstance(screenWidth, screenHeight, PixelFormat.RGBA_8888, 3)
         reader.setOnImageAvailableListener(::onImageAvailable, h)
         val old = imageReader
         display.resize(screenWidth, screenHeight, densityDpi)
@@ -171,6 +182,8 @@ class ScreenCaptureManager(private val context: Context) {
         synchronized(this) {
             runCatching { heldImage?.close() }
             heldImage = null
+            runCatching { retainedImage?.close() }
+            retainedImage = null
             lastFrameBitmap = null
         }
         runCatching { old?.close() }
@@ -178,17 +191,37 @@ class ScreenCaptureManager(private val context: Context) {
     }
 
     private fun onImageAvailable(reader: ImageReader) {
-        synchronized(this) {
-            val image = runCatching { reader.acquireLatestImage() }.getOrNull() ?: return
-            heldImage?.close()
-            heldImage = image
-            lastFrameAt = SystemClock.elapsedRealtime()
+        // Games (DroidDeck/gamescope) flip at 60–144 Hz; acquiring on every VSYNC frees the
+        // BufferQueue slot immediately and makes SurfaceFlinger composite 144 full-screen frames/s.
+        val now = SystemClock.elapsedRealtime()
+        val wait = MIN_ACQUIRE_INTERVAL_MS - (now - lastFrameAt)
+        if (wait > 0) {
+            if (!acquireScheduled) {
+                acquireScheduled = true
+                handler?.postDelayed({
+                    acquireScheduled = false
+                    synchronized(this) { acquireLatestLocked() }
+                }, wait)
+            }
+            return
         }
+        synchronized(this) { acquireLatestLocked(reader) }
+    }
+
+    private fun acquireLatestLocked(reader: ImageReader? = imageReader) {
+        val r = reader ?: return
+        val image = runCatching { r.acquireLatestImage() }.getOrNull() ?: return
+        runCatching { heldImage?.close() }
+        runCatching { retainedImage?.close() }
+        retainedImage = null
+        heldImage = image
+        lastFrameAt = SystemClock.elapsedRealtime()
     }
 
     fun release() {
         isReady = false
         contentVisible = true
+        acquireScheduled = false
         runCatching { virtualDisplay?.release() }
         virtualDisplay = null
         runCatching { imageReader?.close() }
@@ -196,6 +229,8 @@ class ScreenCaptureManager(private val context: Context) {
         synchronized(this) {
             runCatching { heldImage?.close() }
             heldImage = null
+            runCatching { retainedImage?.close() }
+            retainedImage = null
             lastFrameBitmap = null
         }
         runCatching { projection?.stop() }
@@ -212,29 +247,32 @@ class ScreenCaptureManager(private val context: Context) {
         val effectiveTimeout = if (lastFrameBitmap != null) minOf(timeoutMs, 800L) else timeoutMs
         val start = SystemClock.elapsedRealtime()
         while (SystemClock.elapsedRealtime() - start < effectiveTimeout) {
-            val fresh = lastFrameAt > 0 && SystemClock.elapsedRealtime() - lastFrameAt <= maxAgeMs
-            if (fresh) {
-                val bitmap = synchronized(this) {
-                    heldImage?.let { img ->
-                        val bmp = img.toBitmapSafe()
-                        img.close()
-                        heldImage = null
-                        bmp
-                    }
+            val bitmap = synchronized(this) {
+                acquireLatestLocked()
+                val fresh = lastFrameAt > 0 && SystemClock.elapsedRealtime() - lastFrameAt <= maxAgeMs
+                if (!fresh) null
+                else (heldImage ?: retainedImage)?.let { img ->
+                    val bmp = img.toBitmapSafe()
+                    img.close()
+                    heldImage = null
+                    retainedImage = null
+                    bmp
                 }
-                if (bitmap != null) {
-                    lastFrameBitmap = bitmap
-                    return bitmap
-                }
+            }
+            if (bitmap != null) {
+                lastFrameBitmap = bitmap
+                return bitmap
             }
             delay(32)
         }
         // A static screen produces no new buffers, so fall back to the last frame we saw.
         synchronized(this) {
-            heldImage?.let { img ->
+            acquireLatestLocked()
+            (heldImage ?: retainedImage)?.let { img ->
                 val bmp = img.toBitmapSafe()
                 img.close()
                 heldImage = null
+                retainedImage = null
                 lastFrameBitmap = bmp
             }
         }
@@ -243,6 +281,13 @@ class ScreenCaptureManager(private val context: Context) {
 
     data class Frame(val bitmap: Bitmap, val atMs: Long)
 
+    data class RegionPoll(
+        val changed: Boolean,
+        val signature: IntArray,
+        val crops: List<Bitmap>,
+        val atMs: Long,
+    )
+
     /**
      * Non-blocking: the newest frame if the screen changed since the last grab/poll, else null
      * (MediaProjection only delivers buffers on change). [Frame.atMs] is wall-clock arrival time.
@@ -250,13 +295,63 @@ class ScreenCaptureManager(private val context: Context) {
     fun pollNewFrame(): Frame? {
         if (!isReady) return null
         synchronized(this) {
+            acquireLatestLocked()
             val image = heldImage ?: return null
             val bitmap = image.toBitmapSafe()
             image.close()
             heldImage = null
+            runCatching { retainedImage?.close() }
+            retainedImage = null
             lastFrameBitmap = bitmap
             val ageMs = SystemClock.elapsedRealtime() - lastFrameAt
             return Frame(bitmap, System.currentTimeMillis() - ageMs)
+        }
+    }
+
+    /**
+     * Checks whether [regions] visibly changed since [lastSignature] directly on the [Image] plane
+     * without allocating a full-screen [Bitmap], and crops only [regions] when they did change.
+     */
+    fun pollRegionCrops(regions: List<RectFrac>, lastSignature: IntArray?): RegionPoll? {
+        if (!isReady || regions.isEmpty()) return null
+        synchronized(this) {
+            acquireLatestLocked()
+            val image = heldImage ?: return null
+            val ageMs = SystemClock.elapsedRealtime() - lastFrameAt
+            val atMs = System.currentTimeMillis() - ageMs
+            val signature = regions.map { FrameSignature.of(image, it) }.reduce { acc, sig -> acc + sig }
+            val changed = lastSignature == null || FrameSignature.changed(signature, lastSignature)
+            val crops = if (changed) regions.map { image.cropRegion(it) } else emptyList()
+            heldImage = null
+            runCatching { retainedImage?.close() }
+            retainedImage = image
+            return RegionPoll(changed = changed, signature = signature, crops = crops, atMs = atMs)
+        }
+    }
+
+    /** Full-screen screenshot of the latest frame (converts [retainedImage] on demand once per line). */
+    fun latestScreenshot(): Bitmap? {
+        if (!isReady) return null
+        synchronized(this) {
+            acquireLatestLocked()
+            (heldImage ?: retainedImage)?.let { img ->
+                val bmp = img.toBitmapSafe()
+                img.close()
+                heldImage = null
+                retainedImage = null
+                lastFrameBitmap = bmp
+            }
+            return lastFrameBitmap
+        }
+    }
+
+    /** Drops any pending frame without converting it to a [Bitmap] (used while auto OCR is paused). */
+    fun discardNewFrame() {
+        if (!isReady) return
+        synchronized(this) {
+            acquireLatestLocked()
+            runCatching { heldImage?.close() }
+            heldImage = null
         }
     }
 
@@ -297,6 +392,8 @@ class ScreenCaptureManager(private val context: Context) {
     }
 
     companion object {
+        private const val MIN_ACQUIRE_INTERVAL_MS = 100L
+
         fun screenMetrics(context: Context): DisplayMetrics {
             val metrics = DisplayMetrics()
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -314,6 +411,42 @@ class ScreenCaptureManager(private val context: Context) {
             return metrics
         }
     }
+}
+
+/**
+ * Crops [region] directly from an RGBA_8888 [Image] plane without copying the rest of the screen.
+ */
+private fun Image.cropRegion(region: ScreenCaptureManager.RectFrac): Bitmap {
+    region.clamp()
+    val left = (region.left * width).toInt().coerceIn(0, width - 1)
+    val top = (region.top * height).toInt().coerceIn(0, height - 1)
+    val right = (region.right * width).toInt().coerceIn(left + 1, width)
+    val bottom = (region.bottom * height).toInt().coerceIn(top + 1, height)
+    val cropW = right - left
+    val cropH = bottom - top
+
+    val plane = planes[0]
+    val pixelStride = plane.pixelStride
+    val rowStride = plane.rowStride
+    val paddedWidth = if (pixelStride > 0) rowStride / pixelStride else width
+    val startByte = top * rowStride
+    val endByte = startByte + cropH * rowStride
+    if (pixelStride <= 0 || endByte > plane.buffer.capacity()) {
+        val full = toBitmapSafe()
+        val cropped = Bitmap.createBitmap(full, left, top, cropW, cropH)
+        if (cropped !== full) full.recycle()
+        return cropped
+    }
+    val slice = plane.buffer.duplicate().apply {
+        position(startByte)
+        limit(endByte)
+    }.slice()
+    val band = Bitmap.createBitmap(paddedWidth, cropH, Bitmap.Config.ARGB_8888)
+    band.copyPixelsFromBuffer(slice)
+    if (left == 0 && cropW == paddedWidth) return band
+    val cropped = Bitmap.createBitmap(band, left, 0, cropW, cropH)
+    band.recycle()
+    return cropped
 }
 
 /**

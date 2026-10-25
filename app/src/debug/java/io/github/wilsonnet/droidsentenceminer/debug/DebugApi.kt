@@ -142,11 +142,12 @@ object DebugApi {
             "/request_projection" -> respondApi(socket) { requestProjection(params) }
             "/autoocr" -> respondApi(socket) { autoOcr(params) }
             "/live" -> respondApi(socket) {
-                // Live text window: ?show=1 opens it, ?mode=compact|normal|fullscreen switches.
+                // Live text window: ?show=1|0 opens/hides it, ?mode=compact|normal|fullscreen switches.
                 val service = OverlayService.activeInstance ?: return@respondApi errorJson("overlay not running")
                 val mode = params["mode"]?.let { m -> io.github.wilsonnet.droidsentenceminer.overlay.LiveMode.entries.firstOrNull { it.name.equals(m, true) } }
-                if (params["show"] == "1" || mode != null) {
-                    service.debugSetLive(params["show"] == "1", mode)
+                if (params["show"] != null || mode != null) {
+                    val show = params["show"]?.let { it == "1" || it == "true" } ?: service.debugLiveWindow.first
+                    service.debugSetLive(show, mode)
                     Thread.sleep(400)
                 }
                 val (shown, current, rect) = service.debugLiveWindow
@@ -664,10 +665,14 @@ object DebugApi {
     private fun autoOcr(params: Map<String, String>): JSONObject {
         when (params["on"]) {
             "1", "true" -> {
-                app.startActivity(Intent(app, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-                pool.execute {
-                    Thread.sleep(800)
+                if (OverlayService.activeInstance?.debugCaptureManager?.isReady == true) {
                     runCatching { OverlayService.startAutoOcr(app) }
+                } else {
+                    app.startActivity(Intent(app, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                    pool.execute {
+                        Thread.sleep(800)
+                        runCatching { OverlayService.startAutoOcr(app) }
+                    }
                 }
             }
             "0", "false" -> OverlayService.stopAutoOcr(app)

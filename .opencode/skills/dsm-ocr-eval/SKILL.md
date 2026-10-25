@@ -87,14 +87,22 @@ runs live in DroidDeck (`Nightshade.exe` ~75–82 % CPU, `surfaceflinger` ~36 %,
 - **Live Auto OCR in Nightshade** (9-line scene replayed deterministically via Quicksave/Quickload,
   see `dsm-navigation`): original `t=4, spin=1` = **185 ms** (`ocrMsAvg`), cuts `t=4, spin=1` =
   **114 ms**, cuts `t=2, allow_spinning=0` = **116 ms** (all 9 lines logged in every run, 0 %
-  Japanese character difference between original and cuts). Under a real multi-process game, 2–3
-  threads or `allow_spinning=0` match 4 spinning threads in wall time while cutting CPU core-time
-  per OCR from 768 → 293–376 CPU-ms (leaving big cores for FEX/Wine).
-- **Idle CPU / battery drain on static game screens**: even when Nightshade sits on a static line
-  (`ocrRuns` unchanged), `gamescope` flips the `VirtualDisplay` at 60–144 Hz, so `dsm-capture`
-  acquiring every `ImageReader` buffer plus `pollNewFrame()` copying the full 3200×2136 `Image` into
-  `Bitmap`s (`54.6 MB` when `rowPadding > 0`) and cropping `2272×427` every 400 ms just to compute
-  `FrameSignature` burns ~26–44 % of one core and ~150 MB/s of Bitmap/GC churn.
+  Japanese character difference between original and cuts).
+- **Live Auto OCR in YouTube app** (`MH6JpXmv4zI` fullscreen `3200×2136`, area `l=0.06, t=0.68, r=0.94, b=0.92` = `2816×513`, `detHeight=224`, 25 s active segment replayed from `2:42`, ~62 OCR runs = 2.5 OCRs/s because the video background moves behind hardsubs):
+
+  | Config | Live `ocrMsAvg` | `ocrRuns` (25 s) | `lines` | Total DSM CPU (25 s) | Continuous CPU % | CPU ms/ocr |
+  | --- | --- | --- | --- | --- | --- | --- |
+  | original 960×544, 4 threads, `spin=1` | 159 ms | 62 | 12 | 43.34 s | 173.4 % | 699 CPU-ms |
+  | cuts, 4 threads, `spin=1` | 93 ms | 61 | 10 | 27.73 s | 110.9 % | 455 CPU-ms |
+  | **cuts, 3 threads, `allow_spinning=0` (default)** | **93 ms** | **63** | **12** | **19.61 s** | **78.4 %** | **311 CPU-ms** |
+  | cuts, 2 threads, `allow_spinning=0` | 97 ms | 63 | 12 | 17.76 s | 71.0 % | 282 CPU-ms |
+
+- **Static-screen CPU & GC churn fix** (`ScreenCaptureManager.pollRegionCrops`, `FrameSignature.of(image, region)`):
+  throttling `ImageReader` acquisitions to `MIN_ACQUIRE_INTERVAL_MS = 100L`, computing
+  `FrameSignature` directly on the `Image` RGBA `ByteBuffer` without allocating a `Bitmap`, and
+  converting the full-screen screenshot `Bitmap` only on `Event.Started` reduced DSM's idle CPU on a
+  static Nightshade dialogue line (under 60–144 Hz `gamescope`) from **26.5–44.4 % CPU** (~150 MB/s
+  GC sawtooth) to **5.0 % CPU** (0 MB/s churn).
 
 ## Results so far (Galaxy S24+, 2026-10-18)
 
@@ -104,8 +112,8 @@ runs live in DroidDeck (`Nightshade.exe` ~75–82 % CPU, `surfaceflinger` ~36 %,
 | Burned subs, bold outlined, 102 | 4.6 % / 60 % | 0.24 % / 97 % (device identical) |
 | Burned subs, boxed, 102 | 0.65 % / 92 % | 0.16 % / 98 % (device identical) |
 
-- Device meiki ≈ 150 ms per 1920×238 crop (4 threads); detection is ~75 % of it. The 320×192
-  detector is 3× faster but worse on busy frames (3.3 % vs 2.9 % CER) — kept the 960×544.
+- The 320×192 detector is 3× faster than 960×544 but worse on busy frames (3.3 % vs 2.9 % CER) —
+  kept the 960×544 with height cuts (`160..448`).
 - Mixing ML Kit votes into the consensus did not help (its errors outnumber meiki's).
 - `OcrTextFixes` (一 after kana → ー): hardsub set meiki 2.97 → 2.84 % CER, ML Kit 9.60 → 9.41 %.
 - Live auto OCR, hardsub vlog, meiki: 84 lines, 0 dups, 69 exact, 1.9 % CER vs hand GT. Left:

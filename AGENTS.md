@@ -130,24 +130,21 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   falls back to ML Kit. One shared instance, `synchronized`: auto OCR and `/ocr` calls serialize,
   so benchmark with auto OCR stopped. Measured 3–19× fewer character errors than ML Kit on game
   and subtitle fonts — numbers and recipe in `.opencode/skills/dsm-ocr-eval/SKILL.md`.
-- **meikiocr model cuts** (`tools/meiki-variants`, `assets/meiki`): both ONNX models bake their
-  input size into constants (pos-embed, anchors, level sizes). The cuts keep the original
-  normalized frame — the detector "sees the top H rows of a 544 frame" (anchor/pos-embed rows
-  sliced, GridSample y scaled by 544/H), the recognizer any width W (AIFI still gets all 30
-  tokens, the missing ones are the original's black-padding tokens) — so `orig_target_sizes`
-  stays (960/scale, 544/scale) and (960, 32). Regenerating the constants for the small frame
-  instead garbles text (box heights come out 3.4× short). The graphs' initializers are external
-  data pointing *into the downloaded originals* (offsets), so `MeikiModels.installVariants` only
-  copies them when the originals' SHA-256 match. Height = smallest cut ≥ content + 32 rows
+- **meikiocr model cuts & defaults** (`tools/meiki-variants`, `assets/meiki`, `MeikiOcr.Options`):
+  both ONNX models bake their input size into constants (pos-embed, anchors, level sizes). The cuts
+  keep the original normalized frame — the detector "sees the top H rows of a 544 frame"
+  (anchor/pos-embed rows sliced, GridSample y scaled by 544/H), the recognizer any width W (AIFI
+  still gets all 30 tokens, the missing ones are the original's black-padding tokens) — so
+  `orig_target_sizes` stays (960/scale, 544/scale) and (960, 32). Regenerating the constants for the
+  small frame instead garbles text (box heights come out 3.4× short). The graphs' initializers are
+  external data pointing *into the downloaded originals* (offsets), so `MeikiModels.installVariants`
+  only copies them when the originals' SHA-256 match. Height = smallest cut ≥ content + 32 rows
   (`MeikiDecoder.detectorHeight`; tighter drifts), width = widest line + 64 (`recognizerWidth`).
-  Not bit-exact (the original's padding rows/columns feed back into features): differences are
-  frame-to-frame noise, measured on GT sets and live YouTube. Tried and slower on the S24+ (idle):
-  XNNPACK EP (2×), thread affinity, `allow_spinning=0`, 2/3/5/6 threads (also under synthetic CPU load).
-  On Xiaomi Pad 7 while Nightshade runs in DroidDeck (`Nightshade.exe` ~80 % CPU): cuts drop wall
-  time from 196 → 114–122 ms (`ocrMsAvg` 185 → 114 ms live) and CPU core-time per OCR from 768 →
-  493 CPU-ms; under real game contention `threads=3` (114 ms, 376 CPU-ms), `threads=2` (125 ms,
-  293 CPU-ms; 116 ms live with `allow_spinning=0`) or `threads=4, allow_spinning=0` (130 ms, 350
-  CPU-ms) match 4 spinning threads while sparing big cores for FEX/Wine.
+  Default options are `threads = 3, session.intra_op.allow_spinning = 0`: on Xiaomi Pad 7 vs the
+  544×960 / 4-spinning-thread original, cuts + `t=3, spin=0` drop live latency and CPU core-time per
+  OCR from 185 → 114 ms and 768 → 350 CPU-ms under Nightshade (`Nightshade.exe` ~80 % CPU), and from
+  159 → 93 ms and 699 → 311 CPU-ms (173 % → 78 % continuous CPU) on live YouTube hardsubs. Tried and
+  slower on S24+ (idle): XNNPACK EP (2×) and thread affinity. Full table: `.opencode/skills/dsm-ocr-eval/SKILL.md`.
   `OcrTextFixes` (applied in `OcrPostProcessor.toSentenceText`) turns 一 after kana into ー,
   except before counters (もう一つ, お一人).
 - **Text areas are per orientation** (`DsmPrefs.autoAreas(landscape)`, encoded by `TextArea`):
@@ -239,8 +236,6 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   sizes from `ScreenCaptureManager.screenMetrics`. Width: 420 dp portrait, 600 dp landscape.
   Test the YouTube flow like a user: pause, tap an empty spot to hide the player controls (they
   cover the subtitle and the layer re-reads them), then tap the word.
-  Testing: `/autoocr?on=1` and consent bring DSM/the panel to the front (auto OCR pauses) — reopen
-  the video with `am start -a VIEW -d <youtube url>` and close the panel first.
 - **Navigation**: Home · Book · Texts · Settings. Dictionaries and Anki are Settings sub-pages
   (`MainActivity.SettingsSubPage`, back button/gesture returns to the list). At ≥600 dp width
   (tablets, landscape phones) the tabs move to a `NavigationRail` and screens sit in a centered
@@ -298,20 +293,19 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   player settings. `yt-dlp -f bestaudio --download-sections "*0:00-8:00"` gives reference audio
   to cross-correlate `/clip.wav` output against.
 
-- **Typewriter text / static-region skip** (`FrameSignature` in `AutoOcrController.kt`): a frame
-  is OCR'd only if it differs from the frame *last OCR'd* (not the previous frame), by mean or by
-  any single cell of a 96×24 area-averaged grid. Comparing consecutive frames with a mean of a
-  bilinear 48×12 downscale froze visual novel lines at the first half-typed read. Note: under a
-  60–144 Hz compositor (`gamescope` in DroidDeck), `ImageReader.setOnImageAvailableListener` +
-  `pollNewFrame()` converting the full 3200×2136 `Image` into `Bitmap`s every 400 ms just to run
-  `FrameSignature` still burns ~26–44 % of one core and ~150 MB/s of Bitmap/GC churn on a static
-  line.
-- **DroidDeck / Nightshade navigation** (`.opencode/skills/dsm-navigation/SKILL.md`): exact coordinates
-  on the Xiaomi Pad 7 (3200×2136 landscape) for launching Nightshade (`ゲーム` `(127, 320)` →
-  `▶ 起動` `(500, 738)`), unpausing `Steam 一時停止中` (`再開` is below center at `(1600, 1265)`,
-  not `(1600, 1068)`), advancing dialogue above `ScreenTextLayerView` (`(1600, 600)`), deterministic
-  replays via Quicksave `(3100, 1440)` / Quickload `(3100, 1890)` → `はい` `(1280, 1100)`, and the
-  MediaProjection consent picker (`次へ` `(1830, 1465)` → first top-row thumbnail `(1230, 764)`).
+- **Typewriter text / zero-allocation static-region skip** (`FrameSignature` in
+  `AutoOcrController.kt`, `ScreenCaptureManager.pollRegionCrops`): a frame is OCR'd only if it
+  differs from the frame *last OCR'd* (not the previous frame), by mean or by any single cell of a
+  96×24 area-averaged grid. Comparing consecutive frames with a mean of a bilinear 48×12 downscale
+  froze visual novel lines at the first half-typed read. Under 60–144 Hz compositors (`gamescope`,
+  YouTube), `ScreenCaptureManager` throttles `ImageReader` acquisitions to `MIN_ACQUIRE_INTERVAL_MS`
+  (100 ms), checks `FrameSignature.of(image, region)` directly on the RGBA `ByteBuffer` (bulk
+  `IntBuffer` row reads, zero `Bitmap` allocations when static; 5 % CPU on a static Nightshade line
+  vs 26–44 % + 150 MB/s GC churn before), crops only the text band when changed, and converts the
+  full-screen screenshot `Bitmap` (`latestScreenshot`) only once per logged line (`Event.Started`).
+- **DroidDeck / Nightshade / YouTube navigation**: see `.opencode/skills/dsm-navigation/SKILL.md`
+  for exact coordinates on the Xiaomi Pad 7 and Galaxy phone (DroidDeck launch, `Steam 一時停止中`,
+  Nightshade Quicksave/Quickload, YouTube PiP avoidance, MediaProjection consent).
 - **`SubtitleLineFilter` anchors on the row with the most Japanese**: game buttons inside the text
   area (Nightshade's スキップ/クイックロード) became the anchor and the short, bigger dialogue line
   was dropped as "wrong size". Keep areas on the dialogue box. `JapaneseTextScore` ignores
@@ -341,10 +335,6 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   renamed/stripped — ONNX Runtime crashed on the first meikiocr run (`ClassNotFoundException:
   ai.onnxruntime.TensorInfo`) until `-keep class ai.onnxruntime.**` in `proguard-rules.pro`. Before a
   release, install the release APK and run meikiocr + a lookup (no debug API in release).
-- **Prefer the debug API over UI automation.** Debug builds expose a loopback text API
-  (`curl localhost:9099/...` via `adb forward tcp:9099 tcp:9099`) for capture frames, OCR,
-  lookups and mining. Use it to validate flows; reserve `input tap`/screenshots for
-  permission dialogs. Full reference: `.opencode/skills/dsm-debug-api/SKILL.md`.
 - **MediaProjection only delivers frames when the screen changes.** On a static screen a
   second `/scan` used to fail with "Could not capture the screen"; `ScreenCaptureManager`
   now caches the last frame (`lastFrameBitmap`) as a fallback. Consent dialog (Android 14+):

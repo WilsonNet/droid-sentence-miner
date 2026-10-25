@@ -121,7 +121,7 @@ class AutoOcrController(
                     pausedSinceMs = loopStart
                     textLog.openLinePausedAtMs = loopStart
                 }
-                capture.pollNewFrame()
+                capture.discardNewFrame()
                 lastSignature = null
                 if (!holdLayer()) _screenText.value = emptyList()
                 _status.value = _status.value.copy(error = PAUSED)
@@ -133,28 +133,23 @@ class AutoOcrController(
                 pausedSinceMs = null
                 textLog.openLinePausedAtMs = null
             }
-            val frame = capture.pollNewFrame()
-            var frameBitmap: Bitmap? = null
+            val regions = selected.map { a -> ScreenCaptureManager.RectFrac(a.left, a.top, a.right, a.bottom) }
+            val poll = capture.pollRegionCrops(regions, lastSignature)
             val atMs: Long
             val text: String
-            if (frame == null) {
+            if (poll == null) {
                 // Nothing changed on screen; the previous read still holds.
                 atMs = loopStart
                 text = lastRead
             } else {
-                val crops = selected.map { a ->
-                    capture.cropToRegion(frame.bitmap, ScreenCaptureManager.RectFrac(a.left, a.top, a.right, a.bottom))
-                }
-                val signature = crops.map { FrameSignature.of(it) }.reduce { acc, sig -> acc + sig }
-                atMs = frame.atMs
-                frameBitmap = frame.bitmap
+                atMs = poll.atMs
                 // Compared with the frame last OCR'd, not the previous frame: typewriter text grows a
                 // little per frame and would otherwise never look changed (lines froze half-drawn).
-                val static = lastSignature?.let { !FrameSignature.changed(signature, it) } ?: false
-                text = if (static) {
+                text = if (!poll.changed) {
                     lastRead
                 } else {
-                    lastSignature = signature
+                    lastSignature = poll.signature
+                    val crops = poll.crops
                     lastCrops = crops
                     val ocrStart = System.currentTimeMillis()
                     val reads = crops.mapIndexed { i, crop ->
@@ -178,7 +173,7 @@ class AutoOcrController(
                     is TextLineTracker.Event.Ended -> closeOpenLine(event.atMs)
                     is TextLineTracker.Event.Started -> {
                         val refined = refine(lastCrops, event.text)
-                        val screenshot = frameBitmap ?: capture.pollNewFrame()?.bitmap
+                        val screenshot = capture.latestScreenshot()
                         openLineId = textLog.startLine(refined, event.atMs, TextLineEntity.SOURCE_AUTO, screenshot)
                         // The slower pass counts as one more vote in the line's consensus.
                         if (refined != TextSimilarity.clean(event.text)) tracker.addReading(refined)
@@ -288,6 +283,72 @@ object FrameSignature {
         val pixels = IntArray(w * h)
         bitmap.getPixels(pixels, 0, w, 0, 0, w, h)
         return of(pixels, w, h)
+    }
+
+    /**
+     * Computes the signature of [region] directly from an RGBA_8888 [android.media.Image] plane
+     * without allocating a full-screen or cropped [Bitmap].
+     */
+    fun of(image: android.media.Image, region: ScreenCaptureManager.RectFrac): IntArray {
+        region.clamp()
+        val frameW = image.width
+        val frameH = image.height
+        val left = (region.left * frameW).toInt().coerceIn(0, frameW - 1)
+        val top = (region.top * frameH).toInt().coerceIn(0, frameH - 1)
+        val right = (region.right * frameW).toInt().coerceIn(left + 1, frameW)
+        val bottom = (region.bottom * frameH).toInt().coerceIn(top + 1, frameH)
+        val plane = image.planes[0]
+        return ofRgba(plane.buffer, plane.rowStride, plane.pixelStride, left, top, right - left, bottom - top)
+    }
+
+    /** [buffer] is RGBA_8888 with [rowStride] bytes per row and [pixelStride] bytes per pixel. */
+    fun ofRgba(
+        buffer: java.nio.ByteBuffer,
+        rowStride: Int,
+        pixelStride: Int,
+        left: Int,
+        top: Int,
+        width: Int,
+        height: Int,
+    ): IntArray {
+        val sums = LongArray(W * H)
+        val counts = IntArray(W * H)
+        val step = if (width >= W * 4 && height >= H * 4) 2 else 1
+        if (pixelStride == 4 && rowStride % 4 == 0) {
+            val ints = buffer.duplicate().order(java.nio.ByteOrder.LITTLE_ENDIAN).asIntBuffer()
+            val strideInts = rowStride shr 2
+            val row = IntArray(width)
+            for (y in 0 until height step step) {
+                val cy = y * H / height
+                ints.position((top + y) * strideInts + left)
+                ints.get(row, 0, width)
+                for (x in 0 until width step step) {
+                    val rgba = row[x]
+                    val r = rgba and 0xFF
+                    val g = (rgba ushr 8) and 0xFF
+                    val b = (rgba ushr 16) and 0xFF
+                    val cell = cy * W + x * W / width
+                    sums[cell] += (r * 299 + g * 587 + b * 114) / 1000
+                    counts[cell]++
+                }
+            }
+        } else {
+            val baseOffset = top * rowStride + left * pixelStride
+            for (y in 0 until height step step) {
+                val cy = y * H / height
+                val rowOffset = baseOffset + y * rowStride
+                for (x in 0 until width step step) {
+                    val idx = rowOffset + x * pixelStride
+                    val r = buffer.get(idx).toInt() and 0xFF
+                    val g = buffer.get(idx + 1).toInt() and 0xFF
+                    val b = buffer.get(idx + 2).toInt() and 0xFF
+                    val cell = cy * W + x * W / width
+                    sums[cell] += (r * 299 + g * 587 + b * 114) / 1000
+                    counts[cell]++
+                }
+            }
+        }
+        return IntArray(W * H) { i -> if (counts[i] == 0) 0 else (sums[i] / counts[i]).toInt() }
     }
 
     /** [pixels] are ARGB, row-major. Every other pixel is sampled; plenty for glyph-sized cells. */

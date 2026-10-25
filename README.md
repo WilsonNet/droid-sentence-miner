@@ -332,16 +332,20 @@ Glossaries may be strings, arrays, image definitions, deinflection entries or st
   at the first half-typed read (戦乱の世におい). After: every line of the prologue and first scene
   logged complete (3-line narration included), short exclamations like 「百花……っ」 kept, 一筋 no
   longer turned into ー筋. With Nightshade actively running (`Nightshade.exe` ~80 % CPU +
-  `surfaceflinger` ~36 % + `gamescope` ~18 %), the shorter detector cut and any-width recognizer
-  drop `/ocr_bench` wall time from 195–196 ms to 114–122 ms (live auto OCR on a 9-line scene
-  replayed via Quicksave/Quickload: 185 → 114 ms per read, 0 % Japanese character difference) and
-  CPU core-time per OCR from 768 → 493 CPU-ms; toning down to 2–3 threads or
-  `allow_spinning=0` keeps wall time at 114–130 ms (116 ms live auto OCR with 2 threads,
-  `allow_spinning=0`) while cutting CPU core-time per OCR to 293–376 CPU-ms. Device audio came back
+  `surfaceflinger` ~36 % + `gamescope` ~18 %), the shorter detector cut, any-width recognizer and
+  `threads = 3, allow_spinning = 0` default drop `/ocr_bench` wall time from 196 ms to 114–122 ms
+  (live auto OCR on a 9-line scene replayed via Quicksave/Quickload: 185 → 114 ms per read, 0 %
+  Japanese character difference) and CPU core-time per OCR from 768 → 350–376 CPU-ms (293 CPU-ms
+  at 2 threads). On the YouTube app in fullscreen (`MH6JpXmv4zI`, 2.5 OCRs/s over moving background),
+  live auto OCR drops from 159 → 93 ms per read and CPU core-time from 699 → 311 CPU-ms (173 % →
+  78 % continuous CPU; 455 CPU-ms / 111 % with 4 spinning threads). Throttling `ImageReader`
+  acquisitions to 100 ms and checking `FrameSignature` directly on the `Image` RGBA buffer without
+  `Bitmap` allocation cuts DSM's idle CPU on a static Nightshade dialogue line from 26–44 %
+  (~150 MB/s GC churn) to 5 % (0 MB/s churn). Device audio came back
   as digital zeros (`AudioRecord … [mute]`); with the microphone fallback the voiced lines are
   audible in the clips (speech at ~2000 RMS after normalization vs ~15 raw at the tablet's
   volume). Cards mined from the popup (手薄, 術) had sentence, screenshot, word audio and clip.
-- 148 JVM unit tests: meikiocr detector/recognizer input sizing, frame change detection (one typewriter glyph counts), loudness
+- 149 JVM unit tests: meikiocr detector/recognizer input sizing, frame change detection (one typewriter glyph counts; direct RGBA buffer with row stride), loudness
   normalization, popup placement (flip/size/shift), screen text layer (subtitle glyphs → screen fractions, signage skipped), book page layout (tategaki order, ruby filter incl. real manga ruby, split sentences, per-character photo positions), H→エ fix, pitch graphs (byte-identical to Yomitan), word audio sources, Anki field mapping, meikiocr decoding, OCR text fixes (一→ー), text areas, line consensus, replay buffer, voice trimming, line tracking, clip windows, subtitle-row
   filtering, deinflector (conjugations across godan/ichidan/suru/kuru/adjectives),
   glossary parsing/rendering, OCR post-processing (merge, furigana filter, normalization),
@@ -389,26 +393,19 @@ Glossaries may be strings, arrays, image definitions, deinflection entries or st
   frame-injection test path.
 - AnkiDroid media naming: the API stores our AAC clip as `…m4a_<n>.mp3`. It plays, but pass the
   proper MIME type/extension so the file name matches the content.
-- Vertical text for screen OCR (meikiocr ships a vertical recognizer; not wired up yet). Book mode
-  reads vertical print with ML Kit; manga speech bubbles and inline ruby are untested.
-- Book mode: share a photo straight from the camera/gallery into DSM; pinch-zoom on the page.
+- Vertical text for screen OCR (meikiocr ships a vertical recognizer; not wired up yet; Book mode
+  reads vertical print and manga with ML Kit).
+- Book mode: share a photo straight from the camera/gallery into DSM.
 - Pitch accent in the lookup popup (the card already gets the graph); jidoujisho-style graph option.
 - Hotkey toggle for the live/lookup overlay (gamepad button or volume key via an accessibility
   service), as meikidroid does — handy on Android handhelds.
-- Lower idle battery/CPU drain while auto OCR runs over 60–144 Hz games (DroidDeck/`gamescope`):
-  validated the meikiocr cuts under Nightshade on the Xiaomi Pad 7 (196 → 114–122 ms wall, 768 →
-  293–376 CPU-ms with 2–3 threads or `allow_spinning=0`), and found that even on a static dialogue
-  line `ImageReader.setOnImageAvailableListener` + `pollNewFrame()` copying the full 3200×2136
-  frame into `Bitmap`s every 400 ms just to run `FrameSignature` burns ~26–44 % of one core and
-  ~150 MB/s of Bitmap/GC churn. Compute `FrameSignature` directly from the `Image` plane / acquire
-  on poll instead of every VSYNC, and expose/tune thread count & spinning.
 - Skip the detector on visual novels: a simulation (static background, typewriter text) showed
   reusing the last line boxes, grown rightwards for typewriter text and verified by the
   recognizer, cuts detector runs by ~65 % with identical lines; on video it saves nothing (the
   band changes everywhere every frame).
 - Optional ASR engines (e.g. whisper.cpp or Moonshine via JNI) as an alternative/complement to OCR
   for games with hard-to-read fonts.
-- Per-dictionary frequency display modes and pitch-accent graphs.
+- Per-dictionary frequency display modes.
 - Quick Settings tile and share-sheet mining.
 
 ## Credits

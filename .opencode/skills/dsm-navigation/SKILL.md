@@ -138,15 +138,29 @@ curl -s http://localhost:9099/state | python3 -c "import json,sys; print(json.lo
    - Do **not** blindly tap the lower icon grid (`android:id/chooser_row`): its app order changes
      between runs.
 5. Tap **再開** in DroidDeck (`input tap 1600 1265`) and verify `/state` has `captureReady: true`
-   and `autoOcr.running: true`.
+   and `autoOcr.running: true`. (Once `captureReady: true`, toggling `/autoocr?on=0` → `/autoocr?on=1`
+   starts `OverlayService.startAutoOcr` in place without bringing `MainActivity` to the front.)
 
-> **Note when toggling `/autoocr?on=0` → `/autoocr?on=1`**: while `captureReady: true`, no new
-> consent dialog is needed, but `/autoocr?on=1` brings DSM's `MainActivity` to the front (which
-> pauses `AutoOcrController` with `"Paused while Droid Sentence Miner is on screen"`). Always switch
-> back to the game (`$ADB shell monkey -p com.droiddeck.launcher -c android.intent.category.LAUNCHER 1`)
-> and tap **再開** `(1600, 1265)`.
+## 5. YouTube App (`com.google.android.youtube`, `3200 × 2136` landscape)
 
-## 5. Droid Sentence Miner App UI
+- **Avoid Picture-in-Picture covering MediaProjection consent**: on YouTube Pro / Premium, backgrounding
+  an actively playing video puts YouTube into PiP (`mWindowingMode=pinned`, `Rect(1143, 659 - 3145, 1785)`),
+  which floats *above* `MediaProjectionPermissionActivity` and intercepts taps AND removes YouTube from
+  the recent-tasks row. Always **pause first** (`$ADB shell input keyevent 127`) before calling
+  `/autoocr?on=1` or `/request_projection`.
+- **Enter fullscreen**: in the tablet two-column layout (player at `[0, 88][2240, 1348]`), tap the
+  bottom-right fullscreen icon at **`(2165, 1265)`**.
+- **Hide player overlay controls**: tap **`(1600, 500)`** (controls stay visible when paused until
+  dismissed).
+- **Play / Pause**: `input keyevent 126` (`KEYCODE_MEDIA_PLAY`) / `input keyevent 127` (`KEYCODE_MEDIA_PAUSE`).
+- **Deterministic rewind (`-10 s` per tap after the first)**:
+  ```bash
+  # Rewind 30 seconds (4 rapid taps on the left half of the fullscreen player):
+  $ADB shell "input tap 600 1000; sleep 0.08; input tap 600 1000; sleep 0.08; input tap 600 1000; sleep 0.08; input tap 600 1000"
+  ```
+- **Fullscreen hardsub region** (`MH6JpXmv4zI`): `l=0.06, t=0.68, r=0.94, b=0.92` (`2816 × 513`).
+
+## 6. Droid Sentence Miner App UI
 
 - **Navigation**: `Home` · `Book` · `Texts` · `Settings`.
   - Width `< 600 dp` (phones, or tablet in `wm size 1080x2400`): bottom navigation bar at `y ≈ 2292`

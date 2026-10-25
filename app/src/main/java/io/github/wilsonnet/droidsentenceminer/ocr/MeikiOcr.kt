@@ -54,7 +54,7 @@ class MeikiOcr private constructor(
 
     /** Session setup; the defaults are what the app uses, others are for debug API benchmarks. */
     data class Options(
-        val threads: Int = 4,
+        val threads: Int = 3,
         val xnnpack: Boolean = false,
         val detector: String = MeikiModels.DETECTOR,
         val recognizer: String = MeikiModels.RECOGNIZER,
@@ -62,7 +62,7 @@ class MeikiOcr private constructor(
         val variants: Boolean = true,
         val anyWidthRecognizer: Boolean = true,
         /** ORT session config entries, e.g. session.intra_op.allow_spinning. */
-        val config: Map<String, String> = emptyMap(),
+        val config: Map<String, String> = mapOf("session.intra_op.allow_spinning" to "0"),
     )
 
     /** Time spent per stage by the last [recognize], in ms (debug API benchmarks). */

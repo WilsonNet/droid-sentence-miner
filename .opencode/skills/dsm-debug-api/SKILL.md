@@ -48,9 +48,9 @@ All GET, all JSON (except `frame.png`). Regions are screen fractions unless note
 | `/scan?l=&t=&r=&b=` | Full pipeline: grab frame → crop → OCR → dictionary lookup. Omit the region to reuse the saved one |
 | `/frame.png?l=&t=&r=&b=` | PNG of what MediaProjection actually sees (omit region for the raw full frame) |
 | `/ocr?file=/sdcard/...&engine=meiki\|mlkit&twoPass=1&noise=1&l=&t=&r=&b=` | OCR an image file (optionally cropped) with the chosen engine; returns text, engine, per-line boxes + confidences, and dictionary matches |
-| `/ocr_bench?dir=/sdcard/...&n=3&threads=4&variants=1&anyw=1&xnnpack=0&cfg=key:value\|key:value` | meikiocr benchmark: every image in `dir`, one warm-up + `n` timed runs each; median/mean/p90 of `total`, `detPrep`, `detRun`, `recPrep`, `recRun`, `detHeight`, plus the text per image. `variants=0` = original 960×544 detector, `anyw=0` = 960-wide recognizer, `cfg` = ORT session config entries. **The options stay loaded** and auto OCR then uses them — switch back with `variants=1` and never call it while auto OCR runs (the old sessions are closed) |
+| `/ocr_bench?dir=/sdcard/...&n=3&threads=3&variants=1&anyw=1&xnnpack=0&cfg=key:value\|key:value` | meikiocr benchmark: every image in `dir`, one warm-up + `n` timed runs each; median/mean/p90 of `total`, `detPrep`, `detRun`, `recPrep`, `recRun`, `detHeight`, plus the text per image. `variants=0` = original 960×544 detector, `anyw=0` = 960-wide recognizer, `cfg` = ORT session config entries (default `threads=3`, `session.intra_op.allow_spinning:0`). **The options stay loaded** and auto OCR then uses them — restore defaults after benchmarking and never call it while auto OCR is actively OCRing |
 | `/quick?l=&t=&r=&b=` | Quick lookup of a box (screen fractions) as if drawn after a bubble tap (accessibility screenshot when `/state.accessibilityScreenshots`, else the projection frame): OCRs it and opens the screen dictionary popup on its first word; returns `lines` read (0 = toast "No Japanese text") |
-| `/live?show=1&mode=compact\|normal\|fullscreen` | Live text window: open it and/or switch mode; returns `shown`, `mode`, `rect` ([x, y, w, h] px) |
+| `/live?show=1\|0&mode=compact\|normal\|fullscreen` | Live text window: open/hide it and/or switch mode; returns `shown`, `mode`, `rect` ([x, y, w, h] px) |
 | `/book?file=/sdcard/...` | Book mode: read a page photo (EXIF-rotated, ≤3000 px) with ML Kit into ordered paragraphs (`text`, `vertical`, `box`) and show it in the Book tab — validates tategaki order without a camera |
 | `/lookup?word=<urlencoded>` | Dictionary lookup summary (reading, term count, base form, term_meta rows incl. pitch) |
 | `/mine?word=&sentence=` | Look a word up and add a card via the configured Anki backend (AnkiDroid/AnkiConnect) |
@@ -59,7 +59,7 @@ All GET, all JSON (except `frame.png`). Regions are screen fractions unless note
 | `/anki_notes?word=&model=` | Find notes by first field via the AnkiDroid provider; returns every field name → value, plus tags. Defaults to the configured model |
 | `/anki_meta` | AnkiDroid decks and note types as id → name maps |
 | `/startoverlay`, `/stopoverlay` | Start/stop the floating overlay service |
-| `/autoocr?on=1` / `?on=0` | Start/stop auto OCR on the saved region (starts the service and asks for consent if needed) |
+| `/autoocr?on=1` / `?on=0` | Start/stop auto OCR on the saved region (if `captureReady` is already true, starts in place without bringing `MainActivity` to the front; otherwise starts the service and asks for consent) |
 | `/set_anki?provider=&deck=&model=&firstdict=1` | Set the Anki backend, target deck, note type, first-dictionary glossary |
 | `/word_audio?term=&reading=&custom=` | Fetch word audio like a card would; returns which source answered |
 | `/anki_sample?model=&limit=` | Read-only: newest notes of a note type with every field (see how the user fills it) |

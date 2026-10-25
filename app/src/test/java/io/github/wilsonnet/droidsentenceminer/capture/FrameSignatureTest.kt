@@ -1,8 +1,10 @@
 package io.github.wilsonnet.droidsentenceminer.capture
 
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.nio.ByteBuffer
 
 class FrameSignatureTest {
 
@@ -37,5 +39,31 @@ class FrameSignatureTest {
     fun sameFrameAndSlightNoiseDoNot() {
         assertFalse(FrameSignature.changed(signature(box(7)), signature(box(7))))
         assertFalse(FrameSignature.changed(signature(box(7)), signature(box(7, noise = 4))))
+    }
+
+    @Test
+    fun rgbaBufferWithRowPaddingMatchesPixelArraySignature() {
+        val cropPixels = box(7, noise = 3)
+        val fullW = 3200
+        val fullH = 800
+        val left = 160
+        val top = 120
+        val padPixels = 64
+        val pixelStride = 4
+        val rowStride = (fullW + padPixels) * pixelStride
+        val buf = ByteBuffer.allocate(fullH * rowStride)
+        for (y in 0 until height) {
+            val rowStart = (top + y) * rowStride + left * pixelStride
+            for (x in 0 until width) {
+                val argb = cropPixels[y * width + x]
+                val idx = rowStart + x * pixelStride
+                buf.put(idx, ((argb shr 16) and 0xFF).toByte())
+                buf.put(idx + 1, ((argb shr 8) and 0xFF).toByte())
+                buf.put(idx + 2, (argb and 0xFF).toByte())
+                buf.put(idx + 3, 0xFF.toByte())
+            }
+        }
+        val fromRgba = FrameSignature.ofRgba(buf, rowStride, pixelStride, left, top, width, height)
+        assertArrayEquals(signature(cropPixels), fromRgba)
     }
 }
