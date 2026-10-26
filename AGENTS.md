@@ -23,6 +23,16 @@ Never create or push a `v*` tag unless the user explicitly asks for a release: t
 release (`.github/workflows/release.yml` builds a signed APK and publishes it). Recipe, signing key
 and secrets: `.opencode/skills/dsm-release/SKILL.md`.
 
+## NEVER launch an Android emulator (unless explicitly asked)
+
+Never start an Android emulator (`emulator`, `android avd start`, etc.) unless the user explicitly
+requests it. Launching an emulator exhausts CPU/RAM and can freeze or crash the host machine (e.g.
+during a meeting). Always test on a connected physical device (`Xiaomi Pad 7` `c2bd6564` or Galaxy
+phone). If the device is locked (`mInputRestricted=true` in `dumpsys window policy`) or
+disconnected, wake the screen (`adb shell input keyevent 224`), send a desktop notification via
+`notify-send -u critical "Droid Sentence Miner" "Please unlock or connect the tablet for testing"`,
+and wait/retry rather than falling back to an emulator.
+
 ## Git
 
 Commit as Wilson Neto <wilsonpsn@hotmail.com>. The SSH key needs a passphrase, so push over HTTPS
@@ -370,19 +380,13 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   DSM uninstall, and `adb shell` cannot read it. Verify cards with `/anki_notes` (content provider)
   instead of pulling the SQLite file. For clean API tests, AnkiDroid's own uninstall/reinstall
   clears the collection.
-- **Emulator capture is unreliable**: with `-gpu host` MediaProjection frames only contain our own
-  overlays; with `-gpu swiftshader_indirect` UI is captured but video playback goes black and
-  silent. Validate capture/auto OCR on a real device; the emulator is fine for UI, Room,
-  lookups and AnkiDroid card creation (`/add_line` + `/mine_line`).
 - **Android 14/15 FGS ordering**: a foreground service may only use the `mediaProjection` type
   *after* consent exists (`android:project_media` app-op). The permission activity must NOT be
   `noHistory` or it dies while the system consent UI is up.
 - **Cleartext HTTP is blocked by default** on targetSdk 28+; `res/xml/network_security_config.xml`
   permits it for AnkiConnect.
-- Emulator AVD: `dsm_test` (API 35, google_apis_playstore, x86_64). AnkiDroid test APK:
-  `gh release download v2.24.1 -R ankidroid/Anki-Android -p "variant-abi-AnkiDroid-2.24.1-x86_64.apk"`
-  (grant `appops set com.ichi2.anki MANAGE_EXTERNAL_STORAGE allow`, then restart it). Never mine
-  test cards into a personal AnkiDroid collection on a real phone; Jitendex installs via the app's one-click button or
+- **Never mine test cards into a personal AnkiDroid collection** unless using a dedicated test deck or
+  `/preview_card`; Jitendex installs via the app's one-click button or
   `curl localhost:9099/install_dict?id=jitendex` (~40 s, 436,555 terms).
 
 ## Local test servers (used during development)
