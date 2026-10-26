@@ -146,8 +146,10 @@ class YomitanImporter(
                 val index = parseIndex(indexJson)
                 val styles = zip.readEntryText("styles.css")?.takeIf { it.isNotBlank() }
 
-                // Replace a dictionary with the same title (Yomitan semantics).
-                val existing = db.dictionaryDao().findByTitle(index.title)
+                // Replace a dictionary with the same title (Yomitan semantics), or an earlier
+                // dated revision of the same dictionary family (e.g. "Jitendex.org [2026-09-01]"
+                // upgraded to "Jitendex.org [2026-10-03]"), preserving its priority and enabled state.
+                val existing = findExistingForImport(index.title)
                 if (existing != null) {
                     db.termDao().deleteByDict(existing.id)
                     db.kanjiDao().deleteByDict(existing.id)
@@ -156,9 +158,12 @@ class YomitanImporter(
                     db.metaDao().deleteKanjiMetaByDict(existing.id)
                     db.dictionaryDao().delete(existing.id)
                     existing.zipPath?.let { runCatching { File(it).delete() } }
+                    DictArchive.invalidate(existing.id)
+                    runCatching { File(context.cacheDir, "dict-images/${existing.id}").deleteRecursively() }
                 }
 
-                val priority = (db.dictionaryDao().maxPriority() ?: -1) + 1
+                val priority = existing?.priority ?: ((db.dictionaryDao().maxPriority() ?: -1) + 1)
+                val enabled = existing?.enabled ?: true
                 val dictId = db.dictionaryDao().insert(
                     DictionaryEntity(
                         title = index.title,
@@ -173,6 +178,7 @@ class YomitanImporter(
                         sequenced = index.sequenced,
                         frequencyMode = index.frequencyMode,
                         priority = priority,
+                        enabled = enabled,
                         styles = styles,
                         zipPath = tempZip.absolutePath,
                     ),
@@ -345,8 +351,22 @@ class YomitanImporter(
 
     fun parseIndex(jsonString: String): DictionaryIndex = YomitanIndexParser.parse(jsonString)
 
+    /**
+     * Finds an installed dictionary that [newTitle] should replace: either an exact title match,
+     * or the same base title when a trailing `[...]` date/version tag is stripped (e.g.
+     * `Jitendex.org [2026-09-01]` → `Jitendex.org [2026-10-03]`).
+     */
+    private suspend fun findExistingForImport(newTitle: String): DictionaryEntity? {
+        db.dictionaryDao().findByTitle(newTitle)?.let { return it }
+        val newBase = baseDictionaryTitle(newTitle)
+        return db.dictionaryDao().getAll().firstOrNull { baseDictionaryTitle(it.title).equals(newBase, ignoreCase = true) }
+    }
+
     companion object {
         private const val INSERT_CHUNK = 4000
+
+        fun baseDictionaryTitle(title: String): String =
+            title.replace(Regex("\\s*\\[[^\\]]*]\\s*$"), "").trim()
     }
 }
 
@@ -381,6 +401,9 @@ object YomitanIndexParser {
             targetLanguage = obj.string("targetLanguage"),
             sequenced = obj.boolean("sequenced"),
             frequencyMode = obj.string("frequencyMode"),
+            isUpdatable = obj.boolean("isUpdatable"),
+            indexUrl = obj.string("indexUrl"),
+            downloadUrl = obj.string("downloadUrl"),
             tagMeta = tagMeta,
         )
     }

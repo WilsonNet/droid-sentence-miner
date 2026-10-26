@@ -105,11 +105,22 @@ fun SettingsScreen(modifier: Modifier = Modifier, onOpen: (String) -> Unit = {})
         Text("Settings", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
 
         val dictionaries by remember { container.db.dictionaryDao().observeAll() }.collectAsState(initial = emptyList())
+        val dictUpdates by container.dictUpdates.collectAsState()
         val ankiDeck by container.prefs.ankiDeck.collectAsState(initial = "")
+        LaunchedEffect(dictionaries.size) {
+            if (dictionaries.isNotEmpty() && dictUpdates.isEmpty()) {
+                runCatching { container.refreshDictUpdates() }
+            }
+        }
+        val dictSubtitle = when {
+            dictionaries.isEmpty() -> "None installed yet: install Jitendex here"
+            dictUpdates.isNotEmpty() -> "${dictionaries.size} installed · ${dictUpdates.size} update${if (dictUpdates.size > 1) "s" else ""} available"
+            else -> "${dictionaries.size} installed"
+        }
         SettingsLink(
             Icons.Default.Book,
             "Dictionaries",
-            if (dictionaries.isEmpty()) "None installed yet: install Jitendex here" else "${dictionaries.size} installed",
+            dictSubtitle,
         ) { onOpen(io.github.wilsonnet.droidsentenceminer.PAGE_DICTIONARIES) }
         SettingsLink(
             Icons.Default.Style,

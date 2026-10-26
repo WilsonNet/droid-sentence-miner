@@ -16,6 +16,8 @@ data class RecommendedDictionary(
     val url: String,
     val approximateSizeMb: Double,
     val kind: Kind = Kind.YOMITAN_ZIP,
+    /** Remote Yomitan `index.json` URL for checking whether a newer revision is available. */
+    val indexUrl: String? = null,
 ) {
     enum class Kind {
         YOMITAN_ZIP,
@@ -25,6 +27,16 @@ data class RecommendedDictionary(
     }
 }
 
+/** An available update for an installed dictionary (checked via Yomitan's `indexUrl`). */
+data class DictionaryUpdate(
+    val dictId: Long,
+    val installedTitle: String,
+    val installedRevision: String,
+    val latestTitle: String,
+    val latestRevision: String,
+    val downloadUrl: String,
+)
+
 object RecommendedDictionaries {
     val ALL = listOf(
         RecommendedDictionary(
@@ -33,6 +45,7 @@ object RecommendedDictionaries {
             description = "Japanese → English. The best free Yomitan dictionary: rich formatting and examples. Recommended.",
             url = "https://github.com/stephenmk/stephenmk.github.io/releases/latest/download/jitendex-yomitan.zip",
             approximateSizeMb = 37.0,
+            indexUrl = "https://jitendex.org/static/yomitan.json",
         ),
         RecommendedDictionary(
             id = "jmdict",
@@ -107,6 +120,71 @@ class DictDownloader {
         } catch (e: Exception) {
             destination.delete()
             throw YomitanImporter.ImportException("Download failed: ${e.message}", e)
+        }
+    }
+
+    /** Fetches a remote Yomitan `index.json` (e.g. `https://jitendex.org/static/yomitan.json`). */
+    suspend fun fetchIndex(url: String): DictionaryIndex? = withContext(Dispatchers.IO) {
+        val request = Request.Builder().url(url).header("User-Agent", "DroidSentenceMiner").build()
+        runCatching {
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return@use null
+                val text = response.body?.string() ?: return@use null
+                YomitanIndexParser.parse(text)
+            }
+        }.getOrNull()
+    }
+
+    /**
+     * Checks installed dictionaries for updates using either their `index.json` `indexUrl`
+     * (Yomitan's update protocol) or the known `indexUrl` on [RecommendedDictionaries].
+     */
+    suspend fun checkUpdates(dictionaries: List<DictionaryEntity>): Map<Long, DictionaryUpdate> = withContext(Dispatchers.IO) {
+        val result = LinkedHashMap<Long, DictionaryUpdate>()
+        for (dict in dictionaries) {
+            val localIndex = DictArchive.index(dict)
+            val matchedRec = RecommendedDictionaries.ALL.firstOrNull {
+                it.indexUrl != null && dict.title.contains(it.name, ignoreCase = true)
+            }
+            val indexUrl = localIndex?.indexUrl ?: matchedRec?.indexUrl ?: continue
+            val remote = fetchIndex(indexUrl) ?: continue
+            val downloadUrl = remote.downloadUrl ?: localIndex?.downloadUrl ?: matchedRec?.url ?: continue
+            if (isNewerRevision(dict.revision, remote.revision)) {
+                result[dict.id] = DictionaryUpdate(
+                    dictId = dict.id,
+                    installedTitle = dict.title,
+                    installedRevision = dict.revision,
+                    latestTitle = remote.title,
+                    latestRevision = remote.revision,
+                    downloadUrl = downloadUrl,
+                )
+            }
+        }
+        result
+    }
+
+    companion object {
+        /**
+         * True when [remote] is newer than [installed]. Compares dot/dash-separated numeric
+         * segments when both revisions are numeric (e.g. `2026.10.03.0` vs `2026.10.25.0`),
+         * falling back to string inequality so any changed revision is offered as an update.
+         */
+        fun isNewerRevision(installed: String, remote: String): Boolean {
+            val a = installed.trim()
+            val b = remote.trim()
+            if (a.isEmpty() || b.isEmpty() || a == b) return false
+            val partsA = a.split('.', '-', '_').map { it.toLongOrNull() }
+            val partsB = b.split('.', '-', '_').map { it.toLongOrNull() }
+            if (partsA.all { it != null } && partsB.all { it != null }) {
+                val max = maxOf(partsA.size, partsB.size)
+                for (i in 0 until max) {
+                    val va = partsA.getOrNull(i) ?: 0L
+                    val vb = partsB.getOrNull(i) ?: 0L
+                    if (vb != va) return vb > va
+                }
+                return false
+            }
+            return true
         }
     }
 }

@@ -98,7 +98,7 @@ curl -s "localhost:9099/mine?word=%E3%81%AA%E3%81%84&sentence=..."   # Anki card
 ```
 
 Endpoints: `/state`, `/scan`, `/frame.png`, `/ocr` (`l,t,r,b` crops the file first),
-`/ocr_bench?dir=&n=&threads=&variants=&anyw=&xnnpack=&cfg=` (meikiocr per-stage timings over a folder), `/lookup`, `/popup.html?word=&dark=` (exact popup WebView HTML), `/mine`, `/dicts`,
+`/ocr_bench?dir=&n=&threads=&variants=&anyw=&xnnpack=&cfg=` (meikiocr per-stage timings over a folder), `/lookup`, `/popup.html?word=&dark=` (exact popup WebView HTML), `/mine`, `/dicts`, `/dict_updates`,
 `/autoocr?on=1|0`, `/lines?limit=`, `/clip.wav?id=&trim=0|1`, `/line_shot.jpg?id=`, `/mine_line?id=&word=`,
 `/set_region?l=&t=&r=&b=&orientation=`, `/clear_lines`, `/add_line?text=&ago=&dur=`,
 `/quick?l=&t=&r=&b=` (bubble quick lookup of a box), `/install_ocr_models` (meikiocr download), `/ocr?engine=meiki|mlkit`, `/select_areas` (opens the area editor),
@@ -193,6 +193,16 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   so Anki cards get the same styling. `DictArchive.styles` caches `styles.css` in memory per dict ID
   and `YomitanImporter` stores it on `DictionaryEntity.styles`. Internal query links (`?query=…`) in
   `TAP_SCRIPT` trigger recursive lookup directly.
+- **Dictionary update checks & in-place replacement** (`dict/RecommendedDictionaries.kt`,
+  `dict/YomitanImporter.kt`, `dict/DictArchive.kt`): `DictDownloader.checkUpdates` reads `index.json`
+  from each installed dictionary's zip (`DictArchive.index`, falling back to
+  `RecommendedDictionary.indexUrl` for Jitendex `https://jitendex.org/static/yomitan.json`), fetches
+  the remote `index.json`, and compares `revision` (`isNewerRevision`). Because Jitendex embeds the
+  release date in `title` (`"Jitendex.org [2026-10-03]"`), `YomitanImporter.findExistingForImport`
+  matches by `baseDictionaryTitle` (stripping trailing `[...]`) so updating replaces the old
+  dictionary in-place, preserving `priority` and `enabled`, deleting the old zip/image cache, and
+  invalidating `DictArchive`. Checked automatically on Home, Settings, and Dictionaries screens (plus
+  `/dict_updates`).
 - **Per-headword entries** (`TermLookup.LookupDetails.entries` / `forEntry`, unit-tested): Yomitan's
   "group" mode — terms grouped by (expression, kana-folded reading, deinflection reasons) in first
   appearance order. With >1 entry `CardMiner.buildPopupHtml` renders a header + `.dsm-add` button per

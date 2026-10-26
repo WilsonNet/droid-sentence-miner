@@ -25,6 +25,9 @@ data class DictionaryIndex(
     val targetLanguage: String? = null,
     val sequenced: Boolean? = null,
     val frequencyMode: String? = null,
+    val isUpdatable: Boolean? = null,
+    val indexUrl: String? = null,
+    val downloadUrl: String? = null,
     val tagMeta: Map<String, TagMeta> = emptyMap(),
 ) {
     data class TagMeta(

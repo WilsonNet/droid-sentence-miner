@@ -40,6 +40,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -87,8 +88,15 @@ fun HomeScreen(modifier: Modifier = Modifier) {
     val running by OverlayService.observeRunning().collectAsState()
     val dictionaries by remember { container.db.dictionaryDao().observeAll() }
         .collectAsState(initial = emptyList())
+    val dictUpdates by container.dictUpdates.collectAsState()
     val recentCards by remember { container.db.minedCardDao().observeRecent() }
         .collectAsState(initial = emptyList())
+
+    LaunchedEffect(dictionaries.size) {
+        if (dictionaries.isNotEmpty() && dictUpdates.isEmpty()) {
+            runCatching { container.refreshDictUpdates() }
+        }
+    }
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
@@ -109,6 +117,8 @@ fun HomeScreen(modifier: Modifier = Modifier) {
     ) { granted -> hasNotifications = granted }
 
     var pitchStatus by remember { mutableStateOf<String?>(null) }
+    var dictUpdateStatus by remember { mutableStateOf<String?>(null) }
+    var dictUpdating by remember { mutableStateOf(false) }
 
     // ---- OCR test state
     var testing by remember { mutableStateOf(false) }
@@ -189,6 +199,53 @@ fun HomeScreen(modifier: Modifier = Modifier) {
                     }
                 }
                 StatusLine("Dictionaries installed", dictionaries.isNotEmpty(), "${dictionaries.size}")
+                dictUpdates.values.firstOrNull()?.let { update ->
+                    val status = dictUpdateStatus
+                    if (status != null) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (dictUpdating) {
+                                CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                                Spacer(Modifier.width(8.dp))
+                            }
+                            Text(status, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                        }
+                    } else {
+                        OutlinedButton(
+                            enabled = !dictUpdating,
+                            onClick = {
+                                dictUpdating = true
+                                dictUpdateStatus = "Downloading ${update.latestTitle}…"
+                                scope.launch {
+                                    try {
+                                        val file = java.io.File(context.cacheDir, "update-${update.dictId}.zip")
+                                        container.dictDownloader.download(update.downloadUrl, file) { downloaded, total ->
+                                            dictUpdateStatus = if (total != null && total > 0) {
+                                                "Downloading ${update.latestTitle}… ${downloaded * 100 / total}%"
+                                            } else {
+                                                "Downloading ${update.latestTitle}… ${downloaded / (1024 * 1024)} MB"
+                                            }
+                                        }
+                                        dictUpdateStatus = "Updating to ${update.latestTitle}…"
+                                        withContext(Dispatchers.IO) {
+                                            container.importer.import(file) { p ->
+                                                dictUpdateStatus = "Importing ${p.title ?: update.latestTitle}… ${p.current}"
+                                            }
+                                        }
+                                        file.delete()
+                                        runCatching { container.refreshDictUpdates() }
+                                        dictUpdateStatus = null
+                                    } catch (e: Exception) {
+                                        dictUpdateStatus = "Update failed: ${e.message}"
+                                    } finally {
+                                        dictUpdating = false
+                                    }
+                                }
+                            },
+                        ) {
+                            Text("Update to ${update.latestTitle}")
+                        }
+                    }
+                }
                 val hasPitch = dictionaries.any {
                     it.title == io.github.wilsonnet.droidsentenceminer.dict.RecommendedDictionaries.KANJIUM_TITLE ||
                         it.title.contains("pitch", ignoreCase = true) || it.title.contains("NHK")

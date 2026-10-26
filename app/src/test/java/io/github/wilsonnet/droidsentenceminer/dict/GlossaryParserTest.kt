@@ -158,4 +158,32 @@ class GlossaryParserTest {
     fun `index parser throws without title`() {
         YomitanIndexParser.parse("""{"revision":"1"}""")
     }
+
+    @Test
+    fun `index parser reads update urls`() {
+        val index = YomitanIndexParser.parse(
+            """
+            {
+              "title": "Jitendex.org [2026-10-03]",
+              "revision": "2026.10.03.0",
+              "isUpdatable": true,
+              "indexUrl": "https://jitendex.org/static/yomitan.json",
+              "downloadUrl": "https://github.com/stephenmk/stephenmk.github.io/releases/latest/download/jitendex-yomitan.zip"
+            }
+            """.trimIndent(),
+        )
+        assertEquals(true, index.isUpdatable)
+        assertEquals("https://jitendex.org/static/yomitan.json", index.indexUrl)
+        assertEquals("https://github.com/stephenmk/stephenmk.github.io/releases/latest/download/jitendex-yomitan.zip", index.downloadUrl)
+    }
+
+    @Test
+    fun `compares dictionary revisions and base titles`() {
+        assertTrue(DictDownloader.isNewerRevision("2026.09.15.0", "2026.10.03.0"))
+        assertTrue(DictDownloader.isNewerRevision("2026.10.03.0", "2026.10.03.1"))
+        assertTrue(!DictDownloader.isNewerRevision("2026.10.03.0", "2026.10.03.0"))
+        assertTrue(!DictDownloader.isNewerRevision("2026.10.03.0", "2026.09.15.0"))
+        assertEquals("Jitendex.org", YomitanImporter.baseDictionaryTitle("Jitendex.org [2026-10-03]"))
+        assertEquals("Jitendex.org", YomitanImporter.baseDictionaryTitle("Jitendex.org [2026-09-15]"))
+    }
 }

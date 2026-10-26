@@ -131,6 +131,7 @@ object DebugApi {
             }
             "/mine" -> respondApi(socket) { mine(params) }
             "/dicts" -> respondApi(socket) { dicts() }
+            "/dict_updates" -> respondApi(socket) { dictUpdates() }
             "/install_dict" -> respondApi(socket) { installDict(params) }
             "/anki_notes" -> respondApi(socket) { ankiNotes(params) }
             "/anki_meta" -> respondApi(socket) { ankiMeta() }
@@ -570,6 +571,7 @@ object DebugApi {
                 JSONObject()
                     .put("id", dict.id)
                     .put("title", dict.title)
+                    .put("revision", dict.revision)
                     .put("priority", dict.priority)
                     .put("enabled", dict.enabled)
                     .put("termCount", dict.termCount)
@@ -578,6 +580,24 @@ object DebugApi {
             )
         }
         return JSONObject().put("ok", true).put("dictionaries", array)
+    }
+
+    private fun dictUpdates(): JSONObject {
+        val container = AppContainer.from(app)
+        val updates = runBlocking { container.refreshDictUpdates() }
+        val array = JSONArray()
+        updates.values.forEach { u ->
+            array.put(
+                JSONObject()
+                    .put("dictId", u.dictId)
+                    .put("installedTitle", u.installedTitle)
+                    .put("installedRevision", u.installedRevision)
+                    .put("latestTitle", u.latestTitle)
+                    .put("latestRevision", u.latestRevision)
+                    .put("downloadUrl", u.downloadUrl),
+            )
+        }
+        return JSONObject().put("ok", true).put("updates", array)
     }
 
     private fun installDict(params: Map<String, String>): JSONObject {

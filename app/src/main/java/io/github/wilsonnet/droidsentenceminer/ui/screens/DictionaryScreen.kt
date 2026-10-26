@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -25,6 +26,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -38,6 +40,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.github.wilsonnet.droidsentenceminer.AppContainer
 import io.github.wilsonnet.droidsentenceminer.dict.DictionaryEntity
+import io.github.wilsonnet.droidsentenceminer.dict.DictionaryUpdate
 import io.github.wilsonnet.droidsentenceminer.dict.RecommendedDictionaries
 import io.github.wilsonnet.droidsentenceminer.dict.RecommendedDictionary
 import kotlinx.coroutines.Dispatchers
@@ -53,14 +56,29 @@ fun DictionaryScreen(modifier: Modifier = Modifier) {
 
     val dictionaries by remember { container.db.dictionaryDao().observeAll() }
         .collectAsState(initial = emptyList())
+    val updates by container.dictUpdates.collectAsState()
 
     var importing by remember { mutableStateOf(false) }
     var progressText by remember { mutableStateOf<String?>(null) }
     var errorText by remember { mutableStateOf<String?>(null) }
     var installingId by remember { mutableStateOf<String?>(null) }
+    var updatingDictId by remember { mutableStateOf<Long?>(null) }
+    var checkingUpdates by remember { mutableStateOf(false) }
+    var checkedOnce by remember { mutableStateOf(false) }
+
+    LaunchedEffect(dictionaries.size) {
+        if (dictionaries.isNotEmpty() && !checkedOnce) {
+            checkedOnce = true
+            checkingUpdates = true
+            runCatching { container.refreshDictUpdates() }
+            checkingUpdates = false
+        }
+    }
+
+    val busy = importing || installingId != null || updatingDictId != null
 
     fun installRecommended(dictionary: RecommendedDictionary) {
-        if (importing || installingId != null) return
+        if (busy) return
         installingId = dictionary.id
         errorText = null
         progressText = "Downloading ${dictionary.name}…"
@@ -81,12 +99,46 @@ fun DictionaryScreen(modifier: Modifier = Modifier) {
                     }
                 }
                 zipFile.delete()
+                runCatching { container.refreshDictUpdates() }
                 progressText = "Installed \"${entity.title}\" (${entity.termCount} terms, ${entity.kanjiCount} kanji)"
             } catch (e: Exception) {
                 errorText = e.message ?: "Install failed"
                 progressText = null
             } finally {
                 installingId = null
+            }
+        }
+    }
+
+    fun updateDictionary(update: DictionaryUpdate) {
+        if (busy) return
+        updatingDictId = update.dictId
+        errorText = null
+        progressText = "Downloading ${update.latestTitle}…"
+        scope.launch {
+            try {
+                val zipFile = File(context.cacheDir, "update-${update.dictId}.zip")
+                container.dictDownloader.download(update.downloadUrl, zipFile) { downloaded, total ->
+                    progressText = if (total != null && total > 0) {
+                        "Downloading ${update.latestTitle}… ${downloaded * 100 / total}%"
+                    } else {
+                        "Downloading ${update.latestTitle}… ${downloaded / (1024 * 1024)} MB"
+                    }
+                }
+                progressText = "Updating to ${update.latestTitle}…"
+                val entity = withContext(Dispatchers.IO) {
+                    container.importer.import(zipFile) { progress ->
+                        progressText = "Importing ${progress.title ?: update.latestTitle}… ${progress.current}"
+                    }
+                }
+                zipFile.delete()
+                runCatching { container.refreshDictUpdates() }
+                progressText = "Updated to \"${entity.title}\" (${entity.termCount} terms, ${entity.kanjiCount} kanji)"
+            } catch (e: Exception) {
+                errorText = e.message ?: "Update failed"
+                progressText = null
+            } finally {
+                updatingDictId = null
             }
         }
     }
@@ -133,17 +185,48 @@ fun DictionaryScreen(modifier: Modifier = Modifier) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
-        Button(
-            enabled = !importing,
-            onClick = { picker.launch(arrayOf("application/zip", "application/x-zip-compressed", "*/*")) },
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text("Import dictionary (.zip)")
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            Button(
+                enabled = !busy,
+                onClick = { picker.launch(arrayOf("application/zip", "application/x-zip-compressed", "*/*")) },
+                modifier = Modifier.weight(1f),
+            ) {
+                Text("Import dictionary (.zip)")
+            }
+            if (dictionaries.isNotEmpty()) {
+                OutlinedButton(
+                    enabled = !busy && !checkingUpdates,
+                    onClick = {
+                        checkingUpdates = true
+                        errorText = null
+                        scope.launch {
+                            try {
+                                val found = container.refreshDictUpdates()
+                                progressText = if (found.isEmpty()) {
+                                    "All dictionaries are up to date"
+                                } else {
+                                    "${found.size} dictionary update${if (found.size > 1) "s" else ""} available"
+                                }
+                            } catch (e: Exception) {
+                                errorText = e.message ?: "Could not check for updates"
+                            } finally {
+                                checkingUpdates = false
+                            }
+                        }
+                    },
+                ) {
+                    if (checkingUpdates) {
+                        CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                        Spacer(Modifier.width(6.dp))
+                    }
+                    Text("Check updates")
+                }
+            }
         }
 
-        if (importing || progressText != null) {
+        if (busy || progressText != null) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                if (importing) {
+                if (busy) {
                     CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
                     Spacer(Modifier.width(10.dp))
                 }
@@ -197,21 +280,36 @@ fun DictionaryScreen(modifier: Modifier = Modifier) {
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     RecommendedDictionaries.ALL.forEach { dict ->
-                        val installed = dictionaries.any { it.title.contains(dict.name, ignoreCase = true) }
+                        val installedDict = dictionaries.firstOrNull { it.title.contains(dict.name, ignoreCase = true) }
+                        val installed = installedDict != null
+                        val update = installedDict?.let { updates[it.id] }
                         Row(
                             Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Text(
-                                dict.name,
-                                style = MaterialTheme.typography.bodyMedium,
-                                modifier = Modifier.weight(1f),
-                            )
-                            if (installingId == dict.id) {
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    dict.name,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                )
+                                if (update != null) {
+                                    Text(
+                                        "Update available: ${update.latestTitle} (rev ${update.latestRevision})",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.primary,
+                                    )
+                                }
+                            }
+                            if (installingId == dict.id || (installedDict != null && updatingDictId == installedDict.id)) {
                                 CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                            } else if (update != null) {
+                                FilledTonalButton(
+                                    enabled = !busy,
+                                    onClick = { updateDictionary(update) },
+                                ) { Text("Update") }
                             } else {
                                 OutlinedButton(
-                                    enabled = installingId == null && !importing && !installed,
+                                    enabled = !busy && !installed,
                                     onClick = { installRecommended(dict) },
                                 ) { Text(if (installed) "Installed" else "Install") }
                             }
@@ -223,8 +321,13 @@ fun DictionaryScreen(modifier: Modifier = Modifier) {
 
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(dictionaries, key = { it.id }) { dict ->
+                val update = updates[dict.id]
                 DictionaryRow(
                     dict = dict,
+                    update = update,
+                    updating = updatingDictId == dict.id,
+                    busy = busy,
+                    onUpdate = { if (update != null) updateDictionary(update) },
                     onToggle = { enabled ->
                         scope.launch { container.db.dictionaryDao().setEnabled(dict.id, enabled) }
                     },
@@ -238,6 +341,7 @@ fun DictionaryScreen(modifier: Modifier = Modifier) {
                             container.db.dictionaryDao().delete(dict.id)
                             dict.zipPath?.let { path -> runCatching { File(path).delete() } }
                             runCatching { File(context.cacheDir, "dict-images/${dict.id}").deleteRecursively() }
+                            runCatching { container.refreshDictUpdates() }
                         }
                     },
                 )
@@ -249,6 +353,10 @@ fun DictionaryScreen(modifier: Modifier = Modifier) {
 @Composable
 private fun DictionaryRow(
     dict: DictionaryEntity,
+    update: DictionaryUpdate?,
+    updating: Boolean,
+    busy: Boolean,
+    onUpdate: () -> Unit,
     onToggle: (Boolean) -> Unit,
     onDelete: () -> Unit,
 ) {
@@ -265,14 +373,33 @@ private fun DictionaryRow(
                     buildString {
                         append("${dict.termCount} terms")
                         if (dict.kanjiCount > 0) append(" · ${dict.kanjiCount} kanji")
+                        append(" · rev ${dict.revision}")
                         dict.author?.let { append(" · ").append(it) }
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                if (update != null) {
+                    Text(
+                        "Update available: ${update.latestTitle} (rev ${update.latestRevision})",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+            }
+            if (updating) {
+                CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                Spacer(Modifier.width(8.dp))
+            } else if (update != null) {
+                FilledTonalButton(
+                    enabled = !busy,
+                    onClick = onUpdate,
+                ) { Text("Update") }
+                Spacer(Modifier.width(6.dp))
             }
             Switch(checked = dict.enabled, onCheckedChange = onToggle)
-            IconButton(onClick = onDelete) {
+            IconButton(onClick = onDelete, enabled = !busy) {
                 Icon(Icons.Default.Delete, contentDescription = "Delete dictionary")
             }
         }

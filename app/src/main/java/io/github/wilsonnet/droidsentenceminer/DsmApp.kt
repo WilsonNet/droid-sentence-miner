@@ -61,6 +61,16 @@ class AppContainer(private val context: Context) {
     /** The last photographed page; kept here so it survives tab switches and rotation. */
     val bookPage = MutableStateFlow<BookPage?>(null)
 
+    /** Available dictionary updates keyed by `DictionaryEntity.id`, populated by [refreshDictUpdates]. */
+    val dictUpdates = MutableStateFlow<Map<Long, io.github.wilsonnet.droidsentenceminer.dict.DictionaryUpdate>>(emptyMap())
+
+    suspend fun refreshDictUpdates(): Map<Long, io.github.wilsonnet.droidsentenceminer.dict.DictionaryUpdate> {
+        val dicts = db.dictionaryDao().getAll()
+        val updates = dictDownloader.checkUpdates(dicts)
+        dictUpdates.value = updates
+        return updates
+    }
+
     private val mlKitEngines = java.util.concurrent.ConcurrentHashMap<Pair<Boolean, Boolean>, MlKitJapaneseOcr>()
 
     /**
