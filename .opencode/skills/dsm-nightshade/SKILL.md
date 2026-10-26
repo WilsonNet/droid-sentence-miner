@@ -55,10 +55,15 @@ adb shell input tap 3100 1890; sleep 0.8; adb shell input tap 1280 1100; sleep 2
 for i in $(seq 1 8); do adb shell input tap 1600 600; sleep 2.5; done
 ```
 
-**Taps stop advancing** (same line forever, `Nightshade.exe` ~14 % CPU = idle, no pause overlay):
-seen after reinstalling DSM + a new capture session; Steam menu → ゲームを再開 did not fix it. The
-DroidDeck session then sits on a separate `CLONE` display (`dumpsys input`, displayId ≠ 0). Not
-solved yet — re-launching DroidDeck is the next thing to try; record what works here.
+**Taps stop advancing** (same line forever, `Nightshade.exe` ~14 % CPU = idle, no pause overlay;
+seen after reinstalling DSM + a new capture session; Steam menu → ゲームを再開 doesn't help):
+restart both apps — `adb shell am force-stop com.droiddeck.launcher` (+ DSM), relaunch, ゲーム →
+▶ 起動 (process up in ~35 s, RED ENTERTAINMENT splash, title ~50 s), then DSM + capture, then load.
+
+**Menus inside the text area**: the title menu (y 1810) sits inside the dialogue-box region, so with
+auto OCR on DSM's screen layer turns a menu tap into a dictionary popup (close ✕ `(1930, 101)`).
+Do `curl -s "localhost:9099/autoocr?on=0"` while navigating menus, `on=1` once in dialogue
+(capture stays, no new consent).
 
 ## 3. DroidDeck overlay buttons (always on top of the game)
 
@@ -89,8 +94,9 @@ curl -s localhost:9099/state | python3 -m json.tool | grep -A5 audioBuffer   # "
 curl -s "localhost:9099/lines?limit=6"
 curl -s "localhost:9099/clip.wav?id=<id>" -o line.wav
 ```
-Measured (Pad 7, media volume 90/160): clips −21…−31 dBFS RMS after normalization; the mic
-thread costs 1.9 % of one core with the FX chain, 0.6 % without. Tuning the mic chain itself:
+Measured (Pad 7, media volume 90/160): clips −21…−31 dBFS RMS after normalization, 6.3 kHz band
+16–22 dB under 1 kHz like clean speech (raw mic: +1 dB); the mic thread costs 1.7–1.9 % of one
+core with the FX chain, 0.6 % without. Tuning the mic chain itself:
 `dsm-audio`. Mining test cards: only into the deck **DSM** on this tablet.
 
 ## 5. Closing up
