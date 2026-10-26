@@ -95,12 +95,15 @@ object CardHtml {
     }
 
     /** Wrapped like Yomitan's glossary so note types styled for Yomitan cards render it the same. */
-    fun meaning(entriesHtml: String, frequencyHtml: String? = null): String {
+    fun meaning(entriesHtml: String, frequencyHtml: String? = null, styles: String? = null): String {
         val sb = StringBuilder("<div style=\"text-align: left;\" class=\"yomitan-glossary\">")
         if (!frequencyHtml.isNullOrBlank()) {
             sb.append("<div class=\"frequency\">").append(frequencyHtml).append("</div>")
         }
         sb.append(entriesHtml)
+        if (!styles.isNullOrBlank()) {
+            sb.append("<style>.yomitan-glossary {\n").append(styles.trim()).append("\n}</style>")
+        }
         sb.append("</div>")
         return sb.toString()
     }

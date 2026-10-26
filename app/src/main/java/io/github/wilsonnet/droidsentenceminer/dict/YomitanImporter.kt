@@ -144,6 +144,7 @@ class YomitanImporter(
                 val indexJson = zip.readEntryText("index.json")
                     ?: throw ImportException("Not a Yomitan dictionary: index.json is missing")
                 val index = parseIndex(indexJson)
+                val styles = zip.readEntryText("styles.css")?.takeIf { it.isNotBlank() }
 
                 // Replace a dictionary with the same title (Yomitan semantics).
                 val existing = db.dictionaryDao().findByTitle(index.title)
@@ -172,6 +173,7 @@ class YomitanImporter(
                         sequenced = index.sequenced,
                         frequencyMode = index.frequencyMode,
                         priority = priority,
+                        styles = styles,
                         zipPath = tempZip.absolutePath,
                     ),
                 )

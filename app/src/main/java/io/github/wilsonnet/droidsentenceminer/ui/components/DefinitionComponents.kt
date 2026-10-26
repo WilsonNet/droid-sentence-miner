@@ -80,6 +80,8 @@ fun WebViewBlock(
                             loaded = true
                             applyStates()
                         }
+
+                        override fun shouldOverrideUrlLoading(view: WebView, request: android.webkit.WebResourceRequest): Boolean = true
                     }
                     if (scripted) {
                         addJavascriptInterface(
@@ -144,10 +146,27 @@ document.addEventListener('click', function (e) {
 
 /**
  * Yomitan-style scanning inside a definition: the text from the tapped character to the end of
- * its block (furigana removed), plus the whole block as the sentence.
+ * its block (furigana removed), plus the whole block as the sentence. Tapping an internal query
+ * link (`a[href^="?query="]`, e.g. Jitendex See-also / Antonym links) looks up that query directly.
  */
 private const val TAP_SCRIPT = """<script>
 document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[href]');
+  if (a) {
+    var href = a.getAttribute('href') || '';
+    if (href.charAt(0) === '?') {
+      e.preventDefault();
+      e.stopPropagation();
+      var m = /[?&]query=([^&]+)/.exec(href);
+      if (m) {
+        var q = decodeURIComponent(m[1].replace(/\+/g, ' '));
+        var blk = a.closest('li,p,td,div') || document.body;
+        var w = blk.cloneNode(true); w.querySelectorAll('rt,rp').forEach(function (n) { n.remove(); });
+        dsm.tap(q, w.textContent.trim());
+      }
+      return;
+    }
+  }
   var r = document.caretRangeFromPoint(e.clientX, e.clientY);
   if (!r || r.startContainer.nodeType !== 3) return;
   var node = r.startContainer, off = r.startOffset;

@@ -53,6 +53,7 @@ All GET, all JSON (except `frame.png`). Regions are screen fractions unless note
 | `/live?show=1\|0&mode=compact\|normal\|fullscreen` | Live text window: open/hide it and/or switch mode; returns `shown`, `mode`, `rect` ([x, y, w, h] px) |
 | `/book?file=/sdcard/...` | Book mode: read a page photo (EXIF-rotated, ≤3000 px) with ML Kit into ordered paragraphs (`text`, `vertical`, `box`) and show it in the Book tab — validates tategaki order without a camera |
 | `/lookup?word=<urlencoded>` | Dictionary lookup summary (reading, term count, base form, term_meta rows incl. pitch) |
+| `/popup.html?word=&dark=0\|1` | Full HTML document rendered for the popup WebView (including dictionary `styles.css`, `data-sc-*` attributes, and tag categories) |
 | `/mine?word=&sentence=` | Look a word up and add a card via the configured Anki backend (AnkiDroid/AnkiConnect) |
 | `/dicts` | Installed dictionaries with term/kanji counts and zip paths |
 | `/install_dict?id=jitendex` | Download + import a recommended dictionary in the background (`/state.dictInstall` shows progress; ids: jitendex, jmdict, kanjidic, kanjium) |

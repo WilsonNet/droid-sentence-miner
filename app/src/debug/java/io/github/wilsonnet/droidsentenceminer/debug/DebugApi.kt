@@ -119,6 +119,16 @@ object DebugApi {
             "/ocr_bench" -> respondApi(socket) { ocrBench(params) }
                 "/book" -> respondApi(socket) { bookFile(params) }
             "/lookup" -> respondApi(socket) { lookup(params) }
+            "/popup.html" -> {
+                val word = params["word"] ?: return respondText(socket, 400, "missing 'word'")
+                val dark = params["dark"]?.let { it == "1" || it == "true" } ?: false
+                val container = AppContainer.from(app)
+                val html = runBlocking {
+                    val details = container.lookup.lookup(word)
+                    container.miner.buildPopupHtml(word, details, dark)
+                }
+                respondBytes(socket, "text/html; charset=utf-8", html.toByteArray())
+            }
             "/mine" -> respondApi(socket) { mine(params) }
             "/dicts" -> respondApi(socket) { dicts() }
             "/install_dict" -> respondApi(socket) { installDict(params) }

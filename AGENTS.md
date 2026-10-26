@@ -69,23 +69,17 @@ AnkiDroid API v2.24.1 (JitPack). APK ships arm64-v8a, armeabi-v7a and x86_64 onl
 # Build + unit tests
 $GRADLE testDebugUnitTest assembleDebug --console=plain
 
-# On-device instrumented tests (restrict to the emulator! gradle otherwise targets all devices)
-ANDROID_SERIAL=emulator-5554 $GRADLE connectedDebugAndroidTest
-
-# Single instrumentation class
-ANDROID_SERIAL=emulator-5554 $GRADLE connectedDebugAndroidTest \
-  -Pandroid.testInstrumentationRunnerArguments.class=io.github.wilsonnet.droidsentenceminer.audio.AudioPipelineInstrumentedTest
-
-# Emulator lifecycle (Wayland hosts need QT_QPA_PLATFORM=xcb for a window)
-QT_QPA_PLATFORM=xcb $ANDROID_HOME/emulator/emulator -avd dsm_test -gpu host -no-snapshot-save -no-boot-anim &
-$ADB -s emulator-5554 wait-for-device shell 'while [ "$(getprop sys.boot_completed)" != 1 ]; do sleep 1; done'
+# NEVER launch an Android emulator! It kills the host machine. Always test on the physical device
+# (Xiaomi Pad 7 `c2bd6564` or Galaxy phone). If the tablet is locked (`mInputRestricted=true` in
+# `dumpsys window policy`), wake it (`input keyevent 224`) and send a desktop notification with
+# `notify-send -u critical "Droid Sentence Miner" "..."` asking the user to unlock it.
 
 # Install / permissions (debug builds are suffixed .debug and labeled "Droid Sentence Miner (Dev)")
-$ADB -s emulator-5554 install -r app/build/outputs/apk/debug/app-debug.apk
-$ADB -s emulator-5554 shell appops set io.github.wilsonnet.droidsentenceminer.debug SYSTEM_ALERT_WINDOW allow
-$ADB -s emulator-5554 shell pm grant io.github.wilsonnet.droidsentenceminer.debug android.permission.RECORD_AUDIO
-$ADB -s emulator-5554 shell pm grant io.github.wilsonnet.droidsentenceminer.debug android.permission.POST_NOTIFICATIONS
-$ADB -s emulator-5554 shell pm grant io.github.wilsonnet.droidsentenceminer.debug com.ichi2.anki.permission.READ_WRITE_DATABASE
+$ADB -s <serial> install -r app/build/outputs/apk/debug/app-debug.apk
+$ADB -s <serial> shell appops set io.github.wilsonnet.droidsentenceminer.debug SYSTEM_ALERT_WINDOW allow
+$ADB -s <serial> shell pm grant io.github.wilsonnet.droidsentenceminer.debug android.permission.RECORD_AUDIO
+$ADB -s <serial> shell pm grant io.github.wilsonnet.droidsentenceminer.debug android.permission.POST_NOTIFICATIONS
+$ADB -s <serial> shell pm grant io.github.wilsonnet.droidsentenceminer.debug com.ichi2.anki.permission.READ_WRITE_DATABASE
 ```
 
 ## Debug API (text control over adb)
@@ -104,7 +98,7 @@ curl -s "localhost:9099/mine?word=%E3%81%AA%E3%81%84&sentence=..."   # Anki card
 ```
 
 Endpoints: `/state`, `/scan`, `/frame.png`, `/ocr` (`l,t,r,b` crops the file first),
-`/ocr_bench?dir=&n=&threads=&variants=&anyw=&xnnpack=&cfg=` (meikiocr per-stage timings over a folder), `/lookup`, `/mine`, `/dicts`,
+`/ocr_bench?dir=&n=&threads=&variants=&anyw=&xnnpack=&cfg=` (meikiocr per-stage timings over a folder), `/lookup`, `/popup.html?word=&dark=` (exact popup WebView HTML), `/mine`, `/dicts`,
 `/autoocr?on=1|0`, `/lines?limit=`, `/clip.wav?id=&trim=0|1`, `/line_shot.jpg?id=`, `/mine_line?id=&word=`,
 `/set_region?l=&t=&r=&b=&orientation=`, `/clear_lines`, `/add_line?text=&ago=&dur=`,
 `/quick?l=&t=&r=&b=` (bubble quick lookup of a box), `/install_ocr_models` (meikiocr download), `/ocr?engine=meiki|mlkit`, `/select_areas` (opens the area editor),
@@ -185,6 +179,20 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   split-sentence joins. NFKC turns …… into dots, so `PageLayout.clean` restores ……. Test page
   source: Black Jack ni Yoroshiku, free reuse, PDFs at densho810.com/free (`dl/001bj.zip`). The
   page lives in `AppContainer.bookPage`, so it survives tab switches.
+- **Yomitan structured-content & Jitendex CSS** (`dict/GlossaryHtml.kt`, `dict/GlossaryModels.kt`,
+  `dict/DictArchive.kt`): Yomitan's `structured-content` nodes put `data: {"class": "tag", "content":
+  "part-of-speech-info"}` into `data-sc-*` HTML attributes (`data-sc-class="tag"`,
+  `data-sc-content="part-of-speech-info"`) and style keys in camelCase (`listStyleType` →
+  `list-style-type`), which Jitendex's `styles.css` matches on for colored POS/misc/field/dialect
+  tags, sense callout boxes (`info-gloss`, `sense-note`, `xref`, `antonym`, `example-sentence` with
+  lime-mixed `example-keyword`), and the `forms` variant table (`td[data-sc-class="form-pri"] > span`
+  radial-gradient circles with `::before` `△`/`✕`/`古`/`旧`/`▽`/`◇`). `GlossaryHtml.wrapDocument`
+  defines Yomitan's CSS variables (`--text-color`, `--fg`, `--background-color`, `--canvas`,
+  `--font-size-no-units`) and category colors on `.gloss-tag[data-category]` (`popular`, `frequent`,
+  `archaism`, etc. from `tag_bank`); `CardHtml.meaning` embeds `<style>.yomitan-glossary { … }</style>`
+  so Anki cards get the same styling. `DictArchive.styles` caches `styles.css` in memory per dict ID
+  and `YomitanImporter` stores it on `DictionaryEntity.styles`. Internal query links (`?query=…`) in
+  `TAP_SCRIPT` trigger recursive lookup directly.
 - **Per-headword entries** (`TermLookup.LookupDetails.entries` / `forEntry`, unit-tested): Yomitan's
   "group" mode — terms grouped by (expression, kana-folded reading, deinflection reasons) in first
   appearance order. With >1 entry `CardMiner.buildPopupHtml` renders a header + `.dsm-add` button per

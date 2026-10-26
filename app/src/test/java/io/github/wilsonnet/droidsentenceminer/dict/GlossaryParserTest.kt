@@ -81,6 +81,36 @@ class GlossaryParserTest {
     }
 
     @Test
+    fun `renders jitendex data attributes properties and camelCase styles`() {
+        val raw = """
+            {"type":"structured-content","content":[
+              {"tag":"span","title":"noun (common)","data":{"class":"tag","code":"n","content":"part-of-speech-info"},"content":"noun"},
+              {"tag":"li","style":{"listStyleType":"\"①\""},"data":{"content":"sense"},"content":"circle"},
+              {"tag":"div","data":{"class":"extra-box","content":"example-sentence","sentence-key":"食べる"},"content":[
+                {"tag":"span","lang":"ja","content":[{"tag":"span","data":{"content":"example-keyword"},"content":"食べ"},"ました"]}
+              ]},
+              {"tag":"a","href":"?query=%E4%B8%B8","lang":"ja","content":"丸"},
+              {"tag":"td","colSpan":2,"rowSpan":3,"data":{"class":"form-pri"},"content":{"tag":"span","title":"priority"}},
+              {"tag":"img","path":"jitendex/graphics/a.avif","width":253.12,"height":250.0,"sizeUnits":"px"}
+            ]}
+        """.trimIndent()
+        val html = GlossaryHtml.render(GlossaryParser.parse(raw))
+        assertTrue(html.contains("""data-sc-class="tag""""))
+        assertTrue(html.contains("""data-sc-code="n""""))
+        assertTrue(html.contains("""data-sc-content="part-of-speech-info""""))
+        assertTrue(html.contains("""title="noun (common)""""))
+        assertTrue(html.contains("""style="list-style-type: &#39;①&#39;""""))
+        assertTrue(html.contains("""data-sc-class="extra-box""""))
+        assertTrue(html.contains("""data-sc-content="example-sentence""""))
+        assertTrue(html.contains("""data-sc-sentence-key="食べる""""))
+        assertTrue(html.contains("""lang="ja""""))
+        assertTrue(html.contains("""href="?query=%E4%B8%B8""""))
+        assertTrue(html.contains("""colspan="2""""))
+        assertTrue(html.contains("""rowspan="3""""))
+        assertTrue(html.contains("""<span class="gloss-image-container"><img src="jitendex/graphics/a.avif" style="width:253.12px; height:250px" alt=""></span>"""))
+    }
+
+    @Test
     fun `image placeholder when images disabled`() {
         val entries = GlossaryParser.parse("""{"type":"image","path":"images/ring.png","alt":"ring"}""")
         val html = GlossaryHtml.render(entries, includeImages = false)

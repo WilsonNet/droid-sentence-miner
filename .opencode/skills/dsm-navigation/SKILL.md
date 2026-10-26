@@ -16,6 +16,10 @@ All landscape coordinates below are for the **Xiaomi Pad 7** (`c2bd6564`, `3200 
 `2136 × 3200` portrait, 440 dpi, HyperOS 3). Always pass `WaitMsBeforeAsync: 10000` on `adb`
 commands that sleep or capture full-resolution screenshots.
 
+> **Never launch an Android emulator** — it kills the host machine. If the physical tablet is locked
+> (`mInputRestricted=true` in `dumpsys window policy` or black `screencap`), wake it with
+> `$ADB shell input keyevent 224` and notify the user via `notify-send -u critical "Droid Sentence Miner" "Please unlock the tablet..."`.
+
 ## 1. Keep DSM alive in the background
 
 HyperOS and Samsung One UI freeze cached app processes within seconds when no foreground service is

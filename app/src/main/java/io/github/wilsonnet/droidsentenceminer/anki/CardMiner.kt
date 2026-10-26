@@ -40,11 +40,13 @@ class CardMiner(
     ): AnkiCard = withContext(Dispatchers.Default) {
         val snapshot = prefs.snapshot()
         val resolved = details ?: lookup.lookup(word)
+        val dicts = db.dictionaryDao().getEnabled().associateBy { it.id }
 
         val sb = StringBuilder()
         var currentDictId = -1L
         val firstOnly = prefs.glossaryFirstDictionary.first()
         val terms = if (firstOnly) resolved.terms.filter { it.dictId == resolved.terms.firstOrNull()?.dictId } else resolved.terms
+        val tagCategories = lookup.tagCategories(terms.map { it.dictId }.toSet())
         for (term in terms) {
             if (!firstOnly && term.dictId != currentDictId) {
                 currentDictId = term.dictId
@@ -52,14 +54,24 @@ class CardMiner(
                 sb.append(GlossaryHtml.escape(term.dictionaryTitle))
                 sb.append("</div>")
             }
-            sb.append("<div class=\"gloss-header\">")
-            term.definitionTags.split(" ").filter { it.isNotBlank() }.take(8).forEach {
-                sb.append("<span class=\"gloss-tag\">").append(GlossaryHtml.escape(it)).append("</span>")
+            val tags = term.definitionTags.split(" ").filter { it.isNotBlank() }.take(8)
+            if (tags.isNotEmpty()) {
+                sb.append("<div class=\"gloss-header\">")
+                val categories = tagCategories[term.dictId].orEmpty()
+                tags.forEach { tag ->
+                    val cat = categories[tag]?.let { " data-category=\"${GlossaryHtml.escape(it)}\"" } ?: ""
+                    sb.append("<span class=\"gloss-tag\"$cat>").append(GlossaryHtml.escape(tag)).append("</span>")
+                }
+                sb.append("</div>")
             }
-            sb.append("</div>")
             val entries = GlossaryParser.parse(term.glossaryJson)
             sb.append(GlossaryHtml.render(entries, includeImages = false))
         }
+        val dictStyles = terms.mapNotNull { dicts[it.dictId] }.distinctBy { it.id }
+            .mapNotNull { DictArchive.styles(context, it)?.takeIf { s -> s.isNotBlank() } }
+            .joinToString("\n")
+            .take(20_000)
+            .ifBlank { null }
 
         val reading = resolved.reading.orEmpty()
         val expression = resolved.baseForm.ifBlank { word }
@@ -84,7 +96,7 @@ class CardMiner(
         AnkiCard(
             expression = resolved.baseForm.ifBlank { word },
             reading = reading,
-            meaningHtml = CardHtml.meaning(sb.toString(), CardHtml.frequencyLine(resolved).takeUnless { firstOnly }),
+            meaningHtml = CardHtml.meaning(sb.toString(), CardHtml.frequencyLine(resolved).takeUnless { firstOnly }, dictStyles),
             sentence = sentence,
             sentenceHtml = CardHtml.highlightSentence(sentence, resolved.baseForm.ifBlank { word }),
             imageBytes = imageBytes,
@@ -171,6 +183,7 @@ class CardMiner(
     /** Builds the HTML body shown in the popup WebView. */
     suspend fun buildPopupHtml(word: String, details: TermLookup.LookupDetails, darkMode: Boolean): String = withContext(Dispatchers.Default) {
         val dicts = db.dictionaryDao().getEnabled().associateBy { it.id }
+        val tagCategories = lookup.tagCategories(details.terms.map { it.dictId }.toSet())
         val sb = StringBuilder()
         val entries = details.entries
         if (entries.size > 1) {
@@ -188,11 +201,11 @@ class CardMiner(
                 CardHtml.frequencyLine(details.forEntry(index))?.let {
                     sb.append("<div class=\"gloss-header\"><span class=\"gloss-frequency\">").append(GlossaryHtml.escape(it)).append("</span></div>")
                 }
-                appendTerms(sb, entry.terms, dicts)
+                appendTerms(sb, entry.terms, dicts, tagCategories)
                 sb.append("</div>")
             }
         } else {
-            appendTerms(sb, details.terms, dicts)
+            appendTerms(sb, details.terms, dicts, tagCategories)
         }
         val frequencies = CardHtml.frequencyLine(details).takeIf { entries.size <= 1 }
         val freqHtml = if (frequencies != null) {
@@ -211,6 +224,7 @@ class CardMiner(
         sb: StringBuilder,
         terms: List<io.github.wilsonnet.droidsentenceminer.dict.TermResult>,
         dicts: Map<Long, io.github.wilsonnet.droidsentenceminer.dict.DictionaryEntity>,
+        tagCategories: Map<Long, Map<String, String>>,
     ) {
         var currentDictId = -1L
         for (term in terms) {
@@ -220,11 +234,16 @@ class CardMiner(
                 sb.append(GlossaryHtml.escape(term.dictionaryTitle))
                 sb.append("</div>")
             }
-            sb.append("<div class=\"gloss-header\">")
-            term.definitionTags.split(" ").filter { it.isNotBlank() }.take(10).forEach {
-                sb.append("<span class=\"gloss-tag\">").append(GlossaryHtml.escape(it)).append("</span>")
+            val tags = term.definitionTags.split(" ").filter { it.isNotBlank() }.take(10)
+            if (tags.isNotEmpty()) {
+                sb.append("<div class=\"gloss-header\">")
+                val categories = tagCategories[term.dictId].orEmpty()
+                tags.forEach { tag ->
+                    val cat = categories[tag]?.let { " data-category=\"${GlossaryHtml.escape(it)}\"" } ?: ""
+                    sb.append("<span class=\"gloss-tag\"$cat>").append(GlossaryHtml.escape(tag)).append("</span>")
+                }
+                sb.append("</div>")
             }
-            sb.append("</div>")
             val entries = GlossaryParser.parse(term.glossaryJson)
             sb.append(
                 GlossaryHtml.render(

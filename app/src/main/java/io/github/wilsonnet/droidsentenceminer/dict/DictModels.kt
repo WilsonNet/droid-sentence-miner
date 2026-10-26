@@ -154,6 +154,8 @@ internal fun JsonObject.string(key: String): String? = this[key].asStringOrNull(
 
 internal fun JsonObject.int(key: String): Int? = this[key]?.jsonPrimitive?.intOrNull
 
+internal fun JsonObject.double(key: String): Double? = this[key]?.jsonPrimitive?.doubleOrNull
+
 internal fun JsonObject.boolean(key: String): Boolean? = this[key]?.jsonPrimitive?.booleanOrNull
 
 internal fun JsonObject.stringMap(key: String): Map<String, String> {

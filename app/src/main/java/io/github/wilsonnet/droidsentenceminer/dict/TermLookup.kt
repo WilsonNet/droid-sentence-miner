@@ -296,6 +296,14 @@ class TermLookup(
         return result
     }
 
+    suspend fun tagCategories(dictIds: Collection<Long>): Map<Long, Map<String, String>> {
+        if (dictIds.isEmpty()) return emptyMap()
+        return db.tagDao().getAll()
+            .filter { it.dictId in dictIds && it.category.isNotBlank() }
+            .groupBy { it.dictId }
+            .mapValues { (_, tags) -> tags.associate { it.name to it.category } }
+    }
+
     private fun rankTerms(surface: String, terms: List<TermResult>): List<TermResult> {
         return terms
             .distinctBy { "${it.dictId}:${it.expression}:${it.reading}:${it.sequence}:${it.definitionTags}" }

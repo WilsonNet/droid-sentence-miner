@@ -3,10 +3,12 @@ package io.github.wilsonnet.droidsentenceminer.dict
 import android.content.Context
 import java.io.File
 import java.net.URLDecoder
+import java.util.concurrent.ConcurrentHashMap
 import java.util.zip.ZipFile
 
 /** Reads auxiliary files (glossary images, styles) from an imported dictionary zip. */
 object DictArchive {
+    private val stylesCache = ConcurrentHashMap<Long, String>()
 
     fun imageFile(context: Context, dict: DictionaryEntity, path: String): File? {
         val zipPath = dict.zipPath ?: return null
@@ -41,13 +43,17 @@ object DictArchive {
     }
 
     fun styles(context: Context, dict: DictionaryEntity): String? {
-        val zipPath = dict.zipPath ?: return dict.styles
+        dict.styles?.takeIf { it.isNotBlank() }?.let { return it }
+        stylesCache[dict.id]?.let { return it.ifEmpty { null } }
+        val zipPath = dict.zipPath ?: return null
         val zipFile = File(zipPath)
-        if (!zipFile.exists()) return dict.styles
-        return runCatching {
+        if (!zipFile.exists()) return null
+        val loaded = runCatching {
             ZipFile(zipFile).use { zip ->
                 zip.readEntryText("styles.css")
             }
-        }.getOrNull() ?: dict.styles
+        }.getOrNull()
+        stylesCache[dict.id] = loaded ?: ""
+        return loaded
     }
 }

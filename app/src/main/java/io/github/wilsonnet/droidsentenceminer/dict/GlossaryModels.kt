@@ -33,8 +33,9 @@ sealed interface GlossaryContent {
         val path: String,
         val alt: String? = null,
         val title: String? = null,
-        val width: Int? = null,
-        val height: Int? = null,
+        val width: Double? = null,
+        val height: Double? = null,
+        val sizeUnits: String? = null,
     ) : GlossaryContent
 
     data object LineBreak : GlossaryContent
@@ -101,8 +102,9 @@ object GlossaryParser {
                             path = path,
                             alt = obj.string("alt"),
                             title = obj.string("title"),
-                            width = obj.int("width"),
-                            height = obj.int("height"),
+                            width = obj.double("width"),
+                            height = obj.double("height"),
+                            sizeUnits = obj.string("sizeUnits"),
                         ),
                     ),
                 )
@@ -137,11 +139,15 @@ object GlossaryParser {
                 path = obj.string("path") ?: obj.string("src") ?: "",
                 alt = obj.string("alt"),
                 title = obj.string("title"),
-                width = obj.int("width"),
-                height = obj.int("height"),
+                width = obj.double("width"),
+                height = obj.double("height"),
+                sizeUnits = obj.string("sizeUnits"),
             )
         }
-        val excluded = setOf("tag", "content", "data", "style", "type", "path", "src", "alt", "title", "width", "height")
+        val excluded = setOf(
+            "tag", "content", "data", "style", "type", "path", "src", "alt",
+            "width", "height", "sizeUnits", "appearance", "background", "collapsible", "collapsed",
+        )
         val properties = obj.filterKeys { it !in excluded }
             .mapValues { (_, v) -> v.asStringOrNull() ?: "" }
             .filterValues { it.isNotEmpty() }
