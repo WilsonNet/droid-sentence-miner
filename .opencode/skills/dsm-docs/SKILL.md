@@ -26,6 +26,8 @@ together). Stale docs cost the next agent hours: they trust AGENTS.md and the sk
 | README screenshots / demo videos | `docs/screenshots`, `docs/videos` — recipe in `.opencode/skills/dsm-promo-media/SKILL.md` |
 | Release workflow, signing, versioning | `.opencode/skills/dsm-release/SKILL.md` (+ `.github/workflows/release.yml`) |
 | OCR pipeline/engine or its benchmark | `.opencode/skills/dsm-ocr-eval/SKILL.md` (+ `tools/ocr-eval/`) |
+| Sentence audio / mic fallback chain or its measurements | `.opencode/skills/dsm-audio/SKILL.md` (+ `tools/mic-eval/`) |
+| Nightshade gameplay flows/coordinates | `.opencode/skills/dsm-nightshade/SKILL.md` |
 | App/game/dialog navigation, coordinates, adb UI flows | `.opencode/skills/dsm-navigation/SKILL.md` |
 | End-of-task wisdom harvest workflow | `.opencode/skills/wisdom-increaser/SKILL.md` |
 

@@ -104,8 +104,7 @@ class OverlayService : Service() {
     private var pendingScan: RectF? = null
     private var pendingAutoOcr = false
     private var micFallback = false
-    private var noiseSuppression = false
-    private var micCompressor = false
+    private var micFx = io.github.wilsonnet.droidsentenceminer.audio.MicFx()
 
     override fun onCreate() {
         super.onCreate()
@@ -158,14 +157,12 @@ class OverlayService : Service() {
         scope.launch {
             kotlinx.coroutines.flow.combine(
                 container.prefs.audioMicFallback,
-                container.prefs.audioNoiseSuppression,
-                container.prefs.audioMicCompressor,
-            ) { on, denoise, compress -> Triple(on, denoise, compress) }.collect { (on, denoise, compress) ->
+                container.prefs.audioMicFx,
+            ) { on, fx -> on to fx }.collect { (on, fx) ->
                 panelState.micFallback = on
-                if (on == micFallback && denoise == noiseSuppression && compress == micCompressor) return@collect
+                if (on == micFallback && fx == micFx) return@collect
                 micFallback = on
-                noiseSuppression = denoise
-                micCompressor = compress
+                micFx = fx
                 // Restart capture so the microphone recorder (and its service type) follows the setting.
                 if (audioManager.isRunning) {
                     audioManager.stop()
@@ -917,10 +914,9 @@ class OverlayService : Service() {
             val projection = captureManager.activeProjection ?: return@launch
             container.textLog.ensureAudioBuffer(container.prefs.audioBufferSeconds.first())
             micFallback = container.prefs.audioMicFallback.first()
-            noiseSuppression = container.prefs.audioNoiseSuppression.first()
-            micCompressor = container.prefs.audioMicCompressor.first()
+            micFx = container.prefs.audioMicFx.first()
             if (micFallback) startForegroundCompat(includeProjection = true)
-            val started = audioManager.start(projection, micFallback, noiseSuppression, micCompressor)
+            val started = audioManager.start(projection, micFallback, micFx)
             if (!started) {
                 panelState.status = "Audio capture unavailable: ${audioManager.error.orEmpty()}"
             }

@@ -1,6 +1,6 @@
 ---
 name: dsm-navigation
-description: Navigate DroidDeck, Nightshade (visual novel test bed), MediaProjection consent dialogs, and Droid Sentence Miner UI on the Xiaomi Pad 7 tablet and Galaxy phone over adb without trial-and-error screenshot loops. Use whenever launching games in DroidDeck, advancing or quickloading Nightshade dialogue, accepting screen-capture consent, or navigating DSM screens.
+description: Navigate DroidDeck, MediaProjection consent dialogs, YouTube, and Droid Sentence Miner UI on the Xiaomi Pad 7 tablet and Galaxy phone over adb without trial-and-error screenshot loops. Use whenever launching games in DroidDeck, accepting screen-capture consent, or navigating DSM screens (Nightshade gameplay itself: dsm-nightshade).
 metadata:
   audience: developers
   project: droid-sentence-miner
@@ -76,51 +76,10 @@ with a blue **再開** button below center:
   ```
   State `S` or `R` (~70–85 % CPU) means running; state `t` means still paused.
 
-## 3. Nightshade (`百花百狼`, `3200 × 2136` landscape)
+## 3. Nightshade (`百花百狼`)
 
-- **Title screen bottom menu (`y ≈ 1810`)**:
-  - `最初から` (New Game): `(480, 1810)`
-  - `続きから` (Continue / Load): `(1120, 1810)`
-  - `おまけ`: `(1740, 1810)`
-  - `設定`: `(2325, 1810)`
-  - `終了`: `(2880, 1810)`
-- **Load screen (`ロード`)**:
-  - Save Slot 1 (top-left): `(420, 560)`
-  - `読み込みますか？` confirmation: **はい** `(1340, 975)`, **いいえ** `(1900, 975)`
-- **In-game right-side wheel buttons (`x ≈ 3100`)**:
-  - **クイックセーブ** (Quicksave): **`(3100, 1440)`** — saves immediately with **no confirmation dialog**.
-  - **スキップ** (Skip): `(3100, 1590)`
-  - **Auto**: `(3100, 1740)`
-  - **クイックロード** (Quickload): **`(3100, 1890)`** — opens `クイックロードをしますか？`:
-    - **はい** (Confirm Quickload): **`(1280, 1100)`**
-    - **いいえ** (Cancel): **`(1840, 1100)`**
-- **Advancing dialogue**:
-  - Tap the **upper background** at **`(1600, 600)`**.
-  - Never tap inside the dialogue box (`y = 1450..1920`) while Auto OCR is running: DSM's
-    `ScreenTextLayerView` sits over the recognized text lines and intercepts taps to open the
-    dictionary popup.
-- **Recommended Auto OCR landscape region**:
-  ```bash
-  curl -s "http://localhost:9099/set_region?l=0.17&t=0.7&r=0.88&b=0.9&orientation=landscape"
-  ```
-  Covers up to 3 dialogue lines while excluding the character name plate on top and the right-side
-  wheel buttons (`クイックセーブ` / `スキップ` / `Auto` / `クイックロード`).
-
-### Recipe: deterministic multi-line benchmark replay with Quicksave / Quickload
-
-```bash
-# Save at the start of a dialogue sequence once:
-$ADB shell input tap 3100 1440
-
-# Replay the exact same N lines under any OCR configuration:
-$ADB shell input tap 3100 1890 && sleep 0.8 && $ADB shell input tap 1280 1100
-sleep 2.0
-for i in $(seq 1 8); do
-  $ADB shell input tap 1600 600
-  sleep 2.5
-done
-curl -s http://localhost:9099/state | python3 -c "import json,sys; print(json.load(sys.stdin)['autoOcr'])"
-```
+Playing the game itself (title/load menus, advancing lines, quicksave/quickload, Steam menu, quit,
+DSM auto OCR + mic fallback on it): see the `dsm-nightshade` skill.
 
 ## 4. MediaProjection Consent Flow (`3200 × 2136` landscape)
 

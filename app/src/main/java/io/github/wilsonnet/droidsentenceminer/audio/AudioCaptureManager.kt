@@ -39,11 +39,36 @@ class AudioCaptureManager(
         /** Device audio silent this long while music plays = the app blocks capture. */
         const val SILENT_SWITCH_MS = 4_000L
 
+        /** The mic chain runs this long before a switch (compressor release is 150 ms). */
+        private const val CHAIN_WARMUP_MS = 500L
+
         fun isSupported(): Boolean = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
 
         fun hasPermission(context: Context): Boolean =
             ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
                 PackageManager.PERMISSION_GRANTED
+
+        /**
+         * UNPROCESSED skips the platform's AGC and voice processing, which pump game music; not
+         * every device has it. [MicCalibration] measures with the same source.
+         */
+        fun micSource(context: Context): Int {
+            val unprocessed = context.getSystemService(AudioManager::class.java)
+                ?.getProperty(AudioManager.PROPERTY_SUPPORT_AUDIO_SOURCE_UNPROCESSED) == "true"
+            return if (unprocessed) MediaRecorder.AudioSource.UNPROCESSED else MediaRecorder.AudioSource.VOICE_RECOGNITION
+        }
+
+        fun monoFormat(sampleRate: Int): AudioFormat = AudioFormat.Builder()
+            .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+            .setSampleRate(sampleRate)
+            .setChannelMask(AudioFormat.CHANNEL_IN_MONO)
+            .build()
+
+        fun bufferBytes(sampleRate: Int) = AudioRecord.getMinBufferSize(
+            sampleRate,
+            AudioFormat.CHANNEL_IN_MONO,
+            AudioFormat.ENCODING_PCM_16BIT,
+        ).coerceAtLeast(8192) * 2
     }
 
     private var record: AudioRecord? = null
@@ -74,8 +99,7 @@ class AudioCaptureManager(
     fun start(
         projection: MediaProjection,
         micFallback: Boolean = false,
-        noiseSuppression: Boolean = false,
-        compressor: Boolean = false,
+        micFx: MicFx = MicFx(),
     ): Boolean {
         if (!isSupported()) {
             lastError = "Audio capture needs Android 10 or newer"
@@ -116,7 +140,7 @@ class AudioCaptureManager(
                 priority = Thread.NORM_PRIORITY + 1
                 start()
             }
-            if (micFallback) startMic(sampleRate, noiseSuppression, compressor)
+            if (micFallback) startMic(sampleRate, micFx)
             true
         } catch (e: Exception) {
             lastError = e.message ?: "Audio capture failed"
@@ -126,14 +150,10 @@ class AudioCaptureManager(
     }
 
     @SuppressLint("MissingPermission")
-    private fun startMic(sampleRate: Int, noiseSuppression: Boolean, compressor: Boolean) {
-        // UNPROCESSED skips noise suppression and AGC, which pump game music; not every device has it.
-        val unprocessed = context.getSystemService(AudioManager::class.java)
-            ?.getProperty(AudioManager.PROPERTY_SUPPORT_AUDIO_SOURCE_UNPROCESSED) == "true"
-        val source = if (unprocessed) MediaRecorder.AudioSource.UNPROCESSED else MediaRecorder.AudioSource.VOICE_RECOGNITION
+    private fun startMic(sampleRate: Int, fx: MicFx) {
         val recorder = runCatching {
             AudioRecord.Builder()
-                .setAudioSource(source)
+                .setAudioSource(micSource(context))
                 .setAudioFormat(monoFormat(sampleRate))
                 .setBufferSizeInBytes(bufferBytes(sampleRate))
                 .build()
@@ -146,29 +166,17 @@ class AudioCaptureManager(
         mic = recorder
         // The platform's voice noise suppressor (what calls use): fan noise and room hum out,
         // voices kept. Quality depends on the device; not every device has one.
-        if (noiseSuppression && NoiseSuppressor.isAvailable()) {
+        if (fx.noiseSuppression && NoiseSuppressor.isAvailable()) {
             denoiser = runCatching { NoiseSuppressor.create(recorder.audioSessionId)?.apply { enabled = true } }.getOrNull()
         }
         recorder.startRecording()
         // After the suppressor (it sits in the recorder's input path), before the buffer.
-        val dynamics = if (compressor) AudioCompressor(sampleRate) else null
-        micThread = Thread({ micLoop(recorder, dynamics) }, "dsm-audio-mic").apply {
+        val chain = MicFxChain(sampleRate, fx)
+        micThread = Thread({ micLoop(recorder, chain) }, "dsm-audio-mic").apply {
             priority = Thread.NORM_PRIORITY + 1
             start()
         }
     }
-
-    private fun monoFormat(sampleRate: Int) = AudioFormat.Builder()
-        .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-        .setSampleRate(sampleRate)
-        .setChannelMask(AudioFormat.CHANNEL_IN_MONO)
-        .build()
-
-    private fun bufferBytes(sampleRate: Int) = AudioRecord.getMinBufferSize(
-        sampleRate,
-        AudioFormat.CHANNEL_IN_MONO,
-        AudioFormat.ENCODING_PCM_16BIT,
-    ).coerceAtLeast(8192) * 2
 
     private fun readLoop(recorder: AudioRecord) {
         val chunk = ShortArray(2048)
@@ -191,7 +199,7 @@ class AudioCaptureManager(
         }
     }
 
-    private fun micLoop(recorder: AudioRecord, compressor: AudioCompressor?) {
+    private fun micLoop(recorder: AudioRecord, chain: MicFxChain) {
         val chunk = ShortArray(2048)
         val audio = context.getSystemService(AudioManager::class.java)
         while (running) {
@@ -202,10 +210,12 @@ class AudioCaptureManager(
             }
             if (read > 0) {
                 val now = System.currentTimeMillis()
-                if (!usingMic && now - deviceSoundAtMs >= SILENT_SWITCH_MS && audio?.isMusicActive == true) {
-                    usingMic = true
-                }
-                compressor?.process(chunk, read) // every chunk, so its envelope is settled on switching
+                // The chain only runs while the mic is (about to be) used, starting early enough that
+                // filters and envelope are settled on switching: free while device audio works.
+                val warming = !usingMic && now - deviceSoundAtMs >= SILENT_SWITCH_MS - CHAIN_WARMUP_MS &&
+                    audio?.isMusicActive == true
+                if (warming && now - deviceSoundAtMs >= SILENT_SWITCH_MS) usingMic = true
+                if (usingMic || warming) chain.process(chunk, read)
                 if (usingMic) buffer().write(chunk, read, now)
             } else if (read < 0) {
                 break

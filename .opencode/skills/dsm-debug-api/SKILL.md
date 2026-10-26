@@ -77,6 +77,9 @@ All GET, all JSON (except `frame.png`). Regions are screen fractions unless note
 | `/mine_line?id=&word=` | Mine a word from a logged line with its audio + screenshot (the Texts-tab flow) |
 | `/clear_lines` | Delete the whole text log |
 | `/mic_fallback?on=1\|0` | Read/set the microphone fallback setting (restarts audio capture); returns `on` |
+| `/mic_fx?eq=&compressor=&ns=&reset=1` | Read/set the mic FX chain prefs (`reset=1` drops the calibration); returns the chain incl. `calibrated`, `gains` |
+| `/mic_calibrate?save=0` | Runs the Settings *Calibrate* measurement (6 s pink noise through the speaker, DSM must be in the foreground); saves the profile unless `save=0`; returns `gains`, `measured` or `error` |
+| `/mic_measure.wav?signal=sweep\|noise\|pink\|file&sec=&amp=&ns=1&file=&fx=1` | Plays a test signal, records the mic like the fallback; stereo WAV (L played, R recorded, through the current chain with `fx=1`). Scoring: `dsm-audio` |
 
 `/state` also reports `autoOcr` (`running`, `reads`, `lines`, `lastRead`, `ocrRuns` = frames actually OCR'd, `ocrMsAvg` = their mean OCR time, `error`),
 `areasPortrait`/`areasLandscape` (box counts) and `audioBuffer`

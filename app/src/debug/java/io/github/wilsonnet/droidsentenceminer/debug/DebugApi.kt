@@ -281,6 +281,42 @@ object DebugApi {
                 params["on"]?.let { on -> runBlocking { prefs.setAudioMicFallback(on == "1" || on == "true") } }
                 JSONObject().put("ok", true).put("on", runBlocking { prefs.audioMicFallback.first() })
             }
+            "/mic_measure.wav" -> respondBytes(
+                socket,
+                "audio/wav",
+                MicMeasure.run(
+                    app,
+                    signal = params["signal"] ?: "sweep",
+                    seconds = params["sec"]?.toDoubleOrNull() ?: 8.0,
+                    amp = params["amp"]?.toDoubleOrNull() ?: 0.5,
+                    ns = params["ns"] == "1",
+                    file = params["file"],
+                    fx = if (params["fx"] == "1") runBlocking { AppContainer.from(app).prefs.audioMicFx.first() } else null,
+                ),
+            )
+            "/mic_calibrate" -> respondApi(socket) {
+                val prefs = AppContainer.from(app).prefs
+                val result = io.github.wilsonnet.droidsentenceminer.audio.MicCalibration.run(
+                    app,
+                    io.github.wilsonnet.droidsentenceminer.textlog.TextLog.SAMPLE_RATE,
+                    runBlocking { prefs.audioNoiseSuppression.first() },
+                )
+                if (params["save"] != "0") result.profile?.let { runBlocking { prefs.setAudioMicEqProfile(it) } }
+                JSONObject().put("ok", result.profile != null).put("error", result.error)
+                    .put("gains", result.profile?.gainsDb?.let { JSONArray(it) })
+                    .put("measured", result.profile?.measuredDb?.let { JSONArray(it) })
+            }
+            "/mic_fx" -> respondApi(socket) {
+                val prefs = AppContainer.from(app).prefs
+                params["eq"]?.let { runBlocking { prefs.setAudioMicEq(it == "1") } }
+                params["compressor"]?.let { runBlocking { prefs.setAudioMicCompressor(it == "1") } }
+                params["ns"]?.let { runBlocking { prefs.setAudioNoiseSuppression(it == "1") } }
+                if (params["reset"] == "1") runBlocking { prefs.setAudioMicEqProfile(null) }
+                val fx = runBlocking { prefs.audioMicFx.first() }
+                JSONObject().put("ok", true).put("noiseSuppression", fx.noiseSuppression).put("eq", fx.eq)
+                    .put("compressor", fx.compressor).put("calibrated", fx.profile != null)
+                    .put("gains", fx.profile?.gainsDb?.let { JSONArray(it) })
+            }
             "/select_areas" -> {
                 OverlayService.selectAreas(app)
                 respondJson(socket, JSONObject().put("ok", true))

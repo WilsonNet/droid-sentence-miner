@@ -81,6 +81,8 @@ fun SettingsScreen(modifier: Modifier = Modifier, onOpen: (String) -> Unit = {})
     val normalize by container.prefs.audioNormalize.collectAsState(initial = true)
     val noiseSuppression by container.prefs.audioNoiseSuppression.collectAsState(initial = true)
     val micCompressor by container.prefs.audioMicCompressor.collectAsState(initial = true)
+    val micEq by container.prefs.audioMicEq.collectAsState(initial = true)
+    val micEqProfile by container.prefs.audioMicEqProfile.collectAsState(initial = null)
     val firstDict by container.prefs.glossaryFirstDictionary.collectAsState(initial = false)
     val wordAudioUrl by container.prefs.wordAudioCustomUrl.collectAsState(initial = "")
     var wordAudioUrlDraft by remember(wordAudioUrl) { mutableStateOf(wordAudioUrl) }
@@ -276,8 +278,16 @@ fun SettingsScreen(modifier: Modifier = Modifier, onOpen: (String) -> Unit = {})
                             checked = noiseSuppression,
                         ) { value -> scope.launch { container.prefs.setAudioNoiseSuppression(value) } }
                         SettingSwitch(
+                            title = "Speaker correction EQ",
+                            description = "Undoes the tinny sound of a speaker heard through the microphone: cuts rumble " +
+                                "under 120 Hz, then applies the curve measured on this device — fuller low mids, " +
+                                "the harsh 4–8 kHz peak tamed.",
+                            checked = micEq,
+                        ) { value -> scope.launch { container.prefs.setAudioMicEq(value) } }
+                        if (micEq) MicEqCalibration(container, micEqProfile)
+                        SettingSwitch(
                             title = "Compressor",
-                            description = "Evens out the microphone after noise suppression: loud peaks are squeezed " +
+                            description = "Evens out the microphone after the EQ: loud peaks are squeezed " +
                                 "so quiet, thin dialogue comes out fuller once the clip is normalized.",
                             checked = micCompressor,
                         ) { value -> scope.launch { container.prefs.setAudioMicCompressor(value) } }

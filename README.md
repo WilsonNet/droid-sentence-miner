@@ -127,9 +127,13 @@ GIF for the MP4; recorded on a Xiaomi Pad 7).
   (DroidDeck, which runs Steam games, targets Android 9; Netflix). Turn on *Microphone fallback*
   (Settings or the bubble menu; off until you allow it) and DSM records the microphone whenever
   device audio is silent while something is playing, and switches back as soon as device audio
-  returns. Android's voice **noise suppression** is applied to the mic (on by default, can be
-  turned off), then a **compressor** that squeezes loud peaks so normalization can lift thin,
-  quiet dialogue (on by default). Works with the speaker on; picks up room noise; records nothing with headphones.
+  returns. The mic goes through an FX chain built for a speaker heard through a microphone (each
+  stage on by default, can be turned off): Android's voice **noise suppression**, a **speaker
+  correction EQ** — a 120 Hz rumble filter plus a 19-band curve measured on your device by
+  *Calibrate* (6 s of pink noise played and recorded back), which restores the missing low mids
+  and tames the harsh 4–8 kHz resonance of tablet/phone speakers — then a **compressor** that
+  squeezes loud peaks so normalization can lift thin, quiet dialogue. Works with the speaker on;
+  picks up room noise; records nothing with headphones.
 - **Mining history** — recent cards with a status showing whether they made it into Anki.
 - **Text selection lookup** — other apps can send selected text via `ACTION_PROCESS_TEXT`, including
   Samsung's text selection on screenshots/images and Circle to Search. A selected word is matched to
@@ -168,7 +172,7 @@ android sdk install platform-tools platforms/android-36 build-tools/35.0.0 emula
 echo "sdk.dir=$ANDROID_HOME" > local.properties
 
 # 3. Build & test
-./gradlew testDebugUnitTest          # 152 JVM unit tests
+./gradlew testDebugUnitTest          # 161 JVM unit tests
 ./gradlew connectedDebugAndroidTest  # 4 on-device tests (VAD + AAC encoding)
 ./gradlew assembleDebug              # app/build/outputs/apk/debug/app-debug.apk
 
@@ -347,7 +351,16 @@ Glossaries may be strings, arrays, image definitions, deinflection entries or st
   as digital zeros (`AudioRecord … [mute]`); with the microphone fallback the voiced lines are
   audible in the clips (speech at ~2000 RMS after normalization vs ~15 raw at the tablet's
   volume). Cards mined from the popup (手薄, 術) had sentence, screenshot, word audio and clip.
-- 152 JVM unit tests: meikiocr detector/recognizer input sizing, frame change detection (one typewriter glyph counts; direct RGBA buffer with row stride), loudness
+- Microphone fallback FX chain on the Xiaomi Pad 7 (30 Japanese speakers from Forvo played through
+  the speaker and recorded back by `/mic_measure.wav`, scored against the original with
+  `tools/mic-eval`): the measured speaker → mic curve is −12…−17 dB at 160–250 Hz, −13 dB at
+  2.5 kHz and +15 dB at 6.3 kHz. The calibrated EQ cuts the spectral deviation from 6.9 to 1.8 dB
+  and lifts PESQ-wb from 2.14 to 2.60 and STOI from 0.868 to 0.881 (old chain: suppression +
+  compressor); on-device calibration matches the Python reference fit (each band within 2 dB, separate measurement runs). In
+  Nightshade the 6.3 kHz resonance is gone from the clips. Cost: 1.3 % of one core while the mic
+  is in use, nothing while device audio works.
+- 161 JVM unit tests: speaker-correction EQ (FFT, biquads, response from pink noise, fit of the
+  measured Pad 7 curve, chain), meikiocr detector/recognizer input sizing, frame change detection (one typewriter glyph counts; direct RGBA buffer with row stride), loudness
   normalization, popup placement (flip/size/shift), screen text layer (subtitle glyphs → screen fractions, signage skipped), book page layout (tategaki order, ruby filter incl. real manga ruby, split sentences, per-character photo positions), H→エ fix, pitch graphs (byte-identical to Yomitan), word audio sources, Anki field mapping, meikiocr decoding, OCR text fixes (一→ー), text areas, line consensus, replay buffer, voice trimming, line tracking, clip windows, subtitle-row
   filtering, deinflector (conjugations across godan/ichidan/suru/kuru/adjectives),
   glossary parsing/rendering, OCR post-processing (merge, furigana filter, normalization),
@@ -382,7 +395,8 @@ Glossaries may be strings, arrays, image definitions, deinflection entries or st
 
 - Text areas per app (a game's dialogue box and a video's subtitle band need different boxes;
   areas are per orientation only today).
-- RNNoise (as OBS uses) for the microphone fallback instead of the device's voice suppressor.
+- RNNoise (as OBS uses) for the microphone fallback instead of the device's voice suppressor
+  (a simple STFT Wiener filter on top of the platform suppressor measured no better).
 - Deinflection with Yomitan's part-of-speech conditions: 象徴ではある currently highlights as one
   "te-form" match of 象徴.
 - Faster mining: a card takes ~11 s on the Xiaomi Pad 7 (word audio download + AAC encode).

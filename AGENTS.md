@@ -10,8 +10,10 @@ numbers, update the markdown docs **in the same push**: `README.md`, this file, 
 owns what is in `.opencode/skills/dsm-docs/SKILL.md` — follow it before committing.
 
 Skills: `dsm-debug-api` (drive/validate the app over adb), `dsm-navigation` (navigate DroidDeck,
-Nightshade, MediaProjection consent dialogs and DSM UI over adb with exact coordinates), `dsm-ocr-eval`
-(measure OCR accuracy and latency/CPU with ground truth), `dsm-docs` (docs checklist),
+MediaProjection consent dialogs, YouTube and DSM UI over adb with exact coordinates), `dsm-nightshade`
+(play the Nightshade visual novel test bed: launch, load, advance, quicksave, close), `dsm-ocr-eval`
+(measure OCR accuracy and latency/CPU with ground truth), `dsm-audio` (measure/tune sentence audio
+and the microphone fallback FX chain against clean speech), `dsm-docs` (docs checklist),
 `wisdom-increaser` (harvest lessons, coordinates and measured numbers into skills/docs after every
 long task), `dsm-promo-media` (README screenshots and demo videos: phone-size capture on the tablet,
 scripted mining recordings, GIF previews), `dsm-release` (signed APK → GitHub Releases on a pushed
@@ -114,7 +116,7 @@ Endpoints: `/state`, `/scan`, `/frame.png`, `/ocr` (`l,t,r,b` crops the file fir
 `/quick?l=&t=&r=&b=` (bubble quick lookup of a box), `/install_ocr_models` (meikiocr download), `/ocr?engine=meiki|mlkit`, `/select_areas` (opens the area editor),
 `/install_dict?id=jitendex` (background install; progress in `/state.dictInstall`),
 `/anki_notes?word=` (field-level card verification via the AnkiDroid provider),
-`/anki_meta` (decks + note types), `/book?file=` (book-mode page OCR → paragraphs, shown in the Book tab), `/live?show=1&mode=` (live text window), `/mic_fallback?on=`, `/startoverlay`, `/stopoverlay`, `/request_projection`.
+`/anki_meta` (decks + note types), `/book?file=` (book-mode page OCR → paragraphs, shown in the Book tab), `/live?show=1&mode=` (live text window), `/mic_fallback?on=`, `/mic_fx`, `/mic_calibrate`, `/mic_measure.wav` (speaker→mic recordings, see `dsm-audio`), `/startoverlay`, `/stopoverlay`, `/request_projection`.
 Regions are screen fractions.
 See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes.
 
@@ -346,9 +348,10 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   `SILENT_SWITCH_MS` of exact zeros while `isMusicActive`, device audio takes over on the first
   non-zero chunk. Background mic needs FGS type `microphone`, only granted while DSM may use the
   mic — `startForegroundCompat` tries it and falls back without. `NoiseSuppressor` on the mic
-  session (pref, default on), then `AudioCompressor` (soft knee, −30 dBFS, 4:1, 5/150 ms; pref
-  `audioMicCompressor`, default on) on every mic chunk in `micLoop` — no makeup gain, normalize
-  lifts the squeezed clip; every clip goes through `AudioPcm.normalize` (pref, default on) in
+  session (pref, default on), then `MicFxChain` on every mic chunk in `micLoop`: 120 Hz high-pass +
+  calibrated speaker-correction EQ (`MicEq`, 19 third-octave peaks fitted by `MicCalibration` from
+  pink noise played/recorded; profile per device model, pref `audioMicEqProfile`) → `AudioCompressor`
+  (−30 dBFS, 4:1, 5/150 ms; no makeup gain). Measure/tune with `dsm-audio`; every clip goes through `AudioPcm.normalize` (pref, default on) in
   `TextLog.clip`: voiced RMS to −14 dBFS, peaks allowed 6 dB over −1 dBFS and soft-limited
   (tanh) back under it — capping gain at the loudest peak left clips with one shout quiet. DroidDeck pauses the game when it loses focus (consent dialog) — tap 再開.
 - **Media keys and games**: a game's audio makes `isMusicActive` true, but media keys go to the
@@ -411,6 +414,7 @@ app/src/main/java/io/github/wilsonnet/droidsentenceminer/
 └── core/      Settings (DataStore)
 
 tools/ocr-eval/   OCR benchmark scripts (desktop meikiocr, on-device runner/A-B timing, scorer, subtitle burner, hand GT)
+tools/mic-eval/   microphone fallback scoring (LTAS/PESQ/STOI vs clean speech) + Python port of the EQ fit
 tools/meiki-variants/  builds the meikiocr model cuts in app/src/main/assets/meiki (make_assets.py)
-.opencode/skills/ dsm-debug-api, dsm-navigation, dsm-ocr-eval, dsm-docs, wisdom-increaser, dsm-promo-media, dsm-release (symlinked as .claude/skills and .agents/skills)
+.opencode/skills/ dsm-debug-api, dsm-navigation, dsm-nightshade, dsm-audio, dsm-ocr-eval, dsm-docs, wisdom-increaser, dsm-promo-media, dsm-release (symlinked as .claude/skills and .agents/skills)
 ```

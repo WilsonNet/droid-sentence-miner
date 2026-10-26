@@ -11,7 +11,11 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import io.github.wilsonnet.droidsentenceminer.audio.MicCalibration
+import io.github.wilsonnet.droidsentenceminer.audio.MicEqProfile
+import io.github.wilsonnet.droidsentenceminer.audio.MicFx
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -38,6 +42,8 @@ class DsmPrefs(private val context: Context) {
         val audioNormalize = booleanPreferencesKey("audio_normalize")
         val audioNoiseSuppression = booleanPreferencesKey("audio_noise_suppression")
         val audioMicCompressor = booleanPreferencesKey("audio_mic_compressor")
+        val audioMicEq = booleanPreferencesKey("audio_mic_eq")
+        val audioMicEqProfile = stringPreferencesKey("audio_mic_eq_profile")
         val wordAudio = booleanPreferencesKey("word_audio")
         val glossaryFirstDictionary = booleanPreferencesKey("glossary_first_dictionary")
         val wordAudioCustomUrl = stringPreferencesKey("word_audio_custom_url")
@@ -100,6 +106,24 @@ class DsmPrefs(private val context: Context) {
     /** Android's NoiseSuppressor on the microphone fallback. */
     val audioNoiseSuppression: Flow<Boolean> = context.dataStore.data.map { it[Keys.audioNoiseSuppression] ?: true }
     val audioMicCompressor: Flow<Boolean> = context.dataStore.data.map { it[Keys.audioMicCompressor] ?: true }
+
+    /** High-pass + calibrated speaker correction on the microphone fallback (MicFxChain). */
+    val audioMicEq: Flow<Boolean> = context.dataStore.data.map { it[Keys.audioMicEq] ?: true }
+
+    /** The calibration (MicCalibration), only if it was measured on this device model. */
+    val audioMicEqProfile: Flow<MicEqProfile?> = context.dataStore.data.map { prefs ->
+        MicEqProfile.decode(prefs[Keys.audioMicEqProfile])?.takeIf { it.model == MicCalibration.deviceModel() }
+    }
+
+    /** Everything the microphone fallback chain needs, as one value the service can compare. */
+    val audioMicFx: Flow<MicFx> = context.dataStore.data.map { prefs ->
+        MicFx(
+            noiseSuppression = prefs[Keys.audioNoiseSuppression] ?: true,
+            eq = prefs[Keys.audioMicEq] ?: true,
+            profile = MicEqProfile.decode(prefs[Keys.audioMicEqProfile])?.takeIf { it.model == MicCalibration.deviceModel() },
+            compressor = prefs[Keys.audioMicCompressor] ?: true,
+        )
+    }.distinctUntilChanged()
 
     /** Like Yomitan's {glossary-first}: only the highest-priority dictionary on the card. */
     val glossaryFirstDictionary: Flow<Boolean> = context.dataStore.data.map { it[Keys.glossaryFirstDictionary] ?: false }
@@ -211,6 +235,10 @@ class DsmPrefs(private val context: Context) {
     suspend fun setAudioNormalize(value: Boolean) = edit { it[Keys.audioNormalize] = value }
     suspend fun setAudioNoiseSuppression(value: Boolean) = edit { it[Keys.audioNoiseSuppression] = value }
     suspend fun setAudioMicCompressor(value: Boolean) = edit { it[Keys.audioMicCompressor] = value }
+    suspend fun setAudioMicEq(value: Boolean) = edit { it[Keys.audioMicEq] = value }
+    suspend fun setAudioMicEqProfile(profile: MicEqProfile?) = edit {
+        if (profile == null) it.remove(Keys.audioMicEqProfile) else it[Keys.audioMicEqProfile] = profile.encode()
+    }
     suspend fun setWordAudio(value: Boolean) = edit { it[Keys.wordAudio] = value }
     suspend fun setGlossaryFirstDictionary(value: Boolean) = edit { it[Keys.glossaryFirstDictionary] = value }
     suspend fun setWordAudioCustomUrl(value: String) = edit { it[Keys.wordAudioCustomUrl] = value.trim() }

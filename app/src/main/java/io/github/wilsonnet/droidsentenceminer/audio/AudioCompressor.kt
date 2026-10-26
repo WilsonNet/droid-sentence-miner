@@ -10,8 +10,9 @@ import kotlin.math.roundToInt
 /**
  * Streaming soft-knee compressor for the microphone fallback. A speaker heard through the mic has
  * loud peaks (shouts, effects) and quiet, thin speech; squeezing the peaks lets [AudioPcm.normalize]
- * lift the whole clip further, so dialogue sounds fuller on the card. Runs on each chunk right
- * after the recorder (and its platform noise suppressor), keeping its envelope across chunks.
+ * lift the whole clip further, so dialogue sounds fuller on the card. Last stage of [MicFxChain]
+ * (after the EQ, so the speaker's harsh treble peak doesn't drive it), keeping its envelope across
+ * chunks.
  */
 class AudioCompressor(
     sampleRate: Int,
@@ -39,14 +40,21 @@ class AudioCompressor(
     }
 
     fun process(pcm: ShortArray, length: Int = pcm.size) {
+        val x = DoubleArray(length) { pcm[it] / FULL_SCALE }
+        process(x, length)
         for (i in 0 until length) {
-            val x = pcm[i] / FULL_SCALE
-            val levelDb = 20 * log10(max(abs(x), 1e-6))
+            pcm[i] = (x[i] * FULL_SCALE).roundToInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
+        }
+    }
+
+    /** Samples in [-1, 1], in place. */
+    fun process(x: DoubleArray, length: Int = x.size) {
+        for (i in 0 until length) {
+            val levelDb = 20 * log10(max(abs(x[i]), 1e-6))
             val target = gainDb(levelDb)
             val coeff = if (target < reductionDb) attack else release
             reductionDb = coeff * reductionDb + (1 - coeff) * target
-            val y = x * 10.0.pow(reductionDb / 20) * FULL_SCALE
-            pcm[i] = y.roundToInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
+            x[i] *= 10.0.pow(reductionDb / 20)
         }
     }
 
