@@ -99,5 +99,7 @@ thread costs 1.9 % of one core with the FX chain, 0.6 % without. Tuning the mic 
 curl -s "localhost:9099/autoocr?on=0"; curl -s localhost:9099/stopoverlay
 adb shell input swipe 120 2012 120 2012 150; sleep 2      # Steam menu
 adb shell input tap 1020 1684                              # ゲームを終了
+adb shell input tap 1077 1136                              # ゲームを終了しますか？ → 確認 (キャンセル 2130,1136)
+adb shell "ps -A | grep -c Nightshade"                     # 0 = closed; Steam page now shows ▶ プレイ
 adb shell input keyevent 26                                # screen off / lock (only if asked)
 ```
