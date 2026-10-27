@@ -385,9 +385,11 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   DSM uninstall, and `adb shell` cannot read it. Verify cards with `/anki_notes` (content provider)
   instead of pulling the SQLite file. For clean API tests, AnkiDroid's own uninstall/reinstall
   clears the collection.
-- **Android 14/15 FGS ordering**: a foreground service may only use the `mediaProjection` type
-  *after* consent exists (`android:project_media` app-op). The permission activity must NOT be
-  `noHistory` or it dies while the system consent UI is up.
+- **Android 14/15 FGS ordering & consent dialogs**: a foreground service may only use the `mediaProjection` type
+  *after* consent exists (`android:project_media` app-op). `ProjectionPermissionActivity` must have
+  `android:taskAffinity=""` so starting it with `FLAG_ACTIVITY_NEW_TASK` from `OverlayService` does not
+  pull `MainActivity` to the foreground (which caused an alt-tab over the user's game). It must NOT be
+  `noHistory` or it dies while the system consent UI is up; close with `finishAndRemoveTask()`.
 - **Cleartext HTTP is blocked by default** on targetSdk 28+; `res/xml/network_security_config.xml`
   permits it for AnkiConnect.
 - **Never mine test cards into a personal AnkiDroid collection** unless using a dedicated test deck or

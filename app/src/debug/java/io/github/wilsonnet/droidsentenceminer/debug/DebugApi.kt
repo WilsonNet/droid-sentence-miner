@@ -429,8 +429,7 @@ object DebugApi {
     private fun requestProjection(params: Map<String, String>): JSONObject {
         val service = OverlayService.activeInstance
             ?: return errorJson("overlay service is not running — call /startoverlay")
-        val region = regionParam(params) ?: lastRegion(service)
-        service.debugRequestScan(region)
+        service.debugRequestProjection()
         return JSONObject().put("ok", true).put("note", "consent dialog may be showing; accept it on-device")
     }
 
@@ -731,15 +730,7 @@ object DebugApi {
     private fun autoOcr(params: Map<String, String>): JSONObject {
         when (params["on"]) {
             "1", "true" -> {
-                if (OverlayService.activeInstance?.debugCaptureManager?.isReady == true) {
-                    runCatching { OverlayService.startAutoOcr(app) }
-                } else {
-                    app.startActivity(Intent(app, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-                    pool.execute {
-                        Thread.sleep(800)
-                        runCatching { OverlayService.startAutoOcr(app) }
-                    }
-                }
+                runCatching { OverlayService.startAutoOcr(app) }
             }
             "0", "false" -> OverlayService.stopAutoOcr(app)
         }

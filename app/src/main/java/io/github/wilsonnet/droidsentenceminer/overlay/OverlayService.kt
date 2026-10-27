@@ -622,7 +622,7 @@ class OverlayService : Service() {
             ).show()
         }
         val intent = Intent(this, ProjectionPermissionActivity::class.java)
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION)
         startActivity(intent)
     }
 
@@ -1324,6 +1324,11 @@ class OverlayService : Service() {
     /** Kicks off a scan (requesting projection consent when needed). */
     internal fun debugRequestScan(region: RectF) {
         android.os.Handler(mainLooper).post { performScan(region) }
+    }
+
+    /** Triggers projection consent request. */
+    internal fun debugRequestProjection() {
+        android.os.Handler(mainLooper).post { requestProjection() }
     }
 
     companion object {

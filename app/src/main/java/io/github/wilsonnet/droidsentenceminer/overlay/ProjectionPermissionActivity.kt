@@ -3,18 +3,25 @@ package io.github.wilsonnet.droidsentenceminer.overlay
 import android.app.Activity
 import android.content.Intent
 import android.media.projection.MediaProjectionManager
+import android.os.Build
 import android.os.Bundle
-import io.github.wilsonnet.droidsentenceminer.R
 
 /**
  * Tiny transparent activity used to request screen-capture consent.
+ * Runs in its own task ([android:taskAffinity=""]) so it does not pull [MainActivity]
+ * to the foreground over the user's game/app.
  * The result is forwarded to [OverlayService], which owns the projection.
  */
 class ProjectionPermissionActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            overrideActivityTransition(OVERRIDE_TRANSITION_OPEN, 0, 0)
+        } else {
+            @Suppress("DEPRECATION")
+            overridePendingTransition(0, 0)
+        }
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_projection_permission)
 
         val manager = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
         @Suppress("DEPRECATION")
@@ -30,7 +37,13 @@ class ProjectionPermissionActivity : Activity() {
             putExtra(OverlayService.EXTRA_RESULT_DATA, data)
         }
         startForegroundService(serviceIntent)
-        finish()
+        finishAndRemoveTask()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            overrideActivityTransition(OVERRIDE_TRANSITION_CLOSE, 0, 0)
+        } else {
+            @Suppress("DEPRECATION")
+            overridePendingTransition(0, 0)
+        }
     }
 
     companion object {
