@@ -2,7 +2,9 @@ package io.github.wilsonnet.droidsentenceminer.ui.screens
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,10 +15,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -29,15 +34,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import io.github.wilsonnet.droidsentenceminer.AppContainer
 import io.github.wilsonnet.droidsentenceminer.dict.DictionaryEntity
 import io.github.wilsonnet.droidsentenceminer.dict.DictionaryUpdate
@@ -57,6 +66,17 @@ fun DictionaryScreen(modifier: Modifier = Modifier) {
     val dictionaries by remember { container.db.dictionaryDao().observeAll() }
         .collectAsState(initial = emptyList())
     val updates by container.dictUpdates.collectAsState()
+
+    val listState = rememberLazyListState()
+    var orderedList by remember { mutableStateOf(dictionaries) }
+    var draggingItemId by remember { mutableStateOf<Long?>(null) }
+    var dragDeltaY by remember { mutableFloatStateOf(0f) }
+
+    LaunchedEffect(dictionaries) {
+        if (draggingItemId == null) {
+            orderedList = dictionaries
+        }
+    }
 
     var importing by remember { mutableStateOf(false) }
     var progressText by remember { mutableStateOf<String?>(null) }
@@ -319,14 +339,91 @@ fun DictionaryScreen(modifier: Modifier = Modifier) {
             }
         }
 
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(dictionaries, key = { it.id }) { dict ->
+        LazyColumn(
+            state = listState,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            items(orderedList, key = { it.id }) { dict ->
+                val index = orderedList.indexOfFirst { it.id == dict.id }
+                val isDragging = dict.id == draggingItemId
                 val update = updates[dict.id]
+
+                val dragModifier = Modifier.pointerInput(dict.id) {
+                    detectDragGestures(
+                        onDragStart = {
+                            draggingItemId = dict.id
+                            dragDeltaY = 0f
+                        },
+                        onDragEnd = {
+                            val finalOrder = orderedList.map { it.id }
+                            draggingItemId = null
+                            dragDeltaY = 0f
+                            scope.launch {
+                                container.db.dictionaryDao().updatePriorities(finalOrder)
+                            }
+                        },
+                        onDragCancel = {
+                            draggingItemId = null
+                            dragDeltaY = 0f
+                            orderedList = dictionaries
+                        },
+                        onDrag = { change, dragAmount ->
+                            change.consume()
+                            dragDeltaY += dragAmount.y
+
+                            val currentIdx = orderedList.indexOfFirst { it.id == dict.id }
+                            if (currentIdx != -1) {
+                                val currentInfo = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == dict.id }
+                                if (currentInfo != null) {
+                                    val currentCenter = currentInfo.offset + dragDeltaY + currentInfo.size / 2f
+                                    if (dragDeltaY > 0 && currentIdx < orderedList.size - 1) {
+                                        val nextId = orderedList[currentIdx + 1].id
+                                        val nextInfo = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == nextId }
+                                        val nextCenter = if (nextInfo != null) {
+                                            nextInfo.offset + nextInfo.size / 2f
+                                        } else {
+                                            currentInfo.offset + currentInfo.size + currentInfo.size / 2f
+                                        }
+                                        if (currentCenter > nextCenter) {
+                                            val step = (nextInfo?.offset ?: (currentInfo.offset + currentInfo.size)) - currentInfo.offset
+                                            orderedList = orderedList.toMutableList().apply {
+                                                add(currentIdx + 1, removeAt(currentIdx))
+                                            }
+                                            dragDeltaY -= step
+                                        }
+                                    } else if (dragDeltaY < 0 && currentIdx > 0) {
+                                        val prevId = orderedList[currentIdx - 1].id
+                                        val prevInfo = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == prevId }
+                                        val prevCenter = if (prevInfo != null) {
+                                            prevInfo.offset + prevInfo.size / 2f
+                                        } else {
+                                            currentInfo.offset - currentInfo.size / 2f
+                                        }
+                                        if (currentCenter < prevCenter) {
+                                            val step = currentInfo.offset - (prevInfo?.offset ?: (currentInfo.offset - currentInfo.size))
+                                            orderedList = orderedList.toMutableList().apply {
+                                                add(currentIdx - 1, removeAt(currentIdx))
+                                            }
+                                            dragDeltaY += step
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                    )
+                }
+
                 DictionaryRow(
+                    modifier = Modifier.animateItem(),
                     dict = dict,
+                    priorityIndex = index,
                     update = update,
                     updating = updatingDictId == dict.id,
                     busy = busy,
+                    isDragging = isDragging,
+                    dragDeltaY = if (isDragging) dragDeltaY else 0f,
+                    dragModifier = dragModifier,
                     onUpdate = { if (update != null) updateDictionary(update) },
                     onToggle = { enabled ->
                         scope.launch { container.db.dictionaryDao().setEnabled(dict.id, enabled) }
@@ -353,20 +450,59 @@ fun DictionaryScreen(modifier: Modifier = Modifier) {
 @Composable
 private fun DictionaryRow(
     dict: DictionaryEntity,
+    priorityIndex: Int,
     update: DictionaryUpdate?,
     updating: Boolean,
     busy: Boolean,
+    isDragging: Boolean,
+    dragDeltaY: Float,
+    dragModifier: Modifier,
     onUpdate: () -> Unit,
     onToggle: (Boolean) -> Unit,
     onDelete: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    Card(Modifier.fillMaxWidth()) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .zIndex(if (isDragging) 10f else 0f)
+            .graphicsLayer {
+                translationY = if (isDragging) dragDeltaY else 0f
+                scaleX = if (isDragging) 1.02f else 1.0f
+                scaleY = if (isDragging) 1.02f else 1.0f
+                shadowElevation = if (isDragging) 12.dp.toPx() else 0f
+            },
+        colors = if (isDragging) {
+            CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        } else {
+            CardDefaults.cardColors()
+        },
+    ) {
         Row(
             Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
+                .padding(horizontal = 8.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .then(dragModifier),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Default.DragHandle,
+                    contentDescription = "Drag to reorder",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                )
+            }
+            Text(
+                "#${priorityIndex + 1}",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(start = 2.dp, end = 8.dp),
+            )
             Column(Modifier.weight(1f)) {
                 Text(dict.title, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyLarge)
                 Text(

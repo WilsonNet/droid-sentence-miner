@@ -78,10 +78,13 @@ class YomitanImporter(
      */
     suspend fun importKanjiumAccents(file: File, onProgress: (Progress) -> Unit = {}): DictionaryEntity = withContext(Dispatchers.IO) {
         val title = RecommendedDictionaries.KANJIUM_TITLE
-        db.dictionaryDao().findByTitle(title)?.let { old ->
+        val old = db.dictionaryDao().findByTitle(title)
+        val preservedPriority = old?.priority
+        if (old != null) {
             db.metaDao().deleteTermMetaByDict(old.id)
             db.dictionaryDao().delete(old.id)
         }
+        val priority = preservedPriority ?: determineInitialPriority(title)
         val dictId = db.dictionaryDao().insert(
             DictionaryEntity(
                 title = title,
@@ -92,7 +95,7 @@ class YomitanImporter(
                     "or modifications to EDICT, KANJIDIC or KRADFILE were provided by Uros O. through his free " +
                     "database. CC BY-SA 4.0.",
                 sourceLanguage = "ja",
-                priority = (db.dictionaryDao().maxPriority() ?: -1) + 1,
+                priority = priority,
             ),
         )
         try {
@@ -150,6 +153,8 @@ class YomitanImporter(
                 // dated revision of the same dictionary family (e.g. "Jitendex.org [2026-09-01]"
                 // upgraded to "Jitendex.org [2026-10-03]"), preserving its priority and enabled state.
                 val existing = findExistingForImport(index.title)
+                val preservedPriority = existing?.priority
+                val enabled = existing?.enabled ?: true
                 if (existing != null) {
                     db.termDao().deleteByDict(existing.id)
                     db.kanjiDao().deleteByDict(existing.id)
@@ -162,8 +167,7 @@ class YomitanImporter(
                     runCatching { File(context.cacheDir, "dict-images/${existing.id}").deleteRecursively() }
                 }
 
-                val priority = existing?.priority ?: ((db.dictionaryDao().maxPriority() ?: -1) + 1)
-                val enabled = existing?.enabled ?: true
+                val priority = preservedPriority ?: determineInitialPriority(index.title)
                 val dictId = db.dictionaryDao().insert(
                     DictionaryEntity(
                         title = index.title,
@@ -360,6 +364,33 @@ class YomitanImporter(
         db.dictionaryDao().findByTitle(newTitle)?.let { return it }
         val newBase = baseDictionaryTitle(newTitle)
         return db.dictionaryDao().getAll().firstOrNull { baseDictionaryTitle(it.title).equals(newBase, ignoreCase = true) }
+    }
+
+    /**
+     * Determines initial priority for a newly installed dictionary.
+     * Name dictionaries (such as JMnedict) start at the bottom of the list.
+     * General vocabulary dictionaries are inserted above any name dictionaries so that
+     * proper names do not shadow general words.
+     */
+    internal suspend fun determineInitialPriority(title: String): Int {
+        val all = db.dictionaryDao().getAll()
+        if (all.isEmpty()) return 0
+
+        val isName = RecommendedDictionaries.isNameDictionary(title)
+        if (isName) {
+            return (db.dictionaryDao().maxPriority() ?: -1) + 1
+        }
+
+        val nameDicts = all.filter { RecommendedDictionaries.isNameDictionary(it.title) }
+        if (nameDicts.isEmpty()) {
+            return (db.dictionaryDao().maxPriority() ?: -1) + 1
+        }
+
+        val minNamePriority = nameDicts.minOf { it.priority }
+        for (d in all.filter { it.priority >= minNamePriority }) {
+            db.dictionaryDao().updatePriority(d.id, d.priority + 1)
+        }
+        return minNamePriority
     }
 
     companion object {

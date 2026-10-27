@@ -131,6 +131,7 @@ object DebugApi {
             }
             "/mine" -> respondApi(socket) { mine(params) }
             "/dicts" -> respondApi(socket) { dicts() }
+            "/order_dicts" -> respondApi(socket) { orderDicts(params) }
             "/dict_updates" -> respondApi(socket) { dictUpdates() }
             "/install_dict" -> respondApi(socket) { installDict(params) }
             "/anki_notes" -> respondApi(socket) { ankiNotes(params) }
@@ -615,6 +616,15 @@ object DebugApi {
             )
         }
         return JSONObject().put("ok", true).put("dictionaries", array)
+    }
+
+    private fun orderDicts(params: Map<String, String>): JSONObject {
+        val idsParam = params["ids"] ?: return errorJson("missing 'ids' parameter (comma-separated dictionary ids)")
+        val ids = idsParam.split(",").mapNotNull { it.trim().toLongOrNull() }
+        if (ids.isEmpty()) return errorJson("empty or invalid ids")
+        val container = AppContainer.from(app)
+        runBlocking { container.db.dictionaryDao().updatePriorities(ids) }
+        return dicts()
     }
 
     private fun dictUpdates(): JSONObject {

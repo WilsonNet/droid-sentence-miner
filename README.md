@@ -92,12 +92,16 @@ GIF for the MP4; recorded on a Xiaomi Pad 7).
   character errors than ML Kit on stylized, outlined game/subtitle fonts (small kana, dakuten).
   One-time 31 MB model download; ML Kit (with a GameSentenceMiner-style two-pass pipeline) is
   built in as the fallback/alternative engine.
-- **Yomitan dictionaries** — import any Yomitan/Yomichan format 3 `.zip` (Jitendex, JMdict,
-  KANJIDIC, frequency dictionaries) or install Jitendex/JMdict/KANJIDIC with one tap.
+- **Yomitan dictionaries & drag-and-drop priority** — import any Yomitan/Yomichan format 3 `.zip`
+  (Jitendex, JMdict, JMnedict, KANJIDIC, frequency dictionaries) or install recommended dictionaries
+  (Jitendex, JMdict, KANJIDIC, Kanjium pitch accents, JMnedict names) with one tap. Dictionaries can
+  be reordered via drag-and-drop with priority badges (`#1`, `#2`…) just like in Yomitan to control
+  definition ranking and `{glossary-first}` mining. Proper-name dictionaries (JMnedict) automatically
+  start at the bottom of the list so they never shadow standard vocabulary.
   Term, kanji, tag, term-meta and kanji-meta banks are all parsed, including structured-content
-  glossaries and dictionary images. Updatable dictionaries (Jitendex, or any Yomitan dictionary
+  glossaries and dictionary images. Updatable dictionaries (Jitendex, JMnedict, or any Yomitan dictionary
   with an `indexUrl` in `index.json`) are checked for newer revisions automatically and can be
-  updated in place with one tap, preserving priority and enabled state.
+  updated in place with one tap, preserving custom priority order and enabled state.
 - **Deinflection & word scanning** — a full Japanese deconjugator drives longest-match scanning of
   scanned text and tap-to-look-up, with the same rules Yomitan uses.
 - **Anki mining** — two backends:

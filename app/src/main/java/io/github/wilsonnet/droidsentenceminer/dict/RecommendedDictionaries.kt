@@ -70,10 +70,24 @@ object RecommendedDictionaries {
             approximateSizeMb = 3.2,
             kind = RecommendedDictionary.Kind.KANJIUM_ACCENTS,
         ),
+        RecommendedDictionary(
+            id = "jmnedict",
+            name = "JMnedict",
+            description = "Japanese names dictionary: people, places, companies, and work titles from EDRDG's JMnedict.",
+            url = "https://github.com/yomidevs/jmdict-yomitan/releases/latest/download/JMnedict.zip",
+            approximateSizeMb = 10.9,
+            indexUrl = "https://github.com/yomidevs/jmdict-yomitan/releases/latest/download/JMnedict.json",
+        ),
     )
 
     const val PITCH_ID = "kanjium"
     const val KANJIUM_TITLE = "Kanjium Pitch Accents"
+
+    /** True when a dictionary contains proper names (people, places, works) rather than standard vocabulary. */
+    fun isNameDictionary(title: String): Boolean {
+        val t = title.lowercase()
+        return t.contains("jmnedict") || t.contains("name dictionary") || t.contains("japanese names")
+    }
 }
 
 /** Streams dictionary downloads to disk with progress reporting. */

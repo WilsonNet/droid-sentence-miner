@@ -11,6 +11,7 @@ import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.Transaction
 import kotlinx.coroutines.flow.Flow
 
 @Entity(tableName = "dictionaries")
@@ -151,6 +152,16 @@ interface DictionaryDao {
 
     @Query("UPDATE dictionaries SET enabled = :enabled WHERE id = :id")
     suspend fun setEnabled(id: Long, enabled: Boolean)
+
+    @Query("UPDATE dictionaries SET priority = :priority WHERE id = :id")
+    suspend fun updatePriority(id: Long, priority: Int)
+
+    @Transaction
+    suspend fun updatePriorities(orderedIds: List<Long>) {
+        orderedIds.forEachIndexed { index, id ->
+            updatePriority(id, index)
+        }
+    }
 
     @Query("UPDATE dictionaries SET termCount = :terms, kanjiCount = :kanji WHERE id = :id")
     suspend fun updateCounts(id: Long, terms: Long, kanji: Long)

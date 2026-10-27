@@ -56,8 +56,9 @@ All GET, all JSON (except `frame.png`). Regions are screen fractions unless note
 | `/popup.html?word=&dark=0\|1` | Full HTML document rendered for the popup WebView (including dictionary `styles.css`, `data-sc-*` attributes, and tag categories) |
 | `/mine?word=&sentence=` | Look a word up and add a card via the configured Anki backend (AnkiDroid/AnkiConnect) |
 | `/dicts` | Installed dictionaries with revision, term/kanji counts and zip paths |
+| `/order_dicts?ids=1,2,3` | Update dictionary priority order by ID list; returns the updated `/dicts` array |
 | `/dict_updates` | Check remote `indexUrl` (e.g. Jitendex `yomitan.json`) for newer dictionary revisions; returns available updates (`dictId`, `installedRevision`, `latestTitle`, `latestRevision`, `downloadUrl`) |
-| `/install_dict?id=jitendex` | Download + import a recommended dictionary in the background (`/state.dictInstall` shows progress; ids: jitendex, jmdict, kanjidic, kanjium) |
+| `/install_dict?id=jitendex` | Download + import a recommended dictionary in the background (`/state.dictInstall` shows progress; ids: jitendex, jmdict, kanjidic, kanjium, jmnedict) |
 | `/anki_notes?word=&model=` | Find notes by first field via the AnkiDroid provider; returns every field name → value, plus tags. Defaults to the configured model |
 | `/anki_meta` | AnkiDroid decks and note types as id → name maps |
 | `/startoverlay`, `/stopoverlay` | Start/stop the floating overlay service |
