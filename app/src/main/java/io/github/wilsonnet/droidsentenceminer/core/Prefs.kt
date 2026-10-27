@@ -30,6 +30,7 @@ class DsmPrefs(private val context: Context) {
         val ankiModel = stringPreferencesKey("anki_model")
         val ankiTags = stringPreferencesKey("anki_tags")
         val ankiIncludeImage = booleanPreferencesKey("anki_include_image")
+        val ankiImageMaxHeight = intPreferencesKey("anki_image_max_height")
         val ankiFieldMaps = stringPreferencesKey("anki_field_maps")
         val ankiAnkiDroidPermissionRequested = booleanPreferencesKey("anki_permission_requested")
 
@@ -85,6 +86,8 @@ class DsmPrefs(private val context: Context) {
     val ankiModel: Flow<String> = context.dataStore.data.map { it[Keys.ankiModel] ?: DEFAULT_MODEL }
     val ankiTags: Flow<String> = context.dataStore.data.map { it[Keys.ankiTags] ?: DEFAULT_TAGS }
     val ankiIncludeImage: Flow<Boolean> = context.dataStore.data.map { it[Keys.ankiIncludeImage] ?: true }
+    /** Max height in px of the card picture (aspect ratio kept, never upscaled); 0 = original size. */
+    val ankiImageMaxHeight: Flow<Int> = context.dataStore.data.map { it[Keys.ankiImageMaxHeight] ?: DEFAULT_IMAGE_MAX_HEIGHT }
     val ankiPermissionRequested: Flow<Boolean> = context.dataStore.data.map { it[Keys.ankiAnkiDroidPermissionRequested] ?: false }
 
     val ocrTwoPass: Flow<Boolean> = context.dataStore.data.map { it[Keys.ocrTwoPass] ?: true }
@@ -211,6 +214,7 @@ class DsmPrefs(private val context: Context) {
     suspend fun setAnkiModel(value: String) = edit { it[Keys.ankiModel] = value.trim() }
     suspend fun setAnkiTags(value: String) = edit { it[Keys.ankiTags] = value }
     suspend fun setAnkiIncludeImage(value: Boolean) = edit { it[Keys.ankiIncludeImage] = value }
+    suspend fun setAnkiImageMaxHeight(value: Int) = edit { it[Keys.ankiImageMaxHeight] = value.coerceAtLeast(0) }
     /** Mapping picked in Settings → Anki → Fields for note type [model] (field -> CardFields name, "" = empty); null = automatic. */
     suspend fun ankiFieldMap(model: String): Map<String, String>? =
         parseFieldMaps(context.dataStore.data.first()[Keys.ankiFieldMaps])[model]
@@ -269,6 +273,7 @@ class DsmPrefs(private val context: Context) {
         ankiModel = ankiModel.first(),
         ankiTags = ankiTags.first(),
         ankiIncludeImage = ankiIncludeImage.first(),
+        ankiImageMaxHeight = ankiImageMaxHeight.first(),
         ocrTwoPass = ocrTwoPass.first(),
         ocrDropNoise = ocrDropNoise.first(),
         captureRegion = captureRegion.first(),
@@ -292,6 +297,7 @@ class DsmPrefs(private val context: Context) {
         val ankiModel: String,
         val ankiTags: String,
         val ankiIncludeImage: Boolean,
+        val ankiImageMaxHeight: Int = DEFAULT_IMAGE_MAX_HEIGHT,
         val ocrTwoPass: Boolean,
         val ocrDropNoise: Boolean,
         val captureRegion: CaptureRegion,
@@ -303,6 +309,7 @@ class DsmPrefs(private val context: Context) {
         const val DEFAULT_CONNECT_URL = "http://127.0.0.1:8765"
         const val DEFAULT_DECK = "Droid Sentence Miner"
         const val DEFAULT_MODEL = "Droid Sentence Miner"
+        const val DEFAULT_IMAGE_MAX_HEIGHT = 462
         const val DEFAULT_TAGS = "DroidSentenceMiner"
         const val DEFAULT_AUDIO_BUFFER_SECONDS = 300
         const val ENGINE_MEIKI = "meiki"

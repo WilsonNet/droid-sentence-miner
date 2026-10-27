@@ -104,7 +104,8 @@ GIF for the MP4; recorded on a Xiaomi Pad 7).
   - **AnkiDroid API** (no network needed; cards, images and audio via the official API), and
   - **AnkiConnect** (desktop Anki with the AnkiConnect add-on; card + media upload over HTTP).
   Cards include Expression, Reading, Meaning (rendered glossary), Sentence, Image (captured
-  screenshot), Audio (sentence voice line), **Word audio** and Source. Existing note types are
+  screenshot, scaled to a max height — 462 px by default, aspect ratio kept, 0 = original — set in
+  Settings → Anki), Audio (sentence voice line), **Word audio** and Source. Existing note types are
   filled by field name the way Yomitan/GSM fill them — e.g. Anime Cards: Word, Reading, Glossary,
   Context Sentence (Sentence stays empty so it stays a word card), Word Audio, Audio, Picture.
   **Settings → Anki → Fields** shows what goes into each field of the chosen note type and lets you

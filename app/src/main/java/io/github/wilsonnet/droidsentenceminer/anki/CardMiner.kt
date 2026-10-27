@@ -87,9 +87,15 @@ class CardMiner(
         val tags = snapshot.ankiTags.split(Regex("[,\\s]+")).filter { it.isNotBlank() }
 
         val imageBytes = image?.takeIf { snapshot.ankiIncludeImage }?.let { bitmap ->
-            ByteArrayOutputStream().use { output ->
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 88, output)
-                output.toByteArray()
+            val (w, h) = CardImageSize.fit(bitmap.width, bitmap.height, snapshot.ankiImageMaxHeight)
+            val scaled = if (w != bitmap.width || h != bitmap.height) Bitmap.createScaledBitmap(bitmap, w, h, true) else bitmap
+            try {
+                ByteArrayOutputStream().use { output ->
+                    scaled.compress(Bitmap.CompressFormat.JPEG, 88, output)
+                    output.toByteArray()
+                }
+            } finally {
+                if (scaled !== bitmap) scaled.recycle()
             }
         }
 

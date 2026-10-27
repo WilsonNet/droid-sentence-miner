@@ -65,6 +65,7 @@ fun AnkiScreen(modifier: Modifier = Modifier) {
     var model by remember { mutableStateOf(DsmPrefs.DEFAULT_MODEL) }
     var tags by remember { mutableStateOf(DsmPrefs.DEFAULT_TAGS) }
     var includeImage by remember { mutableStateOf(true) }
+    var imageMaxHeight by remember { mutableStateOf(DsmPrefs.DEFAULT_IMAGE_MAX_HEIGHT.toString()) }
     var status by remember { mutableStateOf<String?>(null) }
     var deckOptions by remember { mutableStateOf<List<String>>(emptyList()) }
     var modelOptions by remember { mutableStateOf<List<String>>(emptyList()) }
@@ -118,6 +119,7 @@ fun AnkiScreen(modifier: Modifier = Modifier) {
         model = snapshot.ankiModel
         tags = snapshot.ankiTags
         includeImage = snapshot.ankiIncludeImage
+        imageMaxHeight = snapshot.ankiImageMaxHeight.toString()
         ankiDroidAvailable = container.ankiDroid.isAvailable()
         loadFields()
     }
@@ -162,6 +164,7 @@ fun AnkiScreen(modifier: Modifier = Modifier) {
             container.prefs.setAnkiModel(model)
             container.prefs.setAnkiTags(tags)
             container.prefs.setAnkiIncludeImage(includeImage)
+            container.prefs.setAnkiImageMaxHeight(imageMaxHeight.toIntOrNull() ?: DsmPrefs.DEFAULT_IMAGE_MAX_HEIGHT)
             status = "Settings saved"
         }
     }
@@ -315,6 +318,20 @@ fun AnkiScreen(modifier: Modifier = Modifier) {
                     Text("Attach the captured screenshot")
                 }
 
+                if (includeImage) {
+                    OutlinedTextField(
+                        value = imageMaxHeight,
+                        onValueChange = { v -> imageMaxHeight = v.filter { it.isDigit() }.take(5) },
+                        label = { Text("Picture max height (px)") },
+                        supportingText = { Text("Scaled down keeping the aspect ratio. 0 = original size.") },
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                            keyboardType = androidx.compose.ui.text.input.KeyboardType.Number,
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                    )
+                }
+
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(onClick = { saveSettings() }) { Text("Save") }
                     OutlinedButton(onClick = {
@@ -325,6 +342,7 @@ fun AnkiScreen(modifier: Modifier = Modifier) {
                             container.prefs.setAnkiModel(model)
                             container.prefs.setAnkiTags(tags)
                             container.prefs.setAnkiIncludeImage(includeImage)
+            container.prefs.setAnkiImageMaxHeight(imageMaxHeight.toIntOrNull() ?: DsmPrefs.DEFAULT_IMAGE_MAX_HEIGHT)
                             status = "Testing…"
                             val bridge = container.ankiClient.bridge()
                             status = when (val result = bridge.testConnection()) {

@@ -170,6 +170,8 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   card without adding it with `/preview_card?word=&line=`. A mapping picked in Settings → Anki →
   Fields (`DsmPrefs.ankiFieldMap(model)`, JSON per note type: field → `CardFields` name, "" = empty)
   replaces all name matching for that note type, including the Reading word-audio fallback.
+  The card picture is scaled to `DsmPrefs.ankiImageMaxHeight` (default 462 px, 0 = original, never
+  upscaled; `CardImageSize.fit`) in `CardMiner.buildCard` — stored line screenshots stay 1280 wide.
 - **Pitch graph** (`dict/PitchAccent.kt`): port of Yomitan's `createPronunciationGraph` with the
   inline styles Yomitan bakes into Anki fields; unit-tested byte-for-byte against SVGs from the
   user's own cards. Pitch comes from `term_meta` rows with mode `pitch` (any Yomitan pitch dict) —
