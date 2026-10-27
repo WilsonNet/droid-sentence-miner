@@ -1,0 +1,84 @@
+@import "@fontsource-variable/inter";
+
+:root {
+  --sl-font:
+    "Inter Variable", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Noto Sans JP", sans-serif;
+  --sl-font-mono:
+    "SFMono-Regular", "SF Mono", "JetBrains Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --sl-content-width: 50rem;
+  --sl-sidebar-width: 17rem;
+  --sl-color-accent-low: rgb(212 240 228);
+  --sl-color-accent: rgb(21 119 99);
+  --sl-color-accent-high: rgb(11 79 64);
+}
+
+:root[data-theme="light"] {
+  --sl-color-bg: rgb(251 250 247);
+  --sl-color-bg-nav: rgb(247 246 241);
+  --sl-color-bg-sidebar: rgb(247 246 241);
+  --sl-color-hairline: rgb(228 226 218);
+  --sl-color-hairline-light: rgb(238 237 231);
+  --sl-color-hairline-shade: rgb(217 215 206);
+}
+
+:root[data-theme="dark"] {
+  --sl-color-accent-low: rgb(8 41 34);
+  --sl-color-accent: rgb(62 176 148);
+  --sl-color-accent-high: rgb(170 226 207);
+  --sl-color-bg: rgb(8 17 15);
+  --sl-color-bg-nav: rgb(8 17 15);
+  --sl-color-bg-sidebar: rgb(10 21 18);
+  --sl-color-hairline: rgb(28 42 38);
+  --sl-color-hairline-light: rgb(23 35 31);
+  --sl-color-hairline-shade: rgb(34 51 46);
+}
+
+.site-title {
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.site-title img {
+  border-radius: 0.45rem;
+}
+
+.sl-markdown-content h2,
+.sl-markdown-content h3,
+.sl-markdown-content h4 {
+  letter-spacing: -0.022em;
+}
+
+.sl-markdown-content a:not(:where(.not-content *)) {
+  text-underline-offset: 0.18em;
+}
+
+.sl-markdown-content :not(pre) > code {
+  border-radius: 0.35rem;
+}
+
+.sl-markdown-content img {
+  border-radius: 0.9rem;
+}
+
+.sl-markdown-content table {
+  font-size: 0.9rem;
+}
+
+.sl-markdown-content blockquote {
+  border-inline-start-color: var(--sl-color-accent);
+}
+
+.sl-markdown-content .card {
+  border-radius: 1rem;
+}
+
+.sidebar-pane .large {
+  font-weight: 650;
+}
+
+@media (min-width: 72rem) {
+  .right-sidebar-panel {
+    padding-top: 1.5rem;
+  }
+}

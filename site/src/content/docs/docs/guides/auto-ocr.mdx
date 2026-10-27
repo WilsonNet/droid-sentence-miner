@@ -1,0 +1,83 @@
+---
+title: Auto OCR
+description: Draw text areas once and let Droid Sentence Miner follow a game or video, logging every stable line with a timestamp, screenshot and voice clip.
+---
+
+Auto OCR is the main mode. It reads a region of the screen continuously, waits for each new line
+to settle, and logs it with the moment it appeared, the moment it disappeared, a screenshot and
+the matching audio.
+
+## Start a session
+
+1. Open the game or video and let it play.
+2. Long-press the floating bubble → **Start auto OCR**.
+3. Choose **A single app** in Android's share sheet and select the app you want to read. On older
+   Android versions, share the entire screen.
+4. Draw a text area if there is none for the current orientation.
+
+The app reads new frames only. A static screen is not re-read, so a paused visual novel does not
+fill the log with duplicates.
+
+## Text areas
+
+Text areas are rectangles stored as fractions of the screen. They are kept **per orientation**:
+a portrait box drawn for a phone game points at the wrong pixels when a video goes fullscreen
+landscape. Draw one area for each orientation you use.
+
+- Drag inside the box to move it; drag a corner to resize it; tap × to delete.
+- Keep the area on the dialogue box or subtitle band. Buttons inside the box become text.
+- Multiple areas are allowed: a dialogue box plus a name box, or two subtitle regions.
+- Open the editor from the ✎ button in the **Live text** window or from the bubble menu.
+
+:::caution[Keep buttons out]
+Nightshade's スキップ and クイックロード buttons inside a text area were read as dialogue and
+made the filter drop the real, larger line. Box only the dialogue text.
+:::
+
+## How a line is accepted
+
+The app does not log every OCR read. It tracks each line and requires repeated agreement:
+
+1. New frame differs from the last frame OCR'd (cell-by-cell comparison, so one typewriter glyph
+   is enough).
+2. OCR reads the text area with meikiocr or ML Kit.
+3. The line tracker keeps the reads and waits for the text to stabilise.
+4. At 3, 5, 8 and 13 reads — and when the line disappears — the consensus of all reads is stored.
+5. Lines below the confidence threshold are dropped when a stronger line exists.
+
+This handles fades, moving backgrounds, typewriter text and OCR noise. The stored text is the
+medoid of the reads, not just the last frame.
+
+## App focus
+
+With **A single app**, auto OCR pauses while another app is in front, while Droid Sentence Miner
+itself is open, and while the popup or area editor is showing. That prevents the app from reading
+its own overlays or the home screen.
+
+On Android 14+, `onCapturedContentVisibilityChanged` tells the app when the chosen app is no
+longer visible.
+
+## Live text
+
+The floating **Live text** window shows new lines in real time without leaving the game. Tap a
+line to look up and mine it. See [Live text window](live-text/) for the three modes and resizing.
+
+## Stop and restart
+
+Stop auto OCR from the bubble menu or from the notification. If screen capture ends because the
+captured app was closed or consent was revoked, the bubble menu offers **Restart screen capture**.
+
+## Choosing an OCR engine
+
+meikiocr is the default after the model download. It is a text-line detector plus a character
+recognizer trained on Japanese game text. ML Kit remains available as a fallback and alternative
+in **Settings → OCR**.
+
+The app uses one shared OCR instance; auto OCR and manual lookups serialize their work. Benchmarks
+should be run with auto OCR stopped.
+
+## Related
+
+- [Screen dictionary](screen-dictionary/) — tap the real subtitle while auto OCR runs.
+- [Texts and sentence audio](texts-and-audio/) — the log and audio pipeline.
+- [Troubleshooting](../reference/troubleshooting/) — capture, overlay and static-screen issues.

@@ -1,0 +1,135 @@
+---
+import logoUrl from "../assets/logo.svg?url";
+import { docsUrl, releasesUrl, repoUrl, withBase } from "../lib/url.ts";
+import Icon from "./Icon.astro";
+
+const year = new Date().getFullYear();
+---
+
+<footer class="border-t border-line bg-paper">
+  <div class="shell py-16 lg:py-20">
+    <div class="grid gap-12 md:grid-cols-[1.5fr_1fr_1fr_1fr]">
+      <div class="max-w-xs">
+        <a href={withBase()} class="flex items-center gap-2.5 text-sm font-semibold">
+          <img src={logoUrl} alt="" width="30" height="30" class="rounded-[0.55rem]" />
+          Droid Sentence Miner
+        </a>
+        <p class="mt-4 text-sm leading-6 text-muted">
+          A native Android sentence miner for Japanese immersion. OCR what is on screen, look it
+          up with Yomitan dictionaries, and mine it into Anki with voice and context.
+        </p>
+        <p class="mt-5 font-jp text-sm text-pine-700" lang="ja">日本語を、遊びながら。</p>
+      </div>
+
+      <div>
+        <h2 class="text-xs font-semibold tracking-[0.16em] text-muted uppercase">Product</h2>
+        <ul class="mt-4 space-y-3 text-sm">
+          <li><a class="text-muted transition-colors hover:text-ink" href="#features">Features</a></li>
+          <li><a class="text-muted transition-colors hover:text-ink" href="#demo">Demo videos</a></li>
+          <li>
+            <a
+              class="text-muted transition-colors hover:text-ink"
+              href={releasesUrl}
+              rel="noreferrer"
+              target="_blank"
+            >
+              Download APK
+            </a>
+          </li>
+          <li>
+            <a
+              class="text-muted transition-colors hover:text-ink"
+              href={`${repoUrl}/releases`}
+              rel="noreferrer"
+              target="_blank"
+            >
+              Release notes
+            </a>
+          </li>
+        </ul>
+      </div>
+
+      <div>
+        <h2 class="text-xs font-semibold tracking-[0.16em] text-muted uppercase">Documentation</h2>
+        <ul class="mt-4 space-y-3 text-sm">
+          <li><a class="text-muted transition-colors hover:text-ink" href={docsUrl}>Overview</a></li>
+          <li>
+            <a
+              class="text-muted transition-colors hover:text-ink"
+              href={`${docsUrl}getting-started/installation/`}
+            >
+              Installation
+            </a>
+          </li>
+          <li>
+            <a class="text-muted transition-colors hover:text-ink" href={`${docsUrl}guides/auto-ocr/`}>
+              Auto OCR
+            </a>
+          </li>
+          <li>
+            <a
+              class="text-muted transition-colors hover:text-ink"
+              href={`${docsUrl}reference/troubleshooting/`}
+            >
+              Troubleshooting
+            </a>
+          </li>
+        </ul>
+      </div>
+
+      <div>
+        <h2 class="text-xs font-semibold tracking-[0.16em] text-muted uppercase">Project</h2>
+        <ul class="mt-4 space-y-3 text-sm">
+          <li>
+            <a
+              class="inline-flex items-center gap-1.5 text-muted transition-colors hover:text-ink"
+              href={repoUrl}
+              rel="noreferrer"
+              target="_blank"
+            >
+              <Icon name="github" size={14} />
+              Source code
+            </a>
+          </li>
+          <li>
+            <a
+              class="text-muted transition-colors hover:text-ink"
+              href={`${repoUrl}/blob/main/LICENSE`}
+              rel="noreferrer"
+              target="_blank"
+            >
+              GPL-3.0 license
+            </a>
+          </li>
+          <li>
+            <a
+              class="text-muted transition-colors hover:text-ink"
+              href={`${repoUrl}/issues`}
+              rel="noreferrer"
+              target="_blank"
+            >
+              Report an issue
+            </a>
+          </li>
+          <li>
+            <a
+              class="text-muted transition-colors hover:text-ink"
+              href={`${repoUrl}#credits`}
+              rel="noreferrer"
+              target="_blank"
+            >
+              Credits
+            </a>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <div
+      class="mt-14 flex flex-col gap-3 border-t border-line pt-6 text-xs text-muted sm:flex-row sm:items-center sm:justify-between"
+    >
+      <p>© {year} Wilson Neto. Free software under the GPL-3.0.</p>
+      <p>Not affiliated with Anki, AnkiDroid, Yomitan, Jiten or GameSentenceMiner.</p>
+    </div>
+  </div>
+</footer>

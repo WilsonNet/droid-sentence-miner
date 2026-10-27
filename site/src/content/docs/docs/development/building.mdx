@@ -1,0 +1,98 @@
+---
+title: Build from source
+description: Build Droid Sentence Miner from the command line with JDK 21 and the Android SDK. No Android Studio required.
+---
+
+The Android app lives at the repository root. The website lives in `site/` and is a separate
+Node project.
+
+## Toolchain
+
+- JDK 21.
+- Android SDK with platform 36 and build-tools 35.
+- Gradle is provided by the wrapper.
+
+Linux example, everything under `~/Android`:
+
+```bash
+curl -fsSL https://dl.google.com/android/cli/latest/linux_x86_64/install.sh | bash
+mkdir -p ~/Android/tools
+curl -sSL "https://api.adoptium.net/v3/binary/latest/21/ga/linux/x64/jdk/hotspot/normal/eclipse" \
+  | tar xz -C ~/Android/tools
+
+export JAVA_HOME=$(echo ~/Android/tools/jdk-21*)
+export ANDROID_HOME=$HOME/Android/Sdk
+export PATH="$JAVA_HOME/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/cmdline-tools/latest/bin:$PATH"
+
+android sdk install platform-tools platforms/android-36 build-tools/35.0.0
+echo "sdk.dir=$ANDROID_HOME" > local.properties
+```
+
+On macOS install `openjdk@21` and use the same SDK layout. The repository's `AGENTS.md` has the
+exact Homebrew path.
+
+## Build and test
+
+```bash
+./gradlew testDebugUnitTest    # JVM unit tests
+./gradlew assembleDebug        # app/build/outputs/apk/debug/app-debug.apk
+```
+
+For on-device tests, point Gradle at one device. `connectedAndroidTest` uninstalls the app when it
+finishes, wiping dictionaries and settings, and Gradle otherwise targets every connected device:
+
+```bash
+ANDROID_SERIAL=emulator-5554 ./gradlew connectedDebugAndroidTest
+```
+
+Single test class:
+
+```bash
+ANDROID_SERIAL=emulator-5554 ./gradlew connectedDebugAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.class=io.github.wilsonnet.droidsentenceminer.audio.AudioPipelineInstrumentedTest
+```
+
+## Install
+
+Debug builds are suffixed `.debug` and signed with the committed `app/debug.keystore`, so they
+upgrade in place across machines.
+
+```bash
+adb install -r app/build/outputs/apk/debug/app-debug.apk
+adb shell appops set io.github.wilsonnet.droidsentenceminer.debug SYSTEM_ALERT_WINDOW allow
+adb shell pm grant io.github.wilsonnet.droidsentenceminer.debug android.permission.RECORD_AUDIO
+adb shell pm grant io.github.wilsonnet.droidsentenceminer.debug android.permission.POST_NOTIFICATIONS
+adb shell pm grant io.github.wilsonnet.droidsentenceminer.debug com.ichi2.anki.permission.READ_WRITE_DATABASE
+```
+
+## Emulator
+
+```bash
+emulator -avd dsm_test -gpu host -no-snapshot-save -no-boot-anim &
+adb -s emulator-5554 wait-for-device shell \
+  'while [ "$(getprop sys.boot_completed)" != 1 ]; do sleep 1; done'
+```
+
+The test AVD is API 35, `google_apis_playstore`, x86_64. Capture is unreliable on emulators;
+validate OCR and audio on a real device.
+
+## Debug API
+
+Debug builds start a loopback HTTP API on port 9099 for text control over adb:
+
+```bash
+adb forward tcp:9099 tcp:9099
+curl -s localhost:9099/state
+curl -s "localhost:9099/scan?l=0.08&t=0.32&r=0.92&b=0.42" | python3 -m json.tool
+curl -s localhost:9099/frame.png -o frame.png
+curl -s "localhost:9099/lookup?word=%E3%81%AA%E3%81%84"
+```
+
+The full endpoint list is in `.opencode/skills/dsm-debug-api/SKILL.md` in the repository.
+
+## Versions
+
+AGP 8.13.2, Kotlin 2.3.21, KSP 2.3.12, compileSdk 36, minSdk 26, targetSdk 35, Compose BOM
+2024.12.01, Room 2.8.5, ML Kit Japanese 16.0.1, ONNX Runtime Android 1.31.0, AnkiDroid API
+v2.24.1. Version bumps live in `gradle/libs.versions.toml`; update this page and `AGENTS.md` with
+them.

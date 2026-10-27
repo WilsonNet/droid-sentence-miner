@@ -1,0 +1,69 @@
+---
+title: Screen dictionary
+description: Tap the real subtitle or game text, not a screenshot. The invisible text layer sits over the words and opens definitions in place.
+---
+
+While auto OCR runs, Droid Sentence Miner publishes a touchable text layer over the characters it
+just read. The layer is invisible; touches pass through everywhere except the text itself.
+
+## Use it
+
+1. Start auto OCR with **A single app** pointed at the game or video.
+2. Tap a Japanese character in the subtitle or dialogue box.
+3. The word covering it highlights and its definition opens next to it.
+4. Hold and drag to select a different range of characters.
+5. Tap **Anki** to mine it, or tap outside to close the popup.
+
+The popup is placed like Yomitan's: below the word when there is room, above when there is not,
+and shifted to stay on screen. Its width is 420 dp in portrait and 600 dp in landscape.
+
+## Video pause and resume
+
+A lookup pauses media playback with a media key, so the line does not roll away while you read.
+When the popup closes, playback resumes — but only if it was playing before the lookup. If you
+paused the video yourself, the layer stays and you can tap word after word.
+
+Some apps route media keys to the last active media session (for example, a YouTube video that was
+paused earlier). The app re-checks audio state before resuming and skips the resume if something
+else is already playing.
+
+## What is actually tappable
+
+Each OCR line becomes one transparent overlay window fitted to the line. Tap positions are mapped
+back to the OCR text using per-character boxes:
+
+- **meikiocr** returns character x-intervals.
+- **ML Kit** returns symbol boxes.
+
+If the character boxes and the cleaned text disagree, the layer falls back to evenly spaced
+positions. Text outside the configured text areas is not tappable.
+
+Touches between lines pass through to the game, so a game's buttons still work. While the popup is
+open the layer is frozen and auto OCR pauses; otherwise the app would read its own definition
+text.
+
+## Tap verification
+
+The layer can be up to one OCR interval old. After the popup opens, the app waits 250 ms and reads
+the paused frame again:
+
+- if the word under your finger changed (a rolling caption), the popup moves to the new word;
+- if the new read sees other text but nothing under the finger, the popup closes;
+- if the read is empty, nothing changes.
+
+## Settings
+
+- **Settings → Auto OCR → Tap text on screen to look it up** — turn the layer off if it interferes
+  with a game's own touch controls.
+- **Pause the video while looking up** — disable if you prefer the video to keep playing.
+
+:::tip[YouTube test flow]
+Pause the video, tap an empty area to hide the player controls, then tap a word. Player controls
+cover the subtitle and the layer may re-read them as text.
+:::
+
+## Related
+
+- [Auto OCR](auto-ocr/) — how the text is captured.
+- [Book mode](books/) — tap printed text on a photo of a page.
+- [Troubleshooting](../reference/troubleshooting/) — overlay permission and layer issues.

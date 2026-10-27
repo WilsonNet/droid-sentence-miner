@@ -1,0 +1,74 @@
+---
+title: Books and manga
+description: Photograph a Japanese page, read tategaki and horizontal print, and tap the printed text to look up words and mine the page.
+---
+
+The **Book** tab is for paper: light novels, manga, textbooks and anything else that is not on a
+screen. A photo is read with ML Kit, laid out as Japanese page text, and overlaid on the image so
+the printed characters themselves become tappable.
+
+## Take a page photo
+
+1. Open the **Book** tab.
+2. Tap **Take photo** and photograph the page flat and well lit, filling as much of the frame as
+   possible. On Samsung phones this opens Samsung Camera; elsewhere it opens any camera app that
+   handles image capture.
+3. Wait for the page to be read. Paragraphs are outlined on the photo.
+
+The photo is decoded upright (EXIF is applied) and capped at 3000 px on the long edge. No camera
+permission is needed because the camera app returns the image.
+
+You can also pick a photo from the gallery with the image button.
+
+## Layout
+
+Book mode is not a generic OCR field. It understands Japanese page layout:
+
+- **Tategaki** columns are ordered right to left, then top to bottom.
+- **Horizontal** lines are ordered top to bottom.
+- Kana-only ruby lines and very thin lines are dropped. Ruby is detected by width relative to the
+  median column, after OCR text fixes.
+- Page numbers and non-Japanese blocks are ignored.
+- A block that ends mid-sentence is joined with the adjacent block.
+- `……` is restored after Unicode normalization (NFKC turns it into dots).
+
+## Mine from a paragraph
+
+1. Tap a paragraph on the photo to open its text.
+2. Tap a word to open the definition popup. Tap Japanese inside a definition to look that up too;
+   the back arrow returns.
+3. Tap **Anki**. The card image is the paragraph cropped from the photo, and the sentence is cut
+   at 。！？ while keeping closing quotes.
+
+Hold and drag over the text to force your own selection. A hold without dragging selects one
+character, which is useful for a single kanji. The ✎ button corrects OCR text before mining; word
+positions are preserved for the parts that did not change.
+
+## Read on the photo
+
+After a photo the page opens in an **overlay reader**:
+
+- the OCR text sits invisibly over the printed characters;
+- tap any character to look up the word starting there;
+- hold and drag to select characters;
+- pinch to zoom and drag to pan;
+- ✕ or Back returns to the paragraph view.
+
+This is the closest thing to tapping a real manga page. The page stays alive across tab switches,
+so you can leave the Book tab and come back without taking another photo.
+
+## Limitations
+
+Book photos always use ML Kit. meikiocr is a horizontal game-text reader and is not used for
+tategaki pages. ML Kit can still misread stylized manga fonts; use ✎ before mining.
+
+:::tip[Free test pages]
+The project tests Book mode with pages from *Black Jack ni Yoroshiku*, available for free reuse at
+[densho810.com/free](https://densho810.com/free/). The bundle `dl/001bj.zip` contains a useful
+tategaki page.
+:::
+
+## Related
+
+- [Screen dictionary](screen-dictionary/) — the same tap-on-text idea for games and videos.
+- [Anki mining](anki/) — where the page crop goes on the card.

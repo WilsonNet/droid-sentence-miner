@@ -30,6 +30,7 @@ together). Stale docs cost the next agent hours: they trust AGENTS.md and the sk
 | Nightshade gameplay flows/coordinates | `.opencode/skills/dsm-nightshade/SKILL.md` |
 | App/game/dialog navigation, coordinates, adb UI flows | `.opencode/skills/dsm-navigation/SKILL.md` |
 | End-of-task wisdom harvest workflow | `.opencode/skills/wisdom-increaser/SKILL.md` |
+| Website landing copy, docs pages, deploy workflow | `site/README.md` + `README.md` website URLs + `AGENTS.md` → *Website* |
 
 ## Checklist
 

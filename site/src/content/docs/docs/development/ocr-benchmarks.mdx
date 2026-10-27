@@ -1,0 +1,78 @@
+---
+title: OCR benchmarks
+description: Hand-checked character error rate for meikiocr and ML Kit on Japanese game text, subtitles and hardsubs.
+---
+
+The default OCR engine is measured against the same crops with hand-checked ground truth. Lower
+character error rate (CER) is better; exact lines is the share of lines read perfectly.
+
+## Results
+
+| Test set | ML Kit CER / exact | meikiocr CER / exact |
+| --- | --- | --- |
+| Hardsub travel vlog, 229 frames | 9.6 % / 48 % | **3.0 % / 81 %** |
+| Real subtitles burned on footage, bold outlined, 102 frames | 4.6 % / 60 % | **0.24 % / 97 %** |
+| Same footage, boxed subtitles (YouTube-like), 102 frames | 0.65 % / 92 % | **0.16 % / 98 %** |
+
+Across these sets, meikiocr makes **3–19× fewer character errors** than ML Kit. The gap is largest
+on stylized, outlined fonts — the kind used by visual novels and game dialogue boxes.
+
+A Galaxy S24+ processes a subtitle-band crop in roughly **150 ms**. Live auto OCR on the hardsub
+vlog with meikiocr logged **84 lines, 0 duplicates, 82 % exact, 1.9 % CER**; several of the
+"errors" are meikiocr correcting the creator's own typos.
+
+## End-to-end softsub run
+
+Against a YouTube video with Japanese soft subtitles, compared with the subtitle file and the
+original audio:
+
+- every subtitle cue in the run was logged (61/61, 56 exact, mean character accuracy 0.99);
+- line start times were within ±300 ms (p90) of the cue;
+- every voice clip was located in the original audio at correlation ≥ 0.97, starting 160–1080 ms
+  (median ~400 ms) before the subtitle.
+
+## Visual novel
+
+Nightshade on a Xiaomi Pad 7 (HyperOS 3) through DroidDeck, meikiocr, text area on the dialogue
+box:
+
+- before the typewriter-frame fix, lines froze at the first half-typed read (戦乱の世におい);
+- after it, every line of the prologue and first scene was logged complete, including three-line
+  narration;
+- short exclamations such as 「百花……っ」 were kept, and 一筋 was no longer read as ー筋;
+- device audio came back as digital zeros, so the microphone fallback was used; voiced lines are
+  audible after normalization;
+- cards mined from the popup (手薄, 術) had sentence, screenshot, word audio and clip.
+
+## Reproduce it
+
+The scripts are in `tools/ocr-eval/` in the repository:
+
+- desktop meikiocr runner,
+- on-device runner,
+- scorer,
+- subtitle burner for building ground-truth clips.
+
+The repository's `.opencode/skills/dsm-ocr-eval/SKILL.md` documents the exact recipe and data
+sets. Benchmarks should run with auto OCR stopped, because one OCR engine instance is shared and
+requests serialize.
+
+## Test suite
+
+The JVM unit tests cover frame-change detection, normalization, popup placement, screen text
+geometry, book layout, deinflection, glossary rendering, OCR post-processing, pitch graphs, field
+mapping, meikiocr decoding, line consensus, clip windows and more. On-device tests cover VAD,
+AAC/M4A encoding through MediaCodec and WAV fallback.
+
+Run them with:
+
+```bash
+./gradlew testDebugUnitTest
+ANDROID_SERIAL=<device> ./gradlew connectedDebugAndroidTest
+```
+
+:::note[Numbers are from real runs]
+These figures come from the project's own test devices and hand-checked data. OCR accuracy varies
+with font, outline, background motion and resolution. Re-run the benchmark on your own footage if
+your use case is unusual.
+:::

@@ -1,0 +1,16 @@
+export type IconName =
+  | "arrow-right"
+  | "book"
+  | "check"
+  | "chevron-right"
+  | "cpu"
+  | "download"
+  | "github"
+  | "headphones"
+  | "layers"
+  | "plus"
+  | "scan"
+  | "shield"
+  | "sparkles"
+  | "text"
+  | "volume";

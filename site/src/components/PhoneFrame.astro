@@ -1,0 +1,35 @@
+---
+import { Picture } from "astro:assets";
+import type { ImageMetadata } from "astro";
+
+interface Props {
+  alt: string;
+  class?: string;
+  image: ImageMetadata;
+  priority?: boolean;
+  sizes?: string;
+}
+
+const {
+  image,
+  alt,
+  class: className = "",
+  priority = false,
+  sizes = "(min-width: 1024px) 312px, 72vw",
+} = Astro.props;
+---
+
+<div class:list={["phone", className]}>
+  <div class="phone-screen">
+    <Picture
+      src={image}
+      formats={["avif", "webp"]}
+      widths={[320, 480, 640]}
+      sizes={sizes}
+      alt={alt}
+      quality={84}
+      priority={priority}
+    />
+    <span class="phone-notch" aria-hidden="true"></span>
+  </div>
+</div>

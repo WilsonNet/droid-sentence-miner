@@ -1,0 +1,69 @@
+---
+title: Website
+description: How the marketing site and these docs are built, checked and deployed.
+---
+
+The website lives in `site/` in the app repository. It is an Astro project with Starlight for the
+documentation and Tailwind CSS v4 for the landing page.
+
+## Stack
+
+- **Astro 7** — static output, zero client-side framework runtime.
+- **Starlight** — docs theme, sidebar, search, dark mode and SEO metadata.
+- **Tailwind CSS v4** — `@tailwindcss/vite`; no `tailwind.config.js`.
+- **Biome 2** — formatter and linter.
+- **TypeScript** — `astro/tsconfigs/strictest` plus additional compiler flags.
+
+## Develop
+
+```bash
+cd site
+pnpm install
+pnpm dev
+```
+
+The site is served at `http://localhost:4321/droid-sentence-miner/`; `/docs/` is the
+documentation.
+
+## Checks
+
+```bash
+pnpm check       # astro check + biome check --error-on-warnings
+pnpm build       # static output in site/dist
+```
+
+`astro check` type-checks `.astro` files and client scripts. Biome is configured with
+`linter.rules.preset = "all"`, all nursery rules enabled, sorted imports/attributes/keys and
+`--error-on-warnings`, so warnings fail CI. Rules are only turned off where a rule cannot
+understand Astro, Tailwind at-rules or generated files.
+
+## Deploy
+
+`.github/workflows/site.yml` builds the site on every push that touches `site/` and deploys it to
+GitHub Pages with `actions/deploy-pages`. Pages must be set to **GitHub Actions** as the source in
+the repository settings.
+
+The public URL is [wilsonnet.github.io/droid-sentence-miner](https://wilsonnet.github.io/droid-sentence-miner/). The Astro `base` is
+`/droid-sentence-miner`; all internal links go through `withBase()` or Starlight's own link
+handling.
+
+## Content
+
+- Landing page: `site/src/pages/index.astro`.
+- Docs: `site/src/content/docs/docs/`.
+- Styles: `site/src/styles/landing.css` and `starlight.css`.
+- Media: `site/public/media/` (demo MP4s) and `site/src/assets/screenshots/` (optimized at build).
+- SEO: Astro sitemap, canonical URLs, Open Graph image, JSON-LD for the app and FAQ.
+
+Screenshots and demo videos in the README are also used here. When the app UI changes, refresh
+them with the `dsm-promo-media` skill and update both copies.
+
+## Accessibility and motion
+
+The landing page ships small inline scripts for:
+- reveal-on-scroll (IntersectionObserver; content is visible without JS),
+- the sticky header background,
+- pausing demo videos when they leave the viewport.
+
+All motion is disabled under `prefers-reduced-motion`. The site uses semantic headings, a skip
+link, focus-visible rings and alt text on every screenshot.

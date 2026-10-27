@@ -1,0 +1,78 @@
+---
+title: Texts and sentence audio
+description: Every recognized line, with screenshot, timestamp and voice clip. Trim the audio in a waveform editor before mining.
+---
+
+The **Texts** tab is the permanent log. It is the GameSentenceMiner text hooker, rebuilt around
+Android's replay buffer: every line that auto OCR or a manual scan accepted is stored with the
+moment it appeared and the moment it was replaced.
+
+## The log
+
+Each row shows the line, how long it was on screen, its timestamp and a speaker icon when a clip
+exists. Tap a line to expand it:
+
+- the screenshot captured at that moment,
+- a waveform of the voice clip,
+- play, copy, delete and mine actions,
+- the sentence as selectable text.
+
+Newest lines are first. Tap a word to open the lookup popup; the card is linked to the line, so it
+gets the whole sentence, the screenshot and the clip.
+
+## Replay buffer
+
+Droid Sentence Miner captures playback audio through the same MediaProjection session used for
+the screen. The last 1–10 minutes (5 by default) are kept in memory as mono 24 kHz PCM.
+
+A line's clip is `[line start − before, min(line end, next line start) + after]`:
+
+- **Before** and **after** offsets are configurable in **Settings → Sentence audio**.
+- If the video is paused when a line is mined, the clip ends at the pause moment instead of
+  running to "now".
+- The clip is passed through voice-activity trimming (optional) and loudness normalization
+  (on by default).
+
+## Waveform editor
+
+Open the editor from a line before mining to adjust the exact boundaries. Drag the handles,
+preview, and confirm. The waveform is rendered from the stored PCM, so it is the same audio that
+will be attached to the card.
+
+Silence trimming is marked experimental. It is useful for visual novels with long pauses; turn it
+off if it clips short exclamations.
+
+## Microphone fallback
+
+Some apps block playback capture and hand Android pure silence. DroidDeck (Steam games) targets
+Android 9, and Netflix does not allow audio capture per stream. In those cases:
+
+1. Enable **Settings → Sentence audio → Microphone fallback** (or the bubble menu toggle).
+2. Grant the microphone permission.
+3. Keep the speaker on. With headphones the microphone records nothing useful.
+
+The microphone recorder runs alongside playback capture. If device audio is exactly zeros for a
+short period while something is playing, the microphone fills the buffer. Device audio takes over
+again as soon as a non-zero chunk arrives.
+
+The microphone chain is: Android noise suppression → 120 Hz high-pass → calibrated speaker-
+correction EQ → compressor. Noise suppression, EQ and compressor are separate settings, on by
+default for the microphone. The EQ can be measured on the device (speaker → microphone) from the
+same settings page. Every finished clip is then normalized to the same loudness.
+
+:::caution[Microphone fallback is a room recording]
+It picks up fan noise, keyboard clicks and other people. It also needs the speaker, so it will not
+work with headphones. Use it only for apps that block capture.
+:::
+
+## Storage
+
+Text log lines, screenshots and clip metadata live in a separate Room database (`textlog.db`).
+Dictionaries live in `dict.db`. The two are independent, so clearing the text log never deletes
+dictionaries and upgrading dictionaries never touches your history.
+
+## Related
+
+- [Anki mining](anki/) — where audio and screenshots go on the card.
+- [Auto OCR](auto-ocr/) — how lines are created.
+- [Settings](../reference/settings/) — buffer length, offsets and normalization.

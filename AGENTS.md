@@ -94,6 +94,29 @@ $ADB -s <serial> shell pm grant io.github.wilsonnet.droidsentenceminer.debug and
 $ADB -s <serial> shell pm grant io.github.wilsonnet.droidsentenceminer.debug com.ichi2.anki.permission.READ_WRITE_DATABASE
 ```
 
+## Website (`site/`)
+
+Marketing site + docs are a separate Node project in `site/`: Astro 7, Starlight docs under
+`/docs/`, Tailwind CSS v4 via `@tailwindcss/vite`, strictest TypeScript (`astro/tsconfigs/strictest`
+plus `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noPropertyAccessFromIndexSignature`,
+`noUncheckedSideEffectImports`, `verbatimModuleSyntax`) and Biome 2 with **all rules + all nursery
+rules** enabled (`--error-on-warnings` in CI). Astro checks are the authority for `.astro`; Biome
+cannot see template usage, so `noUnusedVariables`, `noUnusedImports` and `noUnresolvedImports` are
+off for `.astro` only. Other intentional exceptions are listed in `site/biome.json`.
+
+```bash
+cd site
+pnpm install
+pnpm dev      # http://localhost:4321/droid-sentence-miner/  (docs at /docs/)
+pnpm check    # astro check + biome check --error-on-warnings
+pnpm build    # static output in site/dist
+```
+
+Deployed by `.github/workflows/site.yml` (GitHub Pages, source = GitHub Actions) on pushes touching
+`site/`. Astro `site` = `https://wilsonnet.github.io`, `base` = `/droid-sentence-miner`; internal
+links must use `withBase()` (`src/lib/url.ts`) or Starlight's own handling. `site/README.md` has the
+project layout and content rules.
+
 ## Debug API (text control over adb)
 
 Debug builds start a loopback HTTP API from `DsmApi`/`DebugApi` (`app/src/debug/`,
@@ -425,5 +448,6 @@ app/src/main/java/io/github/wilsonnet/droidsentenceminer/
 tools/ocr-eval/   OCR benchmark scripts (desktop meikiocr, on-device runner/A-B timing, scorer, subtitle burner, hand GT)
 tools/mic-eval/   microphone fallback scoring (LTAS/PESQ/STOI vs clean speech) + Python port of the EQ fit
 tools/meiki-variants/  builds the meikiocr model cuts in app/src/main/assets/meiki (make_assets.py)
+site/             Astro/Starlight marketing site + docs (Node 24, pnpm 12)
 .opencode/skills/ dsm-debug-api, dsm-navigation, dsm-nightshade, dsm-audio, dsm-ocr-eval, dsm-docs, wisdom-increaser, dsm-promo-media, dsm-release (symlinked as .claude/skills and .agents/skills)
 ```

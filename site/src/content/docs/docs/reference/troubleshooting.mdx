@@ -1,0 +1,135 @@
+---
+title: Troubleshooting
+description: Fix capture, overlay, audio, AnkiDroid, AnkiConnect, Samsung and emulator problems.
+---
+
+## Screen capture
+
+### "Could not capture the screen"
+
+Android only produces a new frame when the screen changes. The app caches the last frame and
+normally recovers, but a fresh consent with a completely static screen can still fail. Change
+something on screen and try again, or restart capture from the bubble menu.
+
+### Capture stops when I switch apps
+
+This is expected with **A single app**. Auto OCR pauses while the captured app is not visible.
+Choose **Share entire screen** if you want to read multiple apps; otherwise return to the captured
+app.
+
+### The consent dialog appears every time
+
+Android does not persist MediaProjection consent across sessions. Grant it when you start capture.
+Rotating the screen or changing apps does not require a new consent while the session is alive.
+
+### The captured app is black
+
+Some DRM video surfaces are black to screen capture even though the rest of the app renders.
+Netflix subtitles are drawn as normal views and OCR correctly, but the video is black and audio is
+blocked. Other protected players may be fully unreadable.
+
+## Overlay and bubble
+
+### The bubble disappeared
+
+Check **Display over other apps** in Android settings. Some phones (including Xiaomi HyperOS)
+reset it after an app update or a reboot. The foreground-service notification still opens the app.
+
+### The screen dictionary blocks game buttons
+
+Turn off **Settings → OCR → Tap text on screen to look it up**, or keep the text area on the
+dialogue box so the layer only covers text.
+
+### Taps land on the wrong line
+
+The layer is up to one OCR interval old but verifies the tap after 250 ms. If the video is
+scrolling quickly or paused on a transition, tap again. Player controls over a subtitle can be
+read as text; hide them before tapping.
+
+## Audio
+
+### Clips are silent
+
+The app is recording exact digital zeros. This means the captured app opted out of playback
+capture. Common cases: DroidDeck (Steam games, targets Android 9) and Netflix. Enable
+**Microphone fallback** and keep the speaker on.
+
+Playback capture also requires Android 10+ and the microphone permission.
+
+### Clips are too quiet or too loud
+
+**Normalize volume** is on by default. If one source is still off, check **Start offset** and
+**End offset**; the default 500 ms may be too short for a slow voice line. The waveform editor can
+fix an individual clip before mining.
+
+### Microphone fallback records room noise
+
+That is what it does: it records the speaker, not the app's audio stream. Noise suppression and
+the speaker-correction EQ help with fans and the tinny speaker sound, but can soften music. It
+records nothing with headphones.
+
+### No audio on Netflix
+
+Netflix blocks per-stream audio capture. Text still works because subtitles are normal views, but
+cards get no sentence clip. This is not supported.
+
+## AnkiDroid
+
+### "No such notetype" or a refused note
+
+AnkiDroid's `addNote(modelId, deckId, fields, tags)` takes the model first and the deck second.
+The app calls it correctly; an old or modified AnkiDroid build may still refuse a note type that
+was just created. Droid Sentence Miner retries with the built-in *Basic* note type so the card is
+still created.
+
+AnkiDroid 2.25.0 has a provider bug with freshly created note types. 2.24.1 is tested, including
+media.
+
+### Permission denied
+
+Enable **AnkiDroid → Settings → Advanced → AnkiDroid API**, then grant the API permission from
+Droid Sentence Miner's **Settings → Anki**. The app can only create cards while AnkiDroid allows
+it.
+
+### Cards are missing media
+
+Check that AnkiDroid has storage permission and that the API is enabled. Media is uploaded through
+the provider; a card without a picture usually means the provider call failed, not that the
+screenshot was not captured.
+
+## AnkiConnect
+
+### Connection refused
+
+- Desktop Anki must be running with the AnkiConnect add-on installed.
+- The phone and computer must be on the same network.
+- Use the computer's LAN address, not `127.0.0.1`.
+- Allow port 8765 through the computer firewall.
+- The app permits cleartext HTTP only for the URL you configure.
+
+## Samsung and Xiaomi
+
+### Samsung freezes the app in the background
+
+With DSM in the background and no foreground service, the debug API and background work stop.
+Bring **MainActivity** forward before long-running tasks. Keep the screen on during tests with
+`adb shell svc power stayon usb`.
+
+### Xiaomi HyperOS blocks the install
+
+The first `adb install` can be cancelled by `com.miui.securitycenter` even with "Install via USB"
+on. Install once from the file manager; later `install -r` works. **Display over other apps** may
+also need to be re-enabled after a reboot.
+
+## Emulator
+
+MediaProjection capture is unreliable on emulators. With `-gpu host`, frames can contain only the
+app's own overlays; with `swiftshader_indirect`, UI is captured but video playback is black and
+silent. The emulator is fine for UI, Room, lookups and AnkiDroid card creation. Validate capture
+and auto OCR on a real device.
+
+## Still stuck?
+
+Open an issue with the device model, Android version, OCR engine, and what the log shows. If you
+can reproduce it with the built-in sample or a public video, include that; it makes the bug much
+faster to fix.

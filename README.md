@@ -7,6 +7,11 @@ line as sentence audio.
 Inspired by [GameSentenceMiner](https://github.com/bpwhelan/GameSentenceMiner), rebuilt for Android
 with [Yomitan](https://github.com/yomidevs/yomitan) dictionary compatibility.
 
+**Website:** [wilsonnet.github.io/droid-sentence-miner](https://wilsonnet.github.io/droid-sentence-miner/) ·
+**Docs:** [Installation](https://wilsonnet.github.io/droid-sentence-miner/docs/getting-started/installation/) ·
+[Auto OCR](https://wilsonnet.github.io/droid-sentence-miner/docs/guides/auto-ocr/) ·
+[Troubleshooting](https://wilsonnet.github.io/droid-sentence-miner/docs/reference/troubleshooting/)
+
 <p align="center">
   <img src="docs/screenshots/book-reader.jpg" width="30%" alt="Book reader: tap a word on a manga page" />
   <img src="docs/screenshots/texts.jpg" width="30%" alt="Texts: logged lines with screenshot and voice clip" />
@@ -158,6 +163,21 @@ GIF for the MP4; recorded on a Xiaomi Pad 7).
 Signed APKs are attached to each [GitHub release](https://github.com/WilsonNet/droid-sentence-miner/releases)
 (`droid-sentence-miner-vX.Y.Z.apk`). Download it on the device and allow installs from your browser
 or file manager; newer releases upgrade in place.
+
+## Website and docs
+
+The marketing site and these docs live in [`site/`](site/) — Astro 7, Starlight for the docs and
+Tailwind CSS v4 for the landing page. It is a separate Node project; the Android build ignores it.
+Strict TypeScript and Biome run in CI, and `.github/workflows/site.yml` deploys `site/dist` to
+GitHub Pages on every push that touches the folder.
+
+```bash
+cd site
+pnpm install
+pnpm dev      # http://localhost:4321/droid-sentence-miner/
+pnpm check    # astro check + biome check --error-on-warnings
+pnpm build    # site/dist
+```
 
 ## Building from the command line
 

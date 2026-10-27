@@ -1,0 +1,30 @@
+{
+  "name": "Droid Sentence Miner",
+  "short_name": "Sentence Miner",
+  "description": "Android sentence miner for Japanese immersion: OCR, Yomitan lookups, sentence audio and Anki mining.",
+  "start_url": "/droid-sentence-miner/",
+  "scope": "/droid-sentence-miner/",
+  "display": "standalone",
+  "background_color": "#f7f6f1",
+  "theme_color": "#1b735d",
+  "icons": [
+    {
+      "src": "/droid-sentence-miner/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/droid-sentence-miner/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/droid-sentence-miner/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

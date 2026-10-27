@@ -1,0 +1,122 @@
+---
+import logoUrl from "../assets/logo.svg?url";
+import { docsUrl, releasesUrl, repoUrl, withBase } from "../lib/url.ts";
+import Icon from "./Icon.astro";
+---
+
+<header
+  data-site-header
+  class="fixed inset-x-0 top-0 z-50 border-b border-transparent transition-[background-color,border-color,box-shadow] duration-500"
+>
+  <div class="shell flex h-16 items-center justify-between gap-4">
+    <a
+      href={withBase()}
+      class="group flex items-center gap-2.5 rounded-full py-1 pr-2 text-[0.95rem] font-semibold tracking-[-0.02em]"
+      aria-label="Droid Sentence Miner home"
+    >
+      <img
+        src={logoUrl}
+        alt=""
+        width="30"
+        height="30"
+        class="rounded-[0.55rem] shadow-sm transition-transform duration-500 ease-apple group-hover:scale-105"
+      />
+      <span class="hidden whitespace-nowrap sm:inline">Droid Sentence Miner</span>
+    </a>
+
+    <nav aria-label="Main navigation" class="hidden items-center gap-1 md:flex">
+      <a
+        href="#features"
+        class="whitespace-nowrap rounded-full px-3.5 py-2 text-sm text-muted transition-colors hover:bg-black/4 hover:text-ink"
+      >
+        Features
+      </a>
+      <a
+        href="#demo"
+        class="whitespace-nowrap rounded-full px-3.5 py-2 text-sm text-muted transition-colors hover:bg-black/4 hover:text-ink"
+      >
+        Demo
+      </a>
+      <a
+        href="#how-it-works"
+        class="whitespace-nowrap rounded-full px-3.5 py-2 text-sm text-muted transition-colors hover:bg-black/4 hover:text-ink"
+      >
+        How it works
+      </a>
+      <a
+        href={docsUrl}
+        class="whitespace-nowrap rounded-full px-3.5 py-2 text-sm text-muted transition-colors hover:bg-black/4 hover:text-ink"
+      >
+        Docs
+      </a>
+      <a
+        href={repoUrl}
+        class="ml-1 flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm text-muted transition-colors hover:bg-black/4 hover:text-ink"
+        rel="noreferrer"
+        target="_blank"
+      >
+        <Icon name="github" size={16} />
+        GitHub
+      </a>
+    </nav>
+
+    <div class="flex items-center gap-2">
+      <a
+        href={releasesUrl}
+        class="group flex items-center gap-2 rounded-full bg-ink px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-[transform,background-color] duration-300 ease-apple hover:-translate-y-0.5 hover:bg-pine-800"
+        rel="noreferrer"
+        target="_blank"
+      >
+        Download
+        <Icon
+          name="download"
+          size={15}
+          class="transition-transform duration-300 ease-apple group-hover:translate-y-0.5"
+        />
+      </a>
+
+      <details data-mobile-menu class="relative md:hidden">
+        <summary
+          class="flex size-10 cursor-pointer list-none items-center justify-center rounded-full border border-line bg-paper/70 text-ink transition-colors hover:bg-white"
+          aria-label="Open navigation menu"
+        >
+          <span class="flex w-4 flex-col gap-1">
+            <span class="h-px w-full bg-current"></span>
+            <span class="h-px w-full bg-current"></span>
+            <span class="h-px w-3/4 self-end bg-current"></span>
+          </span>
+        </summary>
+        <div
+          class="absolute top-12 right-0 w-56 rounded-2xl border border-line bg-paper p-2 shadow-xl"
+        >
+          <nav aria-label="Mobile navigation" class="flex flex-col text-sm">
+            <a class="rounded-xl px-3 py-2.5 text-muted hover:bg-black/4 hover:text-ink" href="#features">
+              Features
+            </a>
+            <a class="rounded-xl px-3 py-2.5 text-muted hover:bg-black/4 hover:text-ink" href="#demo">
+              Demo
+            </a>
+            <a
+              class="rounded-xl px-3 py-2.5 text-muted hover:bg-black/4 hover:text-ink"
+              href="#how-it-works"
+            >
+              How it works
+            </a>
+            <a class="rounded-xl px-3 py-2.5 text-muted hover:bg-black/4 hover:text-ink" href={docsUrl}>
+              Docs
+            </a>
+            <a
+              class="flex items-center gap-2 rounded-xl px-3 py-2.5 text-muted hover:bg-black/4 hover:text-ink"
+              href={repoUrl}
+              rel="noreferrer"
+              target="_blank"
+            >
+              <Icon name="github" size={15} />
+              GitHub
+            </a>
+          </nav>
+        </div>
+      </details>
+    </div>
+  </div>
+</header>

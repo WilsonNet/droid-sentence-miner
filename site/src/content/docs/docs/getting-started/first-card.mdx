@@ -1,0 +1,77 @@
+---
+title: Mine your first card
+description: A ten-minute setup that ends with a complete Anki card — sentence, reading, glossary, screenshot, word audio and the line's voice clip.
+---
+
+This is the shortest path from a fresh install to a complete card. The example uses AnkiDroid;
+the flow is the same with AnkiConnect.
+
+## 1. Install dictionaries
+
+Open **Settings → Dictionaries** and tap **Install** next to **Jitendex** and **Kanjium pitch
+accents**. Wait for the progress bar to finish. Pitch is optional but makes the card graph match
+Yomitan's.
+
+## 2. Choose an Anki backend
+
+Open **Settings → Anki** and pick one:
+
+- **AnkiDroid** — install AnkiDroid, grant the API permission from the settings page, and enable
+  **AnkiDroid → Settings → Advanced → AnkiDroid API**.
+- **AnkiConnect** — start desktop Anki with the AnkiConnect add-on and enter its address, for
+  example `http://192.168.1.10:8765`.
+
+Then pick a deck and note type. If you do not have one, Droid Sentence Miner creates a usable
+note type for you. Existing note types such as Anki's *Basic* or a Yomitan/GameSentenceMiner
+*Anime Cards* type are filled by field name. See [Anki mining](../guides/anki/).
+
+## 3. Download the OCR models
+
+Open **Settings → OCR → Download meikiocr models**. This is a one-time 31 MB download. If you skip
+it, the app uses ML Kit.
+
+## 4. Try the built-in sample
+
+The **Home** tab contains a public-domain Aozora Bunko passage and an image picker. Use **Pick an
+image** to test OCR, lookup and mining without opening a game. This is also a quick way to confirm
+that Anki is connected.
+
+## 5. Set up auto OCR
+
+1. Open the game or video and start playback.
+2. Long-press the floating bubble → **Start auto OCR**.
+3. In Android's share sheet choose **A single app** and pick the game. On older Android versions,
+   share the entire screen.
+4. If no text area exists for the current orientation, the area editor opens. Drag a box over the
+   dialogue box or subtitle area, then tap **Save**. Keep the box on the text itself — not on
+   buttons such as スキップ or クイックロード.
+5. Open **Live text** and check that new lines appear as the game speaks.
+
+The first read usually appears within a second. A line is logged after several reads agree, so a
+typewriter line may take a few hundred milliseconds longer.
+
+## 6. Mine the line
+
+Tap a word in the live subtitle, in the floating live window, or on the **Texts** tab. The
+definition popup opens. Tap **Anki**; the button becomes **✓ In Anki** when the card is created.
+
+The card contains:
+
+- the word and its reading,
+- the rendered glossary (and pitch graph if configured),
+- the full context sentence,
+- a screenshot of the game at the moment the line was read,
+- word audio from JapanesePod101/Jisho,
+- the sentence's voice clip from the replay buffer.
+
+## 7. Check the result
+
+Open AnkiDroid or Anki and find the note in the selected deck. If the fields look wrong, open
+[Anki mining](../guides/anki/) to see how fields are mapped, or **Settings → Anki** to change the
+note type.
+
+:::tip[The sentence is the point]
+A card is much more useful with the original sentence and audio than with the word alone. DSM
+always tries to attach the line it came from; if a lookup has no sentence, it still creates a word
+card with audio and picture.
+:::

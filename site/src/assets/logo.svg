@@ -1,0 +1,16 @@
+<svg aria-label="Droid Sentence Miner" role="img" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" >
+  <defs>
+    <linearGradient gradientUnits="userSpaceOnUse" id="g" x1="8" x2="56" y1="6" y2="60" >
+      <stop stop-color="#2f9f80" />
+      <stop offset="1" stop-color="#123f33" />
+    </linearGradient>
+  </defs>
+  <rect fill="url(#g)" height="64" rx="16" width="64" />
+  <g fill="#f7f6f1">
+    <rect height="4.5" rx="2.25" width="29" x="13" y="15" />
+    <rect height="4.5" rx="2.25" width="29" x="13" y="24" />
+    <rect height="4.5" rx="2.25" width="18" x="13" y="33" />
+  </g>
+  <circle cx="37" cy="37" fill="none" r="10" stroke="#f7f6f1" stroke-width="4.5" />
+  <path d="M47 47 54 54" fill="none" stroke="#f7f6f1" stroke-linecap="round" stroke-width="5.5" />
+</svg>

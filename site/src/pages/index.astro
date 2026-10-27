@@ -1,0 +1,1031 @@
+---
+import bookReader from "../assets/screenshots/book-reader.jpg";
+import settingsAudio from "../assets/screenshots/settings-audio.jpg";
+import texts from "../assets/screenshots/texts.jpg";
+import Icon from "../components/Icon.astro";
+import PhoneFrame from "../components/PhoneFrame.astro";
+import SiteFooter from "../components/SiteFooter.astro";
+import SiteHeader from "../components/SiteHeader.astro";
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { docsUrl, releasesUrl, repoUrl, withBase } from "../lib/url.ts";
+
+const pageTitle = "Droid Sentence Miner — Japanese OCR, Yomitan lookup and Anki mining for Android";
+const pageDescription =
+  "Android sentence miner for Japanese immersion: OCR games and videos, tap words for Yomitan definitions, and mine sentence cards with audio and screenshots into Anki.";
+
+const faqs = [
+  {
+    answer:
+      "Yes. It is free software under the GPL-3.0 license, with no account, subscription, ads or telemetry. The source code is on GitHub, and signed APKs are attached to every release.",
+    question: "Is Droid Sentence Miner free?",
+  },
+  {
+    answer:
+      "No. Droid Sentence Miner uses Android's standard MediaProjection screen-sharing consent, the same mechanism as screen recorders. Root is not required, and the app works on a normal retail device.",
+    question: "Do I need root or a modified phone?",
+  },
+  {
+    answer:
+      "Android 8.0 (API 26) or newer. Sentence audio capture needs Android 10 or newer. On Android 14 and 15 the system asks you to share one app or the entire screen before capture starts.",
+    question: "Which Android version do I need?",
+  },
+  {
+    answer:
+      "Any app whose text is visible on screen can be read. That includes visual novels, YouTube hardsubs, streaming apps, emulators and manga viewers. DRM-protected video surfaces stay black, and apps that opt out of audio capture will be silent unless microphone fallback is enabled.",
+    question: "Does it work with games, YouTube and visual novels?",
+  },
+  {
+    answer:
+      "Both are supported. AnkiDroid talks to the AnkiDroid API on the same phone, so no network is needed. AnkiConnect sends cards to desktop Anki over your local network using the AnkiConnect add-on.",
+    question: "AnkiDroid or AnkiConnect?",
+  },
+  {
+    answer:
+      "No dictionaries ship with the APK. Install Jitendex, JMdict or Kanjium pitch accents with one tap from Settings, or import any Yomitan format 3 zip, including monolingual dictionaries, frequency lists and pitch dictionaries.",
+    question: "Are dictionaries included?",
+  },
+  {
+    answer:
+      "Book mode is built for paper: it reads tategaki columns right to left, filters ruby, joins split sentences and lays the text back over the page so you can tap the printed characters. Live screen OCR is tuned for horizontal game text and subtitles.",
+    question: "Can it read vertical Japanese and manga?",
+  },
+  {
+    answer:
+      "Yes when the app allows playback capture. A replay buffer keeps the last few minutes of device audio, and each line is cut from when it appeared to when it was replaced. Apps such as DroidDeck and Netflix block capture; the optional microphone fallback records the speaker instead.",
+    question: "Does it capture the character's voice?",
+  },
+] as const;
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@id": "https://wilsonnet.github.io/droid-sentence-miner/#app",
+      "@type": "SoftwareApplication",
+      applicationCategory: "EducationalApplication",
+      author: { "@type": "Person", name: "Wilson Neto" },
+      codeRepository: repoUrl,
+      description: pageDescription,
+      downloadUrl: releasesUrl,
+      featureList: [
+        "Japanese OCR for Android games and videos",
+        "Yomitan dictionary lookup",
+        "AnkiDroid and AnkiConnect mining",
+        "Sentence audio capture and replay buffer",
+        "Manga and book page OCR",
+        "Floating screen dictionary",
+      ],
+      image: "https://wilsonnet.github.io/droid-sentence-miner/og.png",
+      license: "https://www.gnu.org/licenses/gpl-3.0.html",
+      name: "Droid Sentence Miner",
+      offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+      operatingSystem: "Android 8.0+",
+      softwareVersion: "latest",
+      url: "https://wilsonnet.github.io/droid-sentence-miner/",
+    },
+    {
+      "@type": "FAQPage",
+      mainEntity: faqs.map((faq) => ({
+        "@type": "Question",
+        acceptedAnswer: { "@type": "Answer", text: faq.answer },
+        name: faq.question,
+      })),
+    },
+    {
+      "@type": "WebSite",
+      inLanguage: "en",
+      name: "Droid Sentence Miner",
+      url: "https://wilsonnet.github.io/droid-sentence-miner/",
+    },
+  ],
+};
+
+const waveform = [
+  22, 48, 34, 70, 52, 88, 64, 40, 76, 96, 58, 42, 68, 84, 50, 30, 62, 78, 46, 56, 36, 66, 44, 28,
+];
+
+const installationSteps = [
+  {
+    copy: "Pick the game or video in Android's share sheet. Choose one app so only that app is read, and draw a box around the dialogue or subtitles.",
+    number: "01",
+    title: "Share the screen once",
+  },
+  {
+    copy: "A line of Japanese appears. Tap any word in it, on the live subtitle or in the text log. Yomitan dictionaries open instantly, with pitch and kanji.",
+    number: "02",
+    title: "Tap the word you see",
+  },
+  {
+    copy: "One press builds the card: expression, reading, glossary, context sentence, screenshot, word audio and the voice line. Then keep playing.",
+    number: "03",
+    title: "Mine the whole sentence",
+  },
+];
+---
+
+<BaseLayout title={pageTitle} description={pageDescription} jsonLd={jsonLd}>
+  <SiteHeader />
+
+  <main id="main">
+    <section class="hero-atmosphere relative overflow-hidden pt-32 pb-0 sm:pt-40">
+      <div class="hero-grid pointer-events-none absolute inset-0" aria-hidden="true"></div>
+      <div
+        class="hero-glow pointer-events-none absolute top-[-18rem] left-1/2 size-[38rem] -translate-x-1/2 animate-drift rounded-full opacity-60"
+        aria-hidden="true"
+      >
+      </div>
+      <div class="noise pointer-events-none absolute inset-0" aria-hidden="true"></div>
+
+      <div class="shell relative">
+        <div class="grid items-center gap-16 lg:grid-cols-[1.02fr_0.98fr] lg:gap-10">
+          <div class="max-w-2xl">
+            <p
+              class="hero-rise inline-flex items-center gap-2 rounded-full border border-pine-200/80 bg-white/55 px-3.5 py-1.5 text-[0.7rem] font-medium tracking-[0.02em] text-pine-800 shadow-sm backdrop-blur-sm"
+            >
+              <span class="size-1.5 rounded-full bg-pine-500 animate-pulse-soft"></span>
+              Android · Yomitan dictionaries · Anki
+            </p>
+
+            <h1
+              class="hero-rise mt-7 text-[clamp(2.9rem,7.2vw,5.65rem)] leading-[0.94] font-semibold tracking-[-0.05em]"
+              style="animation-delay: 60ms"
+            >
+              Mine Japanese from <span class="text-gradient">anything</span> on your screen.
+            </h1>
+
+            <p
+              class="hero-rise mt-7 max-w-xl text-lg leading-8 text-muted sm:text-xl sm:leading-9"
+              style="animation-delay: 120ms"
+            >
+              Droid Sentence Miner reads the text in your games, videos and manga, gives you
+              Yomitan dictionaries in one tap, and sends sentence cards — with the character's
+              voice and a screenshot — straight to Anki.
+            </p>
+
+            <div
+              class="hero-rise mt-9 flex flex-col gap-3 sm:flex-row sm:items-center"
+              style="animation-delay: 180ms"
+            >
+              <a
+                href={releasesUrl}
+                class="group inline-flex items-center justify-center gap-2.5 rounded-full bg-ink px-6 py-3.5 text-sm font-semibold text-white shadow-[0_16px_32px_-16px_rgb(8_36_31/55%)] transition-[transform,background-color] duration-300 ease-apple hover:-translate-y-0.5 hover:bg-pine-800"
+                rel="noreferrer"
+                target="_blank"
+              >
+                Download for Android
+                <Icon
+                  name="download"
+                  size={17}
+                  class="transition-transform duration-300 ease-apple group-hover:translate-y-0.5"
+                />
+              </a>
+              <a
+                href={docsUrl}
+                class="group inline-flex items-center justify-center gap-2 rounded-full border border-ink/10 bg-white/55 px-6 py-3.5 text-sm font-semibold text-ink backdrop-blur-sm transition-[transform,border-color,background-color] duration-300 ease-apple hover:-translate-y-0.5 hover:border-ink/20 hover:bg-white"
+              >
+                Read the docs
+                <Icon
+                  name="arrow-right"
+                  size={16}
+                  class="transition-transform duration-300 ease-apple group-hover:translate-x-1"
+                />
+              </a>
+            </div>
+
+            <p
+              class="hero-rise mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted"
+              style="animation-delay: 240ms"
+            >
+              <span class="flex items-center gap-1.5">
+                <Icon name="check" size={14} class="text-pine-600" />
+                Free and open source
+              </span>
+              <span class="flex items-center gap-1.5">
+                <Icon name="shield" size={14} class="text-pine-600" />
+                OCR and lookups on device
+              </span>
+              <span class="flex items-center gap-1.5">
+                <Icon name="cpu" size={14} class="text-pine-600" />
+                Android 8+
+              </span>
+            </p>
+          </div>
+
+          <div class="relative mx-auto w-full max-w-[34rem]">
+            <div
+              class="absolute top-1/2 left-1/2 size-[26rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-pine-300/30 blur-3xl"
+              aria-hidden="true"
+            >
+            </div>
+
+            <div class="relative flex justify-center">
+              <div
+                class="glass-card animate-float absolute top-24 -left-4 z-20 hidden w-52 rounded-2xl p-4 sm:block"
+                aria-hidden="true"
+              >
+                <div class="flex items-center gap-2.5">
+                  <span
+                    class="grid size-8 place-items-center rounded-full bg-pine-50 text-pine-700 ring-1 ring-pine-200"
+                  >
+                    <Icon name="check" size={15} />
+                  </span>
+                  <div>
+                    <p class="text-xs font-semibold text-ink">Added to Anki</p>
+                    <p class="text-[0.65rem] text-muted">Sentence · audio · screenshot</p>
+                  </div>
+                </div>
+                <div class="mt-3 h-1.5 overflow-hidden rounded-full bg-line">
+                  <div class="h-full w-full rounded-full bg-pine-500"></div>
+                </div>
+              </div>
+
+              <PhoneFrame
+                image={bookReader}
+                alt="Droid Sentence Miner reading a manga page: the word お願い is selected and its Yomitan definition is open beside it, with an Anki button."
+                class="relative z-10"
+                priority
+              />
+
+              <div
+                class="glass-card animate-float-slow absolute right-0 bottom-24 z-20 hidden w-56 rounded-2xl p-4 sm:block"
+                style="animation-delay: -4s"
+                aria-hidden="true"
+              >
+                <div class="flex items-center justify-between">
+                  <p class="text-[0.65rem] font-semibold tracking-[0.12em] text-muted uppercase">
+                    Sentence audio
+                  </p>
+                  <span class="text-[0.65rem] text-pine-700">4.2s</span>
+                </div>
+                <div class="mt-3 flex h-10 items-end gap-1">
+                  {
+                    waveform.slice(0, 16).map((height) => (
+                      <span
+                        class="w-1 flex-1 rounded-full bg-pine-500/80"
+                        style={`height: ${height}%`}
+                      />
+                    ))
+                  }
+                </div>
+                <div class="mt-2 flex items-center gap-1.5 text-[0.65rem] text-muted">
+                  <Icon name="volume" size={12} class="text-pine-600" />
+                  Trimmed · normalized
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-20 border-t border-line/80 py-6 sm:mt-24">
+          <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <p class="text-[0.65rem] font-semibold tracking-[0.18em] text-muted uppercase">
+              Plays well with
+            </p>
+            <ul
+              class="flex flex-wrap items-center gap-x-7 gap-y-2 text-sm font-medium text-muted/90"
+            >
+              <li>AnkiDroid</li>
+              <li>AnkiConnect</li>
+              <li>Yomitan</li>
+              <li>Jitendex</li>
+              <li>meikiocr</li>
+              <li>ML Kit</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="how-it-works" class="scroll-mt-24 border-t border-line bg-paper py-24 sm:py-32">
+      <div class="shell">
+        <div class="max-w-2xl" data-reveal>
+          <p class="text-[0.7rem] font-semibold tracking-[0.18em] text-pine-700 uppercase">
+            From screen to Anki
+          </p>
+          <h2 class="mt-4 text-4xl font-semibold tracking-[-0.04em] sm:text-5xl">
+            Three taps. One complete sentence card.
+          </h2>
+          <p class="mt-5 text-lg leading-8 text-muted">
+            No screenshots to crop, no text to copy, no audio to trim by hand. The moment a line
+            appears on screen, everything needed for the card already exists.
+          </p>
+        </div>
+
+        <ol class="mt-14 grid gap-4 md:grid-cols-3">
+          {
+            installationSteps.map((step, index) => (
+              <li
+                class="reveal relative rounded-[1.75rem] border border-line bg-cream/60 p-7"
+                style={`--reveal-delay: ${index * 80}ms`}
+                data-reveal
+              >
+                <span class="font-mono text-xs tracking-[0.12em] text-pine-600">
+                  {step.number}
+                </span>
+                <h3 class="mt-5 text-xl font-semibold tracking-[-0.02em]">{step.title}</h3>
+                <p class="mt-3 text-sm leading-6 text-muted">{step.copy}</p>
+                <span
+                  class="absolute top-7 right-7 size-2 rounded-full bg-pine-300"
+                  aria-hidden="true"
+                />
+              </li>
+            ))
+          }
+        </ol>
+
+        <div class="mt-16 rounded-[1.75rem] border border-line bg-cream/60 p-6 sm:p-8" data-reveal>
+          <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <h3 class="text-sm font-semibold tracking-[-0.01em]">Under the hood</h3>
+            <p class="text-xs text-muted">Every step runs on the phone</p>
+          </div>
+          <div
+            class="mt-6 grid gap-3 text-center text-[0.7rem] font-medium text-muted sm:grid-cols-5"
+          >
+            {
+              [
+                ["Screen capture", "MediaProjection"],
+                ["OCR", "meikiocr · ML Kit"],
+                ["Line tracking", "reads must agree"],
+                ["Lookup", "Yomitan + deinflection"],
+                ["Mining", "AnkiDroid · AnkiConnect"],
+              ].map(([title, detail], index) => (
+                <div class="relative rounded-xl border border-line bg-paper px-3 py-4">
+                  {index < 4 && (
+                    <span
+                      class="absolute top-1/2 -right-3 hidden h-px w-3 bg-line sm:block"
+                      aria-hidden="true"
+                    />
+                  )}
+                  <p class="text-ink">{title}</p>
+                  <p class="mt-1 text-[0.65rem] font-normal">{detail}</p>
+                </div>
+              ))
+            }
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="features" class="scroll-mt-24 py-24 sm:py-32">
+      <div class="shell">
+        <div class="max-w-2xl" data-reveal>
+          <p class="text-[0.7rem] font-semibold tracking-[0.18em] text-pine-700 uppercase">
+            Features
+          </p>
+          <h2 class="mt-4 text-4xl font-semibold tracking-[-0.04em] sm:text-5xl">
+            Everything between seeing a word and owning it.
+          </h2>
+          <p class="mt-5 text-lg leading-8 text-muted">
+            A miner is only useful if it keeps up with what you are reading. Every part of Droid
+            Sentence Miner is tuned for that gap between recognition and recall.
+          </p>
+        </div>
+
+        <div class="mt-14 grid gap-4 md:grid-cols-2 lg:grid-cols-6">
+          <article
+            class="feature-card reveal p-7 sm:p-9 lg:col-span-4"
+            data-reveal
+          >
+            <span
+              class="grid size-11 place-items-center rounded-2xl bg-pine-50 text-pine-700 ring-1 ring-pine-100"
+            >
+              <Icon name="scan" size={21} />
+            </span>
+            <h3 class="mt-6 text-2xl font-semibold tracking-[-0.03em]">Tap the subtitle itself.</h3>
+            <p class="mt-3 max-w-xl text-sm leading-6 text-muted">
+              An invisible text layer sits exactly over the real characters. Tap a word in a
+              game, a YouTube hardsub or a manga page and the definition opens right there. Hold
+              and drag to select characters yourself.
+            </p>
+
+            <div
+              class="mt-8 overflow-hidden rounded-[1.35rem] bg-[#0a1411] p-5 text-white ring-1 ring-white/10"
+              aria-hidden="true"
+            >
+              <div class="flex items-center justify-between text-[0.6rem] tracking-[0.16em] uppercase">
+                <span class="flex items-center gap-1.5 text-white/45">
+                  <span class="size-1.5 rounded-full bg-pine-400 animate-pulse-soft"></span>
+                  Screen text
+                </span>
+                <span class="font-jp text-white/35 tracking-normal">日本語</span>
+              </div>
+              <p class="mt-5 font-jp text-[1.02rem] leading-8 text-white/85">
+                この<span
+                  class="mx-0.5 rounded-md bg-pine-400/25 px-1 text-white ring-1 ring-pine-300/70"
+                >消防車</span
+                >は、ホテルの安全を守っている。
+              </p>
+              <div class="mt-4 max-w-sm rounded-xl bg-white p-3.5 text-ink shadow-2xl">
+                <div class="flex items-baseline gap-2">
+                  <span class="font-jp text-lg font-semibold">消防車</span>
+                  <span class="font-jp text-xs text-muted">しょうぼうしゃ</span>
+                  <span
+                    class="ml-auto rounded-full bg-pine-600 px-2.5 py-1 text-[0.6rem] font-semibold text-white"
+                  >
+                    + Anki
+                  </span>
+                </div>
+                <p class="mt-1.5 text-xs text-muted">fire engine · fire truck</p>
+                <div class="mt-2 flex gap-1.5 text-[0.55rem] text-pine-800">
+                  <span class="rounded-full bg-pine-50 px-2 py-0.5">noun</span>
+                  <span class="rounded-full bg-pine-50 px-2 py-0.5">JLPT N3</span>
+                  <span class="rounded-full bg-pine-50 px-2 py-0.5">pitch: 3</span>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article
+            class="feature-card reveal p-7 sm:p-8 lg:col-span-2"
+            style="--reveal-delay: 60ms"
+            data-reveal
+          >
+            <span
+              class="grid size-11 place-items-center rounded-2xl bg-pine-50 text-pine-700 ring-1 ring-pine-100"
+            >
+              <Icon name="headphones" size={21} />
+            </span>
+            <h3 class="mt-6 text-xl font-semibold tracking-[-0.02em]">Hear the line, not the scene.</h3>
+            <p class="mt-3 text-sm leading-6 text-muted">
+              A replay buffer keeps the last few minutes of audio. Each line gets a clip cut from
+              when it appeared, trimmed in a waveform editor and normalized.
+            </p>
+            <div class="mt-7 flex h-24 items-end gap-1" aria-hidden="true">
+              {
+                waveform.map((height, index) => (
+                  <span
+                    class="wave-bar w-1 flex-1 rounded-full bg-pine-500/75"
+                    style={`height: ${height}%; animation-delay: ${index * 70}ms`}
+                  />
+                ))
+              }
+            </div>
+            <div class="mt-3 flex items-center justify-between text-[0.65rem] text-muted">
+              <span>line start − 0.32s</span>
+              <span>line start + 0.08s</span>
+            </div>
+          </article>
+
+          <article
+            class="feature-card reveal p-7 sm:p-8 lg:col-span-2"
+            style="--reveal-delay: 80ms"
+            data-reveal
+          >
+            <span
+              class="grid size-11 place-items-center rounded-2xl bg-pine-50 text-pine-700 ring-1 ring-pine-100"
+            >
+              <Icon name="text" size={21} />
+            </span>
+            <h3 class="mt-6 text-xl font-semibold tracking-[-0.02em]">
+              OCR that waits for the line to settle.
+            </h3>
+            <p class="mt-3 text-sm leading-6 text-muted">
+              Typewriter text, fades and moving backgrounds. Frames are compared cell by cell and
+              every read votes, so a half-typed sentence never becomes a card.
+            </p>
+            <div class="mt-7 space-y-2" aria-hidden="true">
+              <div class="h-2 w-10/12 rounded-full bg-ink/10"></div>
+              <div class="h-2 w-8/12 rounded-full bg-ink/10"></div>
+              <div class="h-2 w-11/12 rounded-full bg-pine-200"></div>
+            </div>
+            <p class="mt-4 flex items-center gap-1.5 text-[0.65rem] text-pine-700">
+              <Icon name="check" size={12} />
+              3 reads agree · line logged
+            </p>
+          </article>
+
+          <article
+            class="feature-card reveal p-7 sm:p-8 lg:col-span-2"
+            style="--reveal-delay: 100ms"
+            data-reveal
+          >
+            <span
+              class="grid size-11 place-items-center rounded-2xl bg-pine-50 text-pine-700 ring-1 ring-pine-100"
+            >
+              <Icon name="layers" size={21} />
+            </span>
+            <h3 class="mt-6 text-xl font-semibold tracking-[-0.02em]">
+              Cards that look like your cards.
+            </h3>
+            <p class="mt-3 text-sm leading-6 text-muted">
+              Field mapping for anime-style note types. Sentence, screenshot, word audio,
+              sentence audio and a byte-identical Yomitan pitch graph.
+            </p>
+            <div class="mt-7 rounded-xl border border-line bg-white p-4 shadow-sm" aria-hidden="true">
+              <div class="flex items-center justify-between text-[0.55rem] tracking-[0.14em] text-muted uppercase">
+                <span>Anime Cards</span>
+                <span class="flex items-center gap-1 text-pine-700">
+                  <Icon name="check" size={10} />
+                  added
+                </span>
+              </div>
+              <p class="mt-2.5 font-jp text-lg font-semibold">
+                消防車 <span class="text-xs font-normal text-muted">しょうぼうしゃ</span>
+              </p>
+              <p class="mt-1 text-xs text-muted">fire engine</p>
+              <div class="mt-3 flex gap-1.5 text-[0.55rem]">
+                <span class="rounded-full bg-pine-50 px-2 py-0.5 text-pine-800">Audio</span>
+                <span class="rounded-full bg-pine-50 px-2 py-0.5 text-pine-800">Picture</span>
+                <span class="rounded-full bg-pine-50 px-2 py-0.5 text-pine-800">Pitch</span>
+              </div>
+            </div>
+          </article>
+
+          <article
+            class="feature-card reveal p-7 sm:p-8 lg:col-span-3"
+            style="--reveal-delay: 60ms"
+            data-reveal
+          >
+            <span
+              class="grid size-11 place-items-center rounded-2xl bg-pine-50 text-pine-700 ring-1 ring-pine-100"
+            >
+              <Icon name="book" size={21} />
+            </span>
+            <h3 class="mt-6 text-2xl font-semibold tracking-[-0.03em]">Paper books and manga.</h3>
+            <p class="mt-3 max-w-lg text-sm leading-6 text-muted">
+              Photograph a page. Book mode reads tategaki columns right to left and horizontal
+              print, drops ruby, joins split sentences and outlines each paragraph. Tap the
+              printed text itself to look it up, then mine the page as the card's picture.
+            </p>
+            <ul class="mt-6 grid gap-2 text-xs text-muted sm:grid-cols-2">
+              <li class="flex items-center gap-2">
+                <Icon name="check" size={13} class="text-pine-600" />
+                Vertical and horizontal layout
+              </li>
+              <li class="flex items-center gap-2">
+                <Icon name="check" size={13} class="text-pine-600" />
+                Ruby and page-number filtering
+              </li>
+              <li class="flex items-center gap-2">
+                <Icon name="check" size={13} class="text-pine-600" />
+                Paragraph crop as card image
+              </li>
+              <li class="flex items-center gap-2">
+                <Icon name="check" size={13} class="text-pine-600" />
+                Pinch, zoom and correct OCR
+              </li>
+            </ul>
+          </article>
+
+          <article
+            class="feature-card reveal bg-pine-950 p-7 text-white sm:p-8 lg:col-span-3"
+            style="--reveal-delay: 80ms"
+            data-reveal
+          >
+            <span
+              class="grid size-11 place-items-center rounded-2xl bg-white/10 text-pine-200 ring-1 ring-white/10"
+            >
+              <Icon name="shield" size={21} />
+            </span>
+            <h3 class="mt-6 text-2xl font-semibold tracking-[-0.03em]">Your reading stays yours.</h3>
+            <p class="mt-3 max-w-lg text-sm leading-6 text-white/60">
+              OCR, deinflection and dictionary lookup run on the phone. Reading history lives in a
+              local database. The only network calls are the ones you choose: dictionary or model
+              downloads, your own AnkiConnect server, and the word-audio sources.
+            </p>
+            <div class="mt-7 flex flex-wrap gap-2 text-[0.65rem] text-white/70">
+              <span class="rounded-full border border-white/10 bg-white/5 px-3 py-1.5">No account</span>
+              <span class="rounded-full border border-white/10 bg-white/5 px-3 py-1.5">No telemetry</span>
+              <span class="rounded-full border border-white/10 bg-white/5 px-3 py-1.5">On-device OCR</span>
+              <span class="rounded-full border border-white/10 bg-white/5 px-3 py-1.5">Local database</span>
+            </div>
+          </article>
+
+          <article
+            class="feature-card reveal p-7 sm:p-8 lg:col-span-2"
+            style="--reveal-delay: 100ms"
+            data-reveal
+          >
+            <span
+              class="grid size-11 place-items-center rounded-2xl bg-pine-50 text-pine-700 ring-1 ring-pine-100"
+            >
+              <Icon name="cpu" size={21} />
+            </span>
+            <h3 class="mt-6 text-xl font-semibold tracking-[-0.02em]">Japanese OCR trained on games.</h3>
+            <p class="mt-3 text-sm leading-6 text-muted">
+              meikiocr runs on-device with ONNX Runtime. It was trained on Japanese game text and
+              makes 3–19× fewer character errors than ML Kit on stylized fonts.
+            </p>
+          </article>
+
+          <article
+            class="feature-card reveal p-7 sm:p-8 lg:col-span-2"
+            style="--reveal-delay: 120ms"
+            data-reveal
+          >
+            <span
+              class="grid size-11 place-items-center rounded-2xl bg-pine-50 text-pine-700 ring-1 ring-pine-100"
+            >
+              <Icon name="sparkles" size={21} />
+            </span>
+            <h3 class="mt-6 text-xl font-semibold tracking-[-0.02em]">Bring your own dictionaries.</h3>
+            <p class="mt-3 text-sm leading-6 text-muted">
+              Any Yomitan format 3 zip: Jitendex, JMdict, KANJIDIC, frequency and pitch
+              dictionaries. Or install the essentials with one tap.
+            </p>
+            <div class="mt-5 flex flex-wrap gap-1.5 text-[0.6rem] text-muted">
+              <span class="rounded-full border border-line bg-white px-2.5 py-1">Jitendex</span>
+              <span class="rounded-full border border-line bg-white px-2.5 py-1">JMdict</span>
+              <span class="rounded-full border border-line bg-white px-2.5 py-1">Kanji</span>
+              <span class="rounded-full border border-line bg-white px-2.5 py-1">Pitch</span>
+              <span class="rounded-full border border-line bg-white px-2.5 py-1">Frequency</span>
+            </div>
+          </article>
+
+          <article
+            class="feature-card reveal p-7 sm:p-8 lg:col-span-2"
+            style="--reveal-delay: 140ms"
+            data-reveal
+          >
+            <span
+              class="grid size-11 place-items-center rounded-2xl bg-pine-50 text-pine-700 ring-1 ring-pine-100"
+            >
+              <Icon name="check" size={21} />
+            </span>
+            <h3 class="mt-6 text-xl font-semibold tracking-[-0.02em]">Already in Anki, never twice.</h3>
+            <p class="mt-3 text-sm leading-6 text-muted">
+              Before adding, the popup checks your configured note type for the word. Existing
+              words show ✓ In Anki instead of creating a duplicate.
+            </p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="demo" class="scroll-mt-24 border-y border-line bg-paper py-24 sm:py-32">
+      <div class="shell">
+        <div class="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between" data-reveal>
+          <div class="max-w-2xl">
+            <p class="text-[0.7rem] font-semibold tracking-[0.18em] text-pine-700 uppercase">
+              Real sessions
+            </p>
+            <h2 class="mt-4 text-4xl font-semibold tracking-[-0.04em] sm:text-5xl">
+              Watch a card get made.
+            </h2>
+            <p class="mt-5 text-lg leading-8 text-muted">
+              Two recordings on a Xiaomi Pad 7. Tap a word in a visual novel, then in a burned-in
+              YouTube subtitle. Both cards get the sentence, a screenshot, word audio and the
+              character's voice.
+            </p>
+          </div>
+          <a
+            href={`${repoUrl}/blob/main/docs/videos`}
+            class="group inline-flex items-center gap-2 text-sm font-semibold text-pine-800 transition-colors hover:text-pine-600"
+            rel="noreferrer"
+            target="_blank"
+          >
+            MP4 files on GitHub
+            <Icon
+              name="arrow-right"
+              size={15}
+              class="transition-transform duration-300 ease-apple group-hover:translate-x-1"
+            />
+          </a>
+        </div>
+
+        <div class="mt-12 grid gap-6 lg:grid-cols-2">
+          <figure class="reveal" data-reveal>
+            <div
+              class="overflow-hidden rounded-[1.6rem] border border-line bg-ink shadow-lift ring-1 ring-black/5"
+            >
+              <video
+                class="aspect-[3/2] w-full"
+                autoplay
+                muted
+                loop
+                playsinline
+                preload="metadata"
+                poster={withBase("media/nightshade-mining-poster.jpg")}
+                data-demo-video
+                aria-label="Mining the word 手薄 from Nightshade, a visual novel running through DroidDeck"
+              >
+                <source src={withBase("media/nightshade-mining.mp4")} type="video/mp4" />
+              </video>
+            </div>
+            <figcaption class="mt-4 flex flex-col gap-1 sm:flex-row sm:justify-between">
+              <div>
+                <p class="text-sm font-semibold">Visual novel · Nightshade</p>
+                <p class="mt-1 text-xs text-muted">
+                  Tap 手薄 in the dialogue box → definition → Anki → ✓ In Anki
+                </p>
+              </div>
+              <span class="text-[0.65rem] text-muted">DroidDeck · Xiaomi Pad 7</span>
+            </figcaption>
+          </figure>
+
+          <figure class="reveal" style="--reveal-delay: 80ms" data-reveal>
+            <div
+              class="overflow-hidden rounded-[1.6rem] border border-line bg-ink shadow-lift ring-1 ring-black/5"
+            >
+              <video
+                class="aspect-[3/2] w-full"
+                autoplay
+                muted
+                loop
+                playsinline
+                preload="metadata"
+                poster={withBase("media/youtube-mining-poster.jpg")}
+                data-demo-video
+                aria-label="Mining the word 消防車 from a burned-in YouTube subtitle"
+              >
+                <source src={withBase("media/youtube-mining.mp4")} type="video/mp4" />
+              </video>
+            </div>
+            <figcaption class="mt-4 flex flex-col gap-1 sm:flex-row sm:justify-between">
+              <div>
+                <p class="text-sm font-semibold">YouTube · burned-in subtitles</p>
+                <p class="mt-1 text-xs text-muted">
+                  Tap 消防車 in the subtitle → Anki → ✓ In Anki
+                </p>
+              </div>
+              <span class="text-[0.65rem] text-muted">Screen dictionary · Xiaomi Pad 7</span>
+            </figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <section class="py-24 sm:py-32">
+      <div class="shell">
+        <div
+          class="relative overflow-hidden rounded-[2.25rem] bg-pine-950 px-6 py-14 text-white shadow-lift sm:px-12 sm:py-16"
+        >
+          <div
+            class="pointer-events-none absolute -top-40 -right-24 size-[30rem] rounded-full bg-pine-500/20 blur-3xl"
+            aria-hidden="true"
+          >
+          </div>
+          <div class="noise pointer-events-none absolute inset-0" aria-hidden="true"></div>
+
+          <div class="relative grid gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-end" data-reveal>
+            <div>
+              <p class="text-[0.7rem] font-semibold tracking-[0.18em] text-pine-300 uppercase">
+                Measured, not felt
+              </p>
+              <h2 class="mt-4 max-w-md text-4xl font-semibold tracking-[-0.04em] sm:text-5xl">
+                Accuracy you can hear.
+              </h2>
+              <p class="mt-5 max-w-md text-sm leading-7 text-white/60">
+                Benchmarks use the same crops for both engines and hand-checked ground truth.
+                Character error rate, lower is better.
+              </p>
+            </div>
+
+            <dl class="grid grid-cols-2 gap-x-6 gap-y-10">
+              <div>
+                <dt class="text-xs text-white/50">Fewer character errors</dt>
+                <dd class="mt-2 text-5xl font-semibold tracking-[-0.05em] text-pine-200">
+                  3–19×
+                  <span class="mt-2 block text-[0.7rem] font-normal text-white/45">
+                    meikiocr vs. ML Kit
+                  </span>
+                </dd>
+              </div>
+              <div>
+                <dt class="text-xs text-white/50">Boxed subtitle CER</dt>
+                <dd class="mt-2 text-5xl font-semibold tracking-[-0.05em] text-pine-200">
+                  0.16%
+                  <span class="mt-2 block text-[0.7rem] font-normal text-white/45">
+                    102 frames · meikiocr
+                  </span>
+                </dd>
+              </div>
+              <div>
+                <dt class="text-xs text-white/50">Per subtitle crop</dt>
+                <dd class="mt-2 text-5xl font-semibold tracking-[-0.05em] text-pine-200">
+                  ~150ms
+                  <span class="mt-2 block text-[0.7rem] font-normal text-white/45">
+                    on a Galaxy S24+
+                  </span>
+                </dd>
+              </div>
+              <div>
+                <dt class="text-xs text-white/50">Live softsub run</dt>
+                <dd class="mt-2 text-5xl font-semibold tracking-[-0.05em] text-pine-200">
+                  61/61
+                  <span class="mt-2 block text-[0.7rem] font-normal text-white/45">
+                    lines logged · 56 exact
+                  </span>
+                </dd>
+              </div>
+            </dl>
+          </div>
+
+          <div class="relative mt-12 flex flex-wrap items-center gap-4 border-t border-white/10 pt-6">
+            <a
+              href={`${docsUrl}development/ocr-benchmarks/`}
+              class="group inline-flex items-center gap-2 text-sm font-semibold text-pine-200 transition-colors hover:text-white"
+            >
+              Read the benchmark method
+              <Icon
+                name="arrow-right"
+                size={15}
+                class="transition-transform duration-300 ease-apple group-hover:translate-x-1"
+              />
+            </a>
+            <span class="text-xs text-white/35">137 JVM unit tests · 4 on-device tests</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="overflow-hidden border-y border-line bg-paper py-24 sm:py-32">
+      <div class="shell">
+        <div class="grid items-center gap-16 lg:grid-cols-[0.95fr_1.05fr]">
+          <div data-reveal>
+            <p class="text-[0.7rem] font-semibold tracking-[0.18em] text-pine-700 uppercase">
+              The workspace
+            </p>
+            <h2 class="mt-4 text-4xl font-semibold tracking-[-0.04em] sm:text-5xl">
+              A text log you can actually use.
+            </h2>
+            <p class="mt-5 max-w-lg text-lg leading-8 text-muted">
+              Auto OCR writes every line to the Texts tab with its timestamp, screenshot and voice
+              clip. Re-read a scene, tap a word you missed, or replay the audio before it goes into
+              the card.
+            </p>
+            <ul class="mt-8 space-y-4 text-sm">
+              <li class="flex gap-3">
+                <span
+                  class="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-pine-50 text-pine-700 ring-1 ring-pine-100"
+                >
+                  <Icon name="check" size={12} />
+                </span>
+                <span class="text-muted">
+                  <strong class="font-semibold text-ink">Waveform editor.</strong> Trim the exact line
+                  before mining; silence trimming and loudness normalization are one setting away.
+                </span>
+              </li>
+              <li class="flex gap-3">
+                <span
+                  class="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-pine-50 text-pine-700 ring-1 ring-pine-100"
+                >
+                  <Icon name="check" size={12} />
+                </span>
+                <span class="text-muted">
+                  <strong class="font-semibold text-ink">Mining history.</strong> See which cards
+                  made it to Anki and which are still waiting.
+                </span>
+              </li>
+              <li class="flex gap-3">
+                <span
+                  class="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-pine-50 text-pine-700 ring-1 ring-pine-100"
+                >
+                  <Icon name="check" size={12} />
+                </span>
+                <span class="text-muted">
+                  <strong class="font-semibold text-ink">Live window.</strong> Keep a floating feed
+                  over the game, resize it to a ticker, or go fullscreen to read back.
+                </span>
+              </li>
+            </ul>
+            <a
+              href={`${docsUrl}guides/texts-and-audio/`}
+              class="group mt-8 inline-flex items-center gap-2 text-sm font-semibold text-pine-800 transition-colors hover:text-pine-600"
+            >
+              Texts and sentence audio
+              <Icon
+                name="arrow-right"
+                size={15}
+                class="transition-transform duration-300 ease-apple group-hover:translate-x-1"
+              />
+            </a>
+          </div>
+
+          <div class="relative flex justify-center gap-5 py-6 sm:gap-8" data-reveal>
+            <div
+              class="pointer-events-none absolute top-1/2 left-1/2 size-[24rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-pine-200/35 blur-3xl"
+              aria-hidden="true"
+            >
+            </div>
+            <PhoneFrame
+              image={texts}
+              alt="Texts tab with captured Japanese subtitle lines, timestamps, an expanded screenshot and a waveform."
+              class="relative z-10 w-[42%] translate-y-8 sm:w-[15.5rem] rotate-[-2deg]"
+              sizes="(min-width: 640px) 248px, 216px"
+            />
+            <PhoneFrame
+              image={settingsAudio}
+              alt="Sentence audio settings: capture game audio, microphone fallback, noise suppression and volume normalization."
+              class="relative z-10 w-[42%] -translate-y-4 sm:w-[15.5rem] rotate-[2deg]"
+              sizes="(min-width: 640px) 248px, 216px"
+            />
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="py-24 sm:py-32">
+      <div class="shell grid gap-16 lg:grid-cols-[0.8fr_1.2fr] lg:gap-24">
+        <div data-reveal>
+          <p class="text-[0.7rem] font-semibold tracking-[0.18em] text-pine-700 uppercase">FAQ</p>
+          <h2 class="mt-4 text-4xl font-semibold tracking-[-0.04em] sm:text-5xl">
+            The questions before the first card.
+          </h2>
+          <p class="mt-5 text-sm leading-7 text-muted">
+            Still stuck? The docs cover setup, capture, audio and Anki in detail, and issues are
+            welcome on GitHub.
+          </p>
+          <div class="mt-7 flex flex-wrap gap-3">
+            <a
+              class="inline-flex items-center gap-2 rounded-full border border-ink/10 bg-white px-4 py-2 text-xs font-semibold transition-colors hover:border-ink/20"
+              href={docsUrl}
+            >
+              Open the docs
+              <Icon name="arrow-right" size={13} />
+            </a>
+            <a
+              class="inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold text-muted transition-colors hover:text-ink"
+              href={`${repoUrl}/issues`}
+              rel="noreferrer"
+              target="_blank"
+            >
+              <Icon name="github" size={13} />
+              Ask on GitHub
+            </a>
+          </div>
+        </div>
+
+        <div class="border-t border-line" data-reveal>
+          {
+            faqs.map((faq) => (
+              <details class="faq-item border-b border-line py-5">
+                <summary class="flex items-center justify-between gap-6">
+                  <span class="text-base font-medium tracking-[-0.01em] sm:text-[1.05rem]">
+                    {faq.question}
+                  </span>
+                  <span class="faq-icon grid size-8 shrink-0 place-items-center rounded-full border border-line bg-white text-muted">
+                    <Icon name="plus" size={15} />
+                  </span>
+                </summary>
+                <div class="faq-answer">
+                  <div>
+                    <p class="pt-3 pr-10 text-sm leading-7 text-muted">{faq.answer}</p>
+                  </div>
+                </div>
+              </details>
+            ))
+          }
+        </div>
+      </div>
+    </section>
+
+    <section class="pb-24 sm:pb-32">
+      <div class="shell">
+        <div
+          class="relative overflow-hidden rounded-[2.25rem] border border-pine-200/70 bg-gradient-to-b from-pine-100 via-cream to-cream px-6 py-16 text-center sm:px-16 sm:py-24"
+          data-reveal
+        >
+          <div
+            class="pointer-events-none absolute top-[-8rem] left-1/2 size-[30rem] -translate-x-1/2 rounded-full bg-pine-300/30 blur-3xl"
+            aria-hidden="true"
+          >
+          </div>
+          <div class="relative">
+            <img
+              src={withBase("favicon.svg")}
+              alt=""
+              width="56"
+              height="56"
+              class="mx-auto rounded-2xl shadow-soft"
+            />
+            <h2 class="mx-auto mt-8 max-w-2xl text-4xl font-semibold tracking-[-0.045em] sm:text-5xl">
+              Your next sentence is already on screen.
+            </h2>
+            <p class="mx-auto mt-5 max-w-xl text-base leading-7 text-muted sm:text-lg">
+              Install it once, share your game, and start mining. Free, open source, and built to
+              stay out of the way.
+            </p>
+            <div class="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+              <a
+                href={releasesUrl}
+                class="group inline-flex items-center justify-center gap-2.5 rounded-full bg-ink px-6 py-3.5 text-sm font-semibold text-white shadow-lg transition-[transform,background-color] duration-300 ease-apple hover:-translate-y-0.5 hover:bg-pine-800"
+                rel="noreferrer"
+                target="_blank"
+              >
+                Download for Android
+                <Icon
+                  name="download"
+                  size={16}
+                  class="transition-transform duration-300 ease-apple group-hover:translate-y-0.5"
+                />
+              </a>
+              <a
+                href={repoUrl}
+                class="inline-flex items-center justify-center gap-2 rounded-full border border-ink/10 bg-white/70 px-6 py-3.5 text-sm font-semibold backdrop-blur-sm transition-colors hover:bg-white"
+                rel="noreferrer"
+                target="_blank"
+              >
+                <Icon name="github" size={16} />
+                View source
+              </a>
+            </div>
+            <p class="mt-5 text-xs text-muted">Android 8.0+ · GPL-3.0 · No account required</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <SiteFooter />
+</BaseLayout>

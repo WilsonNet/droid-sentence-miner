@@ -1,0 +1,77 @@
+---
+title: Installation
+description: Install Droid Sentence Miner on Android from a signed GitHub release or build it from source.
+---
+
+Droid Sentence Miner is distributed as a signed APK on GitHub Releases. It is not on the Play
+Store, so Android will ask you to allow installs from the app you download it with.
+
+## Requirements
+
+- Android 8.0 (API 26) or newer.
+- Audio capture requires Android 10 (API 29) or newer.
+- [AnkiDroid](https://github.com/ankidroid/Anki-Android) 2.16+ and/or desktop Anki with
+  [AnkiConnect](https://foosoft.net/projects/anki-connect/).
+- About 31 MB of storage for the Japanese OCR models, plus the size of your dictionaries.
+
+## Install a release
+
+1. Open [GitHub Releases](https://github.com/WilsonNet/droid-sentence-miner/releases) on the
+   Android device.
+2. Download `droid-sentence-miner-vX.Y.Z.apk` from the newest release.
+3. Open the downloaded file. If Android blocks it, allow installs from your browser or file
+   manager when prompted.
+4. Install, then open **Droid Sentence Miner**.
+
+Newer releases upgrade in place. Your dictionaries, settings and text log survive.
+
+:::tip[Verify the download]
+Releases are built by the project's GitHub Actions workflow and signed with the same key every
+time. Compare the release page and the file name before installing. Debug APKs built from source
+are signed with a different key and cannot upgrade a release install.
+:::
+
+## First permissions
+
+The app asks for permissions only when a feature needs them:
+
+| Permission | When |
+| --- | --- |
+| Screen capture | When you start auto OCR, a manual scan or the live text window. Android shows its own consent dialog. |
+| Microphone | Only if you enable microphone fallback, and only for audio capture. It is also required by Android for playback capture. |
+| Notifications | Android 13+ asks when the foreground service starts. The notification keeps capture running and gives you a shortcut back to the app. |
+| Overlay | Needed for the floating bubble, live text window and screen dictionary. On some phones this is reset after an update and must be enabled again. |
+| Accessibility service | Optional, Android 11+. Lets quick lookups take a screenshot without a screen-sharing prompt. Auto OCR still uses MediaProjection (it records the game audio). |
+
+Screen capture consent is not permanent. If you close the captured app or revoke sharing, start
+capture again from the bubble menu.
+
+## Install the recommended dictionaries
+
+Open **Settings → Dictionaries**:
+
+- **Jitendex** — the recommended Japanese-to-English dictionary.
+- **JMdict** — an alternative, community-maintained dictionary.
+- **JMnedict** — proper-name entries. It installs at the bottom of the priority list so names do
+  not shadow vocabulary.
+- **Kanjium pitch accents** — 124,000 words of pitch data for the Yomitan-style pitch graph.
+
+**Settings → Dictionaries** can check installed dictionaries for a newer `revision`, and cards can
+be dragged by their handle to change priority (lower number = higher priority).
+
+Each is a one-tap download. You can also import any Yomitan/Yomichan format 3 `.zip` from the same
+page. See [Anki mining](../guides/anki/) for the fields that pitch data fills.
+
+## Download the OCR models
+
+Open **Settings → OCR** and tap **Download meikiocr models** (about 31 MB). Until the download
+finishes, the app falls back to Google ML Kit, which is built into the phone.
+
+meikiocr is recommended: it is trained on Japanese game text and makes significantly fewer
+character errors on stylized fonts. The measured difference is in
+[OCR benchmarks](../development/ocr-benchmarks/).
+
+## Build from source
+
+If you prefer to build the APK yourself, see [Build from source](../development/building/). No
+Android Studio is required.

@@ -1,0 +1,144 @@
+---
+import interLatinUrl from "@fontsource-variable/inter/files/inter-latin-wght-normal.woff2?url";
+import "../styles/landing.css";
+import { withBase } from "../lib/url.ts";
+
+interface Props {
+  description: string;
+  image?: string;
+  imageAlt?: string;
+  jsonLd?: Record<string, unknown>;
+  noindex?: boolean;
+  title: string;
+}
+
+const {
+  title,
+  description,
+  image = "og.png",
+  imageAlt = "Droid Sentence Miner — Japanese immersion, mined on Android.",
+  noindex = false,
+  jsonLd,
+} = Astro.props;
+
+const siteUrl = Astro.site ?? new URL("https://wilsonnet.github.io");
+const canonical = new URL(Astro.url.pathname, siteUrl);
+const ogImage = new URL(withBase(image), siteUrl);
+const sitemap = new URL(withBase("sitemap-index.xml"), siteUrl);
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" href={withBase("favicon.svg")} type="image/svg+xml" />
+    <link rel="apple-touch-icon" href={withBase("apple-touch-icon.png")} />
+    <link rel="preload" as="font" type="font/woff2" href={interLatinUrl} crossorigin="anonymous" />
+    <link rel="sitemap" href={sitemap} type="application/xml" />
+    <link rel="manifest" href={withBase("site.webmanifest")} />
+    <meta name="generator" content={Astro.generator} />
+    <meta name="theme-color" content="#1b735d" />
+    <meta name="color-scheme" content="light" />
+    {noindex && <meta name="robots" content="noindex, nofollow" />}
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Droid Sentence Miner" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={imageAlt} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
+
+    {jsonLd && <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />}
+    <script is:inline>
+      document.documentElement.classList.add("js");
+    </script>
+  </head>
+  <body>
+    <a href="#main" class="skip-link">Skip to content</a>
+    <slot />
+
+    <script>
+      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+      const header = document.querySelector<HTMLElement>("[data-site-header]");
+      if (header) {
+        const updateHeader = (): void => {
+          header.classList.toggle("nav-scrolled", window.scrollY > 12);
+        };
+        updateHeader();
+        window.addEventListener("scroll", updateHeader, { passive: true });
+      }
+
+      const mobileMenu = document.querySelector<HTMLDetailsElement>("[data-mobile-menu]");
+      mobileMenu?.addEventListener("click", (event) => {
+        const target = event.target;
+        if (target instanceof Element && target.closest("a")) {
+          mobileMenu.open = false;
+        }
+      });
+
+      const revealElements = document.querySelectorAll<HTMLElement>("[data-reveal]");
+      if (reduceMotion || !("IntersectionObserver" in window)) {
+        for (const element of revealElements) {
+          element.dataset["visible"] = "true";
+        }
+      } else {
+        const revealObserver = new IntersectionObserver(
+          (entries) => {
+            for (const entry of entries) {
+              if (entry.isIntersecting && entry.target instanceof HTMLElement) {
+                entry.target.dataset["visible"] = "true";
+                revealObserver.unobserve(entry.target);
+              }
+            }
+          },
+          { rootMargin: "0px 0px -8% 0px", threshold: 0.12 },
+        );
+
+        for (const element of revealElements) {
+          revealObserver.observe(element);
+        }
+      }
+
+      const videos = document.querySelectorAll<HTMLVideoElement>("[data-demo-video]");
+      if (videos.length > 0) {
+        if (reduceMotion) {
+          for (const video of videos) {
+            video.pause();
+          }
+        } else if ("IntersectionObserver" in window) {
+          const videoObserver = new IntersectionObserver(
+            (entries) => {
+              for (const entry of entries) {
+                if (!(entry.target instanceof HTMLVideoElement)) {
+                  continue;
+                }
+                if (entry.isIntersecting) {
+                  void entry.target.play().catch(() => undefined);
+                } else {
+                  entry.target.pause();
+                }
+              }
+            },
+            { threshold: 0.35 },
+          );
+
+          for (const video of videos) {
+            videoObserver.observe(video);
+          }
+        }
+      }
+    </script>
+  </body>
+</html>

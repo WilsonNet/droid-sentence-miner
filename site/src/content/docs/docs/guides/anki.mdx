@@ -1,0 +1,115 @@
+---
+title: Anki mining
+description: AnkiDroid and AnkiConnect backends, Yomitan-style field mapping, sentence audio, word audio, pitch graphs and duplicate checks.
+---
+
+import { TabItem, Tabs } from "@astrojs/starlight/components";
+
+Droid Sentence Miner builds the whole card in one press. It supports two backends and fills
+existing note types by field name, the way Yomitan and GameSentenceMiner do.
+
+## Backends
+
+<Tabs>
+  <TabItem label="AnkiDroid">
+    Cards, images and audio go through the official AnkiDroid API. No network is needed.
+
+    1. Install [AnkiDroid](https://github.com/ankidroid/Anki-Android) 2.16 or newer.
+    2. In AnkiDroid open **Settings → Advanced → AnkiDroid API** and enable it.
+    3. In Droid Sentence Miner open **Settings → Anki**, choose **AnkiDroid**, and grant the API
+       permission.
+    4. Pick a deck and note type.
+
+    The app asks AnkiDroid to create media files and the note. It retries with a built-in *Basic*
+    note type if a just-created note type is refused by the backend; your card is still created.
+  </TabItem>
+  <TabItem label="AnkiConnect">
+    Desktop Anki with the [AnkiConnect](https://foosoft.net/projects/anki-connect/) add-on.
+
+    1. Install the add-on in Anki and restart Anki.
+    2. Make sure your phone can reach the computer, for example `http://192.168.1.10:8765`.
+    3. Enter that URL in **Settings → Anki → AnkiConnect**.
+    4. Pick a deck and note type.
+
+    AnkiConnect is plain HTTP. The app ships a network security config that permits cleartext for
+    user-configured AnkiConnect URLs only. Do not expose AnkiConnect to the public internet.
+  </TabItem>
+</Tabs>
+
+## Fields
+
+The mapper uses aliases in preference order, not note-type field order. A card can contain:
+
+| Content | Recognized field names (in preference order) |
+| --- | --- |
+| Word | Expression, Word, Vocab, Vocabulary, Term, Target Word, Key |
+| Reading | Reading, Word Reading, Kana, Hiragana, Furigana |
+| Glossary | Meaning, Glossary, Definition(s), English, Translation, Explanation |
+| Context sentence | Context Sentence, Sentence, Context, Example, Example Sentence, Sentence JP, JP Sentence |
+| Screenshot | Image, Picture, Snapshot, Screenshot, Photo |
+| Sentence audio | Audio, Sentence Audio, Voice, Sound, Audio Clip |
+| Word audio | Word Audio, Expression Audio, Vocab Audio, Vocabulary Audio, Term Audio, Audio Word |
+| Pitch graph | Pitch Graph, Graph, Pitch Accent Graph(s), Pitch Accent, Pitch, Pitch Accents |
+| Source | Source, Origin, Title, URL |
+
+Field names are normalized (lowercase, punctuation removed), so `Context Sentence` and
+`context_sentence` match. Only fields that exist on the chosen note type are filled; the rest are
+skipped. Plain Basic note types with two fields use a compact Front/Back layout instead.
+
+If the automatic mapping is wrong, open **Settings → Anki → Fields**, load the note type, and pick
+what each field receives. A custom map replaces name matching for that note type and is saved per
+model; **Reset to automatic** returns to the aliases above. The **Picture max height** setting
+(default 462 px, 0 = original) scales the screenshot with its aspect ratio — it never upscales.
+
+### Anime Cards
+
+Anime Cards is a common Yomitan/GameSentenceMiner note type: Word, Graph, Reading, Glossary,
+Context Sentence, Word Audio, Audio, Picture, Sentence.
+
+- The sentence goes to **Context Sentence**, not **Sentence**. Anime Cards shows `{{Sentence}}`
+  on the front when it is filled, which would turn a word card into a sentence card. The app keeps
+  Sentence empty on purpose, matching notes made by Yomitan/GSM.
+- **Audio** is used for word audio when both Audio and a sentence-audio field exist.
+- If the note type has no word-audio field, the `[sound:]` tag is appended to Reading.
+
+Foreign note types get the sentence as plain text instead of the Yomitan glossary wrapper.
+
+## Duplicate check
+
+Before adding, the popup checks the configured note type for a note whose first field matches the
+word. If one exists, the button shows **✓ In Anki** and no duplicate is created. This uses the
+same rule `addNote` refuses on, including across AnkiDroid and AnkiConnect.
+
+Mining keeps running if you close the popup immediately after tapping **Anki**. The card is
+created on the app's scope, not the popup's, so it is not cancelled by the popup closing.
+
+## Word audio
+
+The word's pronunciation is fetched from the same sources Yomitan uses for Japanese, in order:
+
+1. JapanesePod101 direct audio (`audiomp3.php`); kana-only words query by kana. The silent
+   placeholder clip is rejected by SHA-256.
+2. JapanesePod101 dictionary search. Results are split on the `dc-result-row` class.
+3. Jisho `audio_{term}:{reading}`.
+4. An optional custom URL tried first, with `{term}` and `{reading}` placeholders.
+
+A custom URL is useful for a local audio server or a paid source. If nothing is found, the card is
+still created without the word clip.
+
+## Pitch accent graph
+
+The pitch graph is the same inline SVG Yomitan writes with `{pitch-accent-graphs}`. It is filled
+into a pitch/graph field such as Anime Cards' **Graph**. It reads pitch data from any installed
+Yomitan pitch dictionary; Kanjium's accents are a one-tap install. If no pitch data exists for the
+word, the graph is skipped.
+
+## Mining history
+
+The **Home** tab shows recent cards and whether each one reached Anki. Use it to spot a backend
+that is offline or a card that was refused.
+
+## Related
+
+- [Installation](../getting-started/installation/) — download dictionaries and the OCR model.
+- [Mine your first card](../getting-started/first-card/) — the short path.
+- [Troubleshooting](../reference/troubleshooting/) — AnkiDroid API errors and media problems.

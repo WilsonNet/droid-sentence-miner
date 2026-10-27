@@ -1,0 +1,53 @@
+---
+title: Live text window
+description: A floating, resizable feed of recognized lines over the game. Tap a word to look it up without leaving the action.
+---
+
+The live text window is an Android overlay that follows auto OCR in real time. It is useful when
+the game's own text is hard to read, when the text area is off-screen, or when you want to mine
+without opening the full app.
+
+## Open it
+
+Long-press the bubble → **Live text**, or use the debug API during development. The window opens
+over the captured app.
+
+## Three modes
+
+| Mode | Behavior |
+| --- | --- |
+| **Compact** | One marquee line, height wraps content. A ticker for cutscenes. |
+| **Normal** | A resizable panel with up to 200 lines. Tap a word in a line to look up; long-press the line for the bottom panel. |
+| **Fullscreen** | Opaque, large text for reading back. Auto OCR pauses while it is open. |
+
+Switch modes with the window controls. Fullscreen is never restored on reopen; the app returns to
+normal mode so you are not trapped behind an opaque overlay.
+
+## Scrolling and resizing
+
+- The list is reversed: newest lines are at the bottom.
+- It follows new lines only while you are at the bottom. Scroll up to read history and it stays
+  put; **Latest** jumps back.
+- Drag the corner grip to resize in normal mode.
+- Position and size are saved per orientation. A large portrait window would cover a landscape
+  video, so it reopens at the saved landscape size instead.
+
+The window is drawn one status-bar height below its saved `y` in portrait; when driving it with
+adb, offset taps accordingly.
+
+## Mining from the window
+
+Tap a word in a line to open the lookup at that character. The popup is a separate overlay window,
+positioned in absolute screen pixels; mining links the line, so the card gets its sentence,
+screenshot and voice clip. Long-press a line to open the older bottom panel instead.
+
+## Pausing
+
+Auto OCR pauses while the fullscreen window is open, because otherwise the app would read its own
+window as game text. It also pauses when the popup is open or the app is in the foreground.
+
+## Related
+
+- [Auto OCR](auto-ocr/) — source of the lines.
+- [Texts and sentence audio](texts-and-audio/) — the permanent log.
+- [Screen dictionary](screen-dictionary/) — tap the real text instead.

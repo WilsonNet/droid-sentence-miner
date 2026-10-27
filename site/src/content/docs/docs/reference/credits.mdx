@@ -1,0 +1,60 @@
+---
+title: Credits
+description: The projects, data and people Droid Sentence Miner builds on.
+---
+
+Droid Sentence Miner stands on the shoulders of these projects. Thank you.
+
+## Core inspiration
+
+- **[GameSentenceMiner](https://github.com/bpwhelan/GameSentenceMiner)** (GPL-3.0) — the concept:
+  OCR on untranslated games, popup lookups, one-press Anki cards with audio, the two-pass OCR
+  pipeline and the sentence-audio editing workflow.
+- **[Yomitan](https://github.com/yomidevs/yomitan)** (GPL-3.0) — the dictionary format,
+  deinflection approach, structured-content glossaries and popup UX implemented for Android.
+
+## Japanese language and dictionaries
+
+- **[Yomihon](https://github.com/yomihon/yomihon)** (Apache-2.0) — the Kotlin Japanese deinflector
+  in `JapaneseDeinflector.kt` is adapted from this project.
+- **[Jiten](https://github.com/Sirush/Jiten)** — deinflection rule data.
+- **[Jitendex](https://jitendex.org/)** — recommended Japanese-to-English dictionary.
+- **[jmDict for Yomitan](https://github.com/yomidevs/jmdict-yomitan)** — alternative dictionary.
+- **[Kanjium](https://github.com/mifunetoshiro/kanjium)** (CC BY-SA 4.0) — pitch accent data. "The
+  pitch accent notation, verb particle data, phonetics, homonyms and other additions or
+  modifications to EDICT, KANJIDIC or KRADFILE were provided by Uros O. through his free
+  database."
+
+## OCR and Android
+
+- **[meikiocr](https://github.com/rtr46/meikiocr)** by rtr46 (code Apache-2.0; models
+  [meiki.text.detect.v0](https://huggingface.co/rtr46/meiki.text.detect.v0) and
+  [meiki.txt.recognition.v0](https://huggingface.co/rtr46/meiki.txt.recognition.v0), LGPL-3.0) —
+  the default OCR engine. Models are downloaded at runtime.
+- **[meikidroid](https://github.com/rtr46/meikidroid)** — reference for the region-capture and
+  overlay workflow.
+- **[ONNX Runtime](https://onnxruntime.ai/)** (MIT) — runs meikiocr on device.
+- **[ML Kit](https://developers.google.com/ml-kit)** (Google) — on-device Japanese text
+  recognition, fallback engine.
+- **[OwOCR](https://github.com/AuroraWright/owocr)** — two-pass OCR concepts used by GSM.
+
+## Anki
+
+- **[AnkiDroid](https://github.com/ankidroid/Anki-Android)** (GPL-3.0) — the AnkiDroid API used for
+  card creation.
+- **[AnkiConnect](https://foosoft.net/projects/anki-connect/)** — HTTP API for desktop Anki.
+
+## Content
+
+- **[Aozora Bunko](https://www.aozora.gr.jp/)** — the bundled sample image uses a passage from
+  走れメロス by 太宰治 (public domain). Its ruby markup doubles as a furigana-filter test case.
+- **Black Jack ni Yoroshiku** — free-reuse manga pages from
+  [densho810.com/free](https://densho810.com/free/) used to test Book mode.
+
+## License
+
+Droid Sentence Miner is licensed under the [GPL-3.0](https://github.com/WilsonNet/droid-sentence-miner/blob/main/LICENSE).
+The adapted Yomihon deinflector remains available under its Apache-2.0 license wherever required;
+see the file header in the repository.
+
+Droid Sentence Miner is not affiliated with Anki, AnkiDroid, Yomitan, Jiten or GameSentenceMiner.

@@ -1,0 +1,96 @@
+---
+title: Documentation
+description: Android sentence miner for Japanese immersion. OCR any app, tap words for Yomitan definitions, and mine sentence cards with audio and screenshots into Anki.
+template: splash
+hero:
+  title: Read Japanese. Mine the sentence.
+  tagline: A native Android sentence miner for games, videos and paper books. OCR the screen, tap a word, and send the whole line to Anki — with the character's voice and a screenshot.
+  image:
+    alt: Droid Sentence Miner app icon
+    file: ../../../assets/logo.svg
+  actions:
+    - text: Install on Android
+      link: getting-started/installation/
+      icon: right-arrow
+      variant: primary
+    - text: GitHub
+      link: https://github.com/WilsonNet/droid-sentence-miner
+      icon: external
+      variant: minimal
+      attrs:
+        rel: me
+---
+
+import { Card, CardGrid, LinkCard } from "@astrojs/starlight/components";
+
+Droid Sentence Miner is a free, open-source Android app for learning Japanese through
+immersion. It captures text that is already on your screen — a game's dialogue box, a YouTube
+hardsub, a manga page — and turns it into a dictionary lookup and a complete Anki card.
+
+It is inspired by [GameSentenceMiner](https://github.com/bpwhelan/GameSentenceMiner) and built
+around [Yomitan](https://github.com/yomidevs/yomitan) dictionaries.
+
+## What you need
+
+<CardGrid>
+  <Card title="Android 8.0+" icon="phone">
+    Audio capture needs Android 10 or newer. Screen sharing uses the standard Android 14/15 app
+    picker when it is available.
+  </Card>
+  <Card title="Anki" icon="pencil">
+    [AnkiDroid](https://github.com/ankidroid/Anki-Android) on the same phone, or desktop Anki
+    with the AnkiConnect add-on on your network.
+  </Card>
+  <Card title="Dictionaries" icon="open-book">
+    Install Jitendex, JMdict or Kanjium pitch accents with one tap, or import any Yomitan format 3
+    zip.
+  </Card>
+  <Card title="No root" icon="laptop">
+    Everything uses normal Android screen-sharing consent. No root, no emulator, no desktop
+    companion.
+  </Card>
+</CardGrid>
+
+## Start here
+
+<CardGrid>
+  <LinkCard
+    title="Install the APK"
+    description="Download a signed release and allow installs from your browser."
+    href="getting-started/installation/"
+  />
+  <LinkCard
+    title="Mine your first card"
+    description="Dictionaries, OCR models, Anki, then one complete card."
+    href="getting-started/first-card/"
+  />
+  <LinkCard
+    title="Auto OCR"
+    description="Draw text areas once and let the app follow the game."
+    href="guides/auto-ocr/"
+  />
+  <LinkCard
+    title="Troubleshooting"
+    description="Capture, audio, overlay and Anki problems, with fixes."
+    href="reference/troubleshooting/"
+  />
+</CardGrid>
+
+## How it fits together
+
+```
+MediaProjection → screen capture → OCR (meikiocr / ML Kit) → line tracker
+                                                               ↓
+Yomitan dictionary database ← deinflection ← lookup ← text log + screenshot + voice clip
+                                                               ↓
+                                              AnkiDroid API or AnkiConnect
+```
+
+Every part runs on the phone. Dictionaries and the Japanese OCR model are downloaded once; after
+that, reading, lookup and card building work offline. See [How it works](reference/how-it-works/)
+for the details.
+
+:::note[Not affiliated]
+Droid Sentence Miner is not affiliated with Anki, AnkiDroid, Yomitan, Jiten or
+GameSentenceMiner. Third-party projects are credited in [Credits](reference/credits/).
+:::

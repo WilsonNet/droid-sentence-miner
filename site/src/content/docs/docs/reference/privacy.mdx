@@ -1,0 +1,59 @@
+---
+title: Privacy
+description: What Droid Sentence Miner stores, which network requests it makes, and what never leaves the phone.
+---
+
+Droid Sentence Miner is designed to work on the device. There is no account, no analytics SDK and
+no advertising.
+
+## On the phone
+
+- Screen frames are read in memory by the OCR engine. They are not uploaded.
+- Recognized lines, screenshots and clip timestamps are stored in a local Room database.
+- Dictionaries are imported into a local database.
+- Settings live in Android DataStore.
+- Anki cards are sent only to the backend you configure: AnkiDroid on the same phone, or your own
+  AnkiConnect server on the local network.
+
+Clearing the app's data removes all of the above. **Settings → Dictionaries → Delete** removes one
+dictionary. The text log has its own controls.
+
+## Network requests
+
+The app makes a network request only for a feature you use:
+
+| Request | When |
+| --- | --- |
+| GitHub Releases | One-tap dictionary installs (Jitendex, JMdict, Kanjium accents). |
+| Hugging Face | One-time meikiocr model download (31 MB). |
+| Your AnkiConnect URL | When mining with the AnkiConnect backend. |
+| JapanesePod101, Jisho | Word audio lookup when **Word audio** is enabled. |
+| Your custom audio URL | If you configure one. |
+
+Google ML Kit runs on-device. Model updates, if any, are managed by Google Play services under
+Google's terms, not by Droid Sentence Miner.
+
+## Permissions
+
+- **Screen capture** — Android MediaProjection consent, granted per session. The app sees only what
+  you choose to share.
+- **Microphone** — needed for playback capture on Android and for the optional microphone fallback.
+  Audio is processed locally.
+- **Notifications** — keeps the foreground capture service visible.
+- **Display over other apps** — draws the bubble, live text window and screen dictionary.
+- **AnkiDroid API** — creates notes and media through AnkiDroid's provider.
+
+## Diagnostics
+
+Release builds have no remote logging. Debug builds expose a localhost-only HTTP API on port 9099
+for development; it is not present in release APKs. Logcat output stays on the device unless you
+capture it yourself.
+
+## Third-party services
+
+Links to GitHub, Anki, Yomitan, Jitendex, Hugging Face and the audio sources open in your browser
+or are contacted by the app only as listed above. Their privacy policies apply to those requests.
+
+## License
+
+The app is GPL-3.0. The source is public, so these claims can be checked rather than trusted.

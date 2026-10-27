@@ -1,0 +1,109 @@
+---
+title: How it works
+description: The Android capture, OCR, line tracking, lookup and mining pipeline behind Droid Sentence Miner.
+---
+
+Droid Sentence Miner is a native Android app. It does not run a desktop companion, does not need
+root, and does not upload your screen.
+
+## Pipeline
+
+```
+MediaProjection → ScreenCaptureManager → AutoOcrController → TextLineTracker → TextLog (Room)
+                      │   new frames only      │ stable reads      │ start/end, screenshot
+                      │                        │                   ▼
+                      └→ AudioCaptureManager → AudioRingBuffer → ClipWindow + VoiceTrimmer
+                                                                  │
+OCR text → TermLookup.scan() → JapaneseDeinflector → dictionary DB │
+                │                                                 │
+                ▼                                                 ▼
+        Lookup popup (Compose + WebView)                    Glossary renderer
+                │
+                ▼
+        CardMiner → AnkiDroid API or AnkiConnect
+```
+
+## Capture
+
+`ScreenCaptureManager` owns the MediaProjection virtual display and an ImageReader. It caches the
+last frame, because Android only delivers a new frame when the screen changes; a static screen
+would otherwise fail with "Could not capture the screen".
+
+Rotation keeps the projection: the manager resizes the virtual display and swaps in a new
+ImageReader, so starting in portrait and switching to a landscape game does not require a new
+consent.
+
+## OCR
+
+Two engines are available:
+
+- **meikiocr** (`ocr/MeikiOcr.kt`, ONNX Runtime) — a D-FINE text-line detector at 960×544 and a
+  character recognizer that treats recognition as character detection. Characters are
+  de-duplicated by overlap and read left to right. Models are downloaded on demand into
+  `files/models`; until they exist, the app falls back to ML Kit.
+- **ML Kit** (Google) — built in, no download. With two-pass OCR, the app recognizes the region,
+  then re-reads each line upscaled and keeps the better result.
+
+Rows are merged, furigana and off-size background text are dropped, and common OCR fixes are
+applied (for example, 一 after kana becomes ー, except before counters like もう一つ).
+
+## Line tracking
+
+`FrameSignature` compares each frame with the frame **last OCR'd**, not the previous frame, using
+a mean and a 96×24 area-averaged grid. One typewriter glyph is enough to trigger a read.
+
+`TextLineTracker` keeps every read of the open line and emits the medoid (`TextSimilarity.consensus`)
+at 3, 5, 8 and 13 reads and at line end. A line's start is the first read that differed from the
+previous one. This is why a half-typed visual novel line is followed to the end instead of being
+logged at the first frame.
+
+`SubtitleLineFilter` anchors on the row with the most Japanese text, drops rows that are the wrong
+size, and removes low-confidence engine lines when a stronger line exists.
+
+## Lookup
+
+`JapaneseDeinflector` expands every substring of the OCR text into dictionary-form candidates
+using Yomitan/Jiten rules. A single batched SQL query resolves them, and longest-match-wins builds
+the clickable word list. Grammar-only single-kana matches are filtered as noise.
+
+Dictionaries are stored in Room (`dict.db`): `terms`, `kanji`, `tags`, `term_meta`, `kanji_meta`,
+`dictionaries` and `mined_cards`. `dict.db` uses destructive migration, so it holds no user text
+history.
+
+## Audio
+
+`AudioPlaybackCapture` records the app's playback audio through the same MediaProjection session.
+`AudioRingBuffer` keeps the last N minutes as mono 24 kHz PCM. A line's clip is
+`[start − before, min(end, next.start) + after]`, passed through `VoiceTrimmer` and
+`AudioPcm.normalize`.
+
+If device audio is exact zeros while something is playing, the optional microphone fallback fills
+the buffer; device audio takes over on the first non-zero chunk. Microphone chunks go through
+`MicFxChain` (noise suppression → high-pass → calibrated speaker EQ → compressor) before the same
+normalization.
+
+## Storage
+
+- `dict.db` — dictionaries and metadata. Destructive migration.
+- `textlog.db` — lines, screenshots and clip metadata. Never add tables to `dict.db`, or an upgrade
+  would wipe dictionaries.
+
+## Mining
+
+`CardMiner` builds fields with `AnkiFieldMapper`, renders the glossary, fetches word audio, embeds
+the screenshot and clip, and calls either the AnkiDroid API or AnkiConnect. A per-note-type field
+map saved in Settings replaces automatic name matching for that model. The picture is scaled to the
+configured maximum height (default 462 px) without upscaling. Mining runs on the app's scope, so
+closing the popup does not cancel a card.
+
+## Overlays
+
+A foreground service draws the bubble, live text window and screen dictionary. MediaProjection
+consent is handled by a transparent activity that forwards the result to the service. On Android
+14/15 a foreground service may only use the `mediaProjection` type after consent exists.
+
+## Related
+
+- [OCR benchmarks](../development/ocr-benchmarks/) — measured accuracy.
+- [Troubleshooting](troubleshooting/) — known device quirks.
+- [Credits](credits/) — the projects this builds on.

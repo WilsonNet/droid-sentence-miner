@@ -1,0 +1,75 @@
+---
+title: Manual scan and bubble
+description: Use the floating bubble to scan a region once, look up words, and keep the latest line available as a notification shortcut.
+---
+
+Not every situation needs continuous OCR. The floating bubble gives you a one-off region scan,
+the menu, and a way to start or stop capture from anywhere.
+
+## The bubble
+
+The bubble is a small draggable overlay. Drag it away from the text you are reading. Tap it to
+open the current overlay panel; long-press it for the menu. **Bubble tap** chooses what a normal
+tap does:
+
+- **Quick lookup** (default) — drag a box around a word, and its lines are laid over the screen so
+  you can tap the word. The first word found is opened immediately.
+- **Scan region** — the older capture-box workflow.
+
+The menu:
+
+- **Bubble tap: Quick lookup / Scan region**
+- **Start auto OCR** / **Stop auto OCR**
+- **Auto OCR text areas**
+- **Mine the latest line**
+- **Show live text window**
+- **Microphone fallback** toggle
+- **Scan once: pick a region**
+- **Scan once: full screen**
+- **Hide bubble** and **Stop overlay**
+- **Restart screen capture** (when the captured app closed or consent was revoked)
+
+The foreground-service notification stays available as a shortcut when the bubble is hidden.
+
+## Scan once
+
+1. Tap the bubble, or long-press → **Scan once: pick a region**.
+2. Adjust the capture box over the text. This box is separate from the auto OCR text areas.
+3. Tap **Scan region**.
+4. Tap a highlighted word for definitions, then **Anki**.
+
+Manual scans are logged on the **Texts** tab too, so they get the same sentence, screenshot and
+audio treatment as auto OCR lines.
+
+## When to use it
+
+- A game with a static menu or dialogue that changes only on click.
+- A single sign, tooltip or UI message that auto OCR's configured areas miss.
+- A quick lookup while auto OCR is stopped.
+- Testing OCR quality before drawing permanent text areas.
+
+## Screen capture consent
+
+The first scan asks for Android's screen-sharing consent. If you close the captured app or revoke
+sharing, the bubble menu offers **Restart screen capture**. The consent activity is a transparent
+bridge that forwards the result to the foreground service; on Android 14/15 it must exist while
+the system dialog is open, so it cannot be `noHistory`.
+
+## Quick lookup without screen sharing
+
+On Android 11+ you can enable DSM's accessibility service from **Home → Quick lookup without
+screen-sharing prompt** (or Android Settings → Accessibility → Installed apps). It may only take a
+screenshot when you box a word; auto OCR still uses MediaProjection because it also records the
+game's audio. This is optional and off until you enable it.
+
+## Overlay permission
+
+The bubble, live text window and screen dictionary need **Display over other apps**. Some phones
+reset this permission after an update. If the bubble disappears, open the app's Android settings
+and enable it again.
+
+## Related
+
+- [Auto OCR](auto-ocr/) — continuous mode.
+- [Texts and sentence audio](texts-and-audio/) — the log and replay buffer.
+- [Troubleshooting](../reference/troubleshooting/) — permissions and capture failures.
