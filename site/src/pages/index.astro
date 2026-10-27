@@ -765,47 +765,47 @@ const installationSteps = [
               <h2 class="mt-4 max-w-md text-4xl font-semibold tracking-[-0.04em] sm:text-5xl">
                 Accuracy you can hear.
               </h2>
-              <p class="mt-5 max-w-md text-sm leading-7 text-white/60">
+              <p class="mt-5 max-w-md text-sm leading-7 text-white/70">
                 Benchmarks use the same crops for both engines and hand-checked ground truth.
                 Character error rate, lower is better.
               </p>
             </div>
 
-            <dl class="grid grid-cols-2 gap-x-6 gap-y-10">
+            <dl class="grid grid-cols-1 gap-x-8 gap-y-7 sm:grid-cols-2 sm:gap-y-9">
               <div>
-                <dt class="text-xs text-white/50">Fewer character errors</dt>
-                <dd class="mt-2 text-5xl font-semibold tracking-[-0.05em] text-pine-200">
-                  3–19×
-                  <span class="mt-2 block text-[0.7rem] font-normal text-white/45">
-                    meikiocr vs. ML Kit
+                <dt class="text-sm font-medium leading-5 text-white/70">Fewer character errors</dt>
+                <dd class="mt-2">
+                  <span class="block text-4xl font-semibold tracking-[-0.05em] text-pine-200 sm:text-5xl">
+                    3–19×
                   </span>
+                  <span class="mt-2 block text-xs leading-5 text-white/55">meikiocr vs. ML Kit</span>
                 </dd>
               </div>
               <div>
-                <dt class="text-xs text-white/50">Boxed subtitle CER</dt>
-                <dd class="mt-2 text-5xl font-semibold tracking-[-0.05em] text-pine-200">
-                  0.16%
-                  <span class="mt-2 block text-[0.7rem] font-normal text-white/45">
-                    102 frames · meikiocr
+                <dt class="text-sm font-medium leading-5 text-white/70">Boxed subtitle CER</dt>
+                <dd class="mt-2">
+                  <span class="block text-4xl font-semibold tracking-[-0.05em] text-pine-200 sm:text-5xl">
+                    0.16%
                   </span>
+                  <span class="mt-2 block text-xs leading-5 text-white/55">102 frames · meikiocr</span>
                 </dd>
               </div>
               <div>
-                <dt class="text-xs text-white/50">Per subtitle crop</dt>
-                <dd class="mt-2 text-5xl font-semibold tracking-[-0.05em] text-pine-200">
-                  ~150ms
-                  <span class="mt-2 block text-[0.7rem] font-normal text-white/45">
-                    on a Galaxy S24+
+                <dt class="text-sm font-medium leading-5 text-white/70">Per subtitle crop</dt>
+                <dd class="mt-2">
+                  <span class="block text-4xl font-semibold tracking-[-0.05em] text-pine-200 sm:text-5xl">
+                    ~150ms
                   </span>
+                  <span class="mt-2 block text-xs leading-5 text-white/55">on a Galaxy S24+</span>
                 </dd>
               </div>
               <div>
-                <dt class="text-xs text-white/50">Live softsub run</dt>
-                <dd class="mt-2 text-5xl font-semibold tracking-[-0.05em] text-pine-200">
-                  61/61
-                  <span class="mt-2 block text-[0.7rem] font-normal text-white/45">
-                    lines logged · 56 exact
+                <dt class="text-sm font-medium leading-5 text-white/70">Live softsub run</dt>
+                <dd class="mt-2">
+                  <span class="block text-4xl font-semibold tracking-[-0.05em] text-pine-200 sm:text-5xl">
+                    61/61
                   </span>
+                  <span class="mt-2 block text-xs leading-5 text-white/55">lines logged · 56 exact</span>
                 </dd>
               </div>
             </dl>
@@ -823,7 +823,7 @@ const installationSteps = [
                 class="transition-transform duration-300 ease-apple group-hover:translate-x-1"
               />
             </a>
-            <span class="text-xs text-white/35">137 JVM unit tests · 4 on-device tests</span>
+            <span class="text-xs text-white/55 sm:ml-auto">137 JVM unit tests · 4 on-device tests</span>
           </div>
         </div>
       </div>
