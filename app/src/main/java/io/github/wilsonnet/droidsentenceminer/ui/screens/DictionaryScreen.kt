@@ -1,5 +1,8 @@
 package io.github.wilsonnet.droidsentenceminer.ui.screens
 
+import android.content.Context
+import android.net.Uri
+import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -17,8 +20,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DragHandle
+import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -163,33 +168,74 @@ fun DictionaryScreen(modifier: Modifier = Modifier) {
         }
     }
 
-    val picker = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocument(),
-    ) { uri ->
-        if (uri != null) {
-            importing = true
-            errorText = null
-            progressText = "Starting import…"
-            scope.launch {
+    // Local files and the user's own Drive (via Android's picker) and public Drive links all
+    // go through one sequential queue, so several dictionaries can be picked at once.
+    fun installQueue(items: List<ImportSource>) {
+        if (busy || items.isEmpty()) return
+        importing = true
+        errorText = null
+        scope.launch {
+            val failures = mutableListOf<String>()
+            val installed = mutableListOf<DictionaryEntity>()
+            items.forEachIndexed { index, item ->
+                val prefix = if (items.size > 1) "(${index + 1}/${items.size}) " else ""
+                var name = item.name ?: "dictionary"
                 try {
-                    val entity = withContext(Dispatchers.IO) {
-                        container.importer.import(uri) { progress ->
-                            progressText = buildString {
-                                append(progress.title ?: "Importing")
-                                if (progress.stage.isNotBlank()) append(" · ").append(progress.stage)
-                                if (progress.current > 0) append(" · ").append(progress.current)
+                    val entity = when (item) {
+                        is ImportSource.Local -> withContext(Dispatchers.IO) {
+                            container.importer.import(item.uri) { progress ->
+                                progressText = prefix + importProgressText(progress.title ?: name, progress.stage, progress.current)
+                            }
+                        }
+                        is ImportSource.Drive -> {
+                            val zipFile = File(context.cacheDir, "drive-${item.fileId}.zip")
+                            try {
+                                progressText = "${prefix}Downloading $name…"
+                                container.dictDownloader.downloadDrive(item.fileId, zipFile) { downloaded, total ->
+                                    progressText = prefix + downloadProgressText(name, downloaded, total)
+                                }?.let { name = it.removeSuffix(".zip") }
+                                withContext(Dispatchers.IO) {
+                                    container.importer.import(zipFile) { progress ->
+                                        progressText = prefix + importProgressText(progress.title ?: name, progress.stage, progress.current)
+                                    }
+                                }
+                            } finally {
+                                zipFile.delete()
                             }
                         }
                     }
-                    progressText = "Imported \"${entity.title}\" (${entity.termCount} terms, ${entity.kanjiCount} kanji)"
+                    installed += entity
                 } catch (e: Exception) {
-                    errorText = e.message ?: "Import failed"
-                    progressText = null
-                } finally {
-                    importing = false
+                    failures += "$name: ${e.message ?: "import failed"}"
                 }
             }
+            runCatching { container.refreshDictUpdates() }
+            progressText = when {
+                installed.size == 1 && failures.isEmpty() -> installed[0].let {
+                    "Imported \"${it.title}\" (${it.termCount} terms, ${it.kanjiCount} kanji)"
+                }
+                installed.isNotEmpty() -> "Imported ${installed.size} of ${items.size} dictionaries"
+                else -> null
+            }
+            errorText = failures.takeIf { it.isNotEmpty() }?.joinToString("\n")
+            importing = false
         }
+    }
+
+    val picker = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenMultipleDocuments(),
+    ) { uris ->
+        installQueue(uris.map { ImportSource.Local(it, displayName(context, it)) })
+    }
+    val zipTypes = arrayOf("application/zip", "application/x-zip-compressed", "*/*")
+    var showDriveSheet by remember { mutableStateOf(false) }
+
+    if (showDriveSheet) {
+        DriveImportSheet(
+            onDismiss = { showDriveSheet = false },
+            onBrowseMyDrive = { picker.launch(zipTypes) },
+            onInstall = { files -> installQueue(files.map { ImportSource.Drive(it.fileId, it.name?.removeSuffix(".zip")) }) },
+        )
     }
 
     Column(
@@ -200,47 +246,59 @@ fun DictionaryScreen(modifier: Modifier = Modifier) {
     ) {
         Text("Dictionaries", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
         Text(
-            "Import Yomitan/Yomichan dictionaries (.zip). Jitendex, JMdict, KANJIDIC and frequency dictionaries all work.",
+            "Import Yomitan/Yomichan dictionaries (.zip) from this device or Google Drive, several at once. Jitendex, JMdict, KANJIDIC and frequency dictionaries all work.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            Button(
+            FilledTonalButton(
                 enabled = !busy,
-                onClick = { picker.launch(arrayOf("application/zip", "application/x-zip-compressed", "*/*")) },
+                onClick = { picker.launch(zipTypes) },
                 modifier = Modifier.weight(1f),
             ) {
-                Text("Import dictionary (.zip)")
+                Icon(Icons.Default.FolderOpen, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("From files")
             }
-            if (dictionaries.isNotEmpty()) {
-                OutlinedButton(
-                    enabled = !busy && !checkingUpdates,
-                    onClick = {
-                        checkingUpdates = true
-                        errorText = null
-                        scope.launch {
-                            try {
-                                val found = container.refreshDictUpdates()
-                                progressText = if (found.isEmpty()) {
-                                    "All dictionaries are up to date"
-                                } else {
-                                    "${found.size} dictionary update${if (found.size > 1) "s" else ""} available"
-                                }
-                            } catch (e: Exception) {
-                                errorText = e.message ?: "Could not check for updates"
-                            } finally {
-                                checkingUpdates = false
+            FilledTonalButton(
+                enabled = !busy,
+                onClick = { showDriveSheet = true },
+                modifier = Modifier.weight(1f),
+            ) {
+                Icon(Icons.Default.Cloud, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Google Drive")
+            }
+        }
+        if (dictionaries.isNotEmpty()) {
+            OutlinedButton(
+                enabled = !busy && !checkingUpdates,
+                onClick = {
+                    checkingUpdates = true
+                    errorText = null
+                    scope.launch {
+                        try {
+                            val found = container.refreshDictUpdates()
+                            progressText = if (found.isEmpty()) {
+                                "All dictionaries are up to date"
+                            } else {
+                                "${found.size} dictionary update${if (found.size > 1) "s" else ""} available"
                             }
+                        } catch (e: Exception) {
+                            errorText = e.message ?: "Could not check for updates"
+                        } finally {
+                            checkingUpdates = false
                         }
-                    },
-                ) {
-                    if (checkingUpdates) {
-                        CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
-                        Spacer(Modifier.width(6.dp))
                     }
-                    Text("Check updates")
+                },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                if (checkingUpdates) {
+                    CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                    Spacer(Modifier.width(6.dp))
                 }
+                Text("Check for updates")
             }
         }
 
@@ -295,7 +353,7 @@ fun DictionaryScreen(modifier: Modifier = Modifier) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Add more dictionaries", fontWeight = FontWeight.SemiBold)
                     Text(
-                        "Install recommended dictionaries with one tap, or import any Yomitan .zip below.",
+                        "Install recommended dictionaries with one tap, or import any Yomitan .zip from files or Google Drive above.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -540,4 +598,30 @@ private fun DictionaryRow(
             }
         }
     }
+}
+
+private sealed interface ImportSource {
+    val name: String?
+
+    data class Local(val uri: Uri, override val name: String?) : ImportSource
+    data class Drive(val fileId: String, override val name: String?) : ImportSource
+}
+
+private fun displayName(context: Context, uri: Uri): String? = runCatching {
+    context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+        if (cursor.moveToFirst()) cursor.getString(0)?.removeSuffix(".zip") else null
+    }
+}.getOrNull()
+
+private fun downloadProgressText(name: String, downloaded: Long, total: Long?): String =
+    if (total != null && total > 0) {
+        "Downloading $name… ${downloaded * 100 / total}%"
+    } else {
+        "Downloading $name… ${downloaded / (1024 * 1024)} MB"
+    }
+
+private fun importProgressText(title: String, stage: String, current: Long): String = buildString {
+    append(title)
+    if (stage.isNotBlank()) append(" · ").append(stage)
+    if (current > 0) append(" · ").append(current)
 }

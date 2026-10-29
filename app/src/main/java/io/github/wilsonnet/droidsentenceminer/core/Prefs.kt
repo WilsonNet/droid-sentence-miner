@@ -78,6 +78,7 @@ class DsmPrefs(private val context: Context) {
 
         val overlayRunning = booleanPreferencesKey("overlay_running")
         val lastScan = stringPreferencesKey("last_scan")
+        val driveRecent = stringPreferencesKey("drive_recent")
     }
 
     val ankiProvider: Flow<String> = context.dataStore.data.map { it[Keys.ankiProvider] ?: PROVIDER_ANKIDROID }
@@ -225,6 +226,23 @@ class DsmPrefs(private val context: Context) {
         it[Keys.ankiFieldMaps] = Json.encodeToString<Map<String, Map<String, String>>>(all)
     }
 
+    /** Google Drive links opened on the Dictionaries page, newest first, as (link, name). */
+    val driveRecent: Flow<List<Pair<String, String>>> = context.dataStore.data.map { parseDriveRecent(it[Keys.driveRecent]) }
+
+    suspend fun addDriveRecent(link: String, name: String) = edit {
+        val list = listOf(link to name) + parseDriveRecent(it[Keys.driveRecent]).filter { (l, _) -> l != link }
+        it[Keys.driveRecent] = Json.encodeToString(list.take(MAX_DRIVE_RECENT).map { (l, n) -> listOf(l, n) })
+    }
+
+    suspend fun removeDriveRecent(link: String) = edit {
+        val list = parseDriveRecent(it[Keys.driveRecent]).filter { (l, _) -> l != link }
+        it[Keys.driveRecent] = Json.encodeToString(list.map { (l, n) -> listOf(l, n) })
+    }
+
+    private fun parseDriveRecent(raw: String?): List<Pair<String, String>> =
+        raw?.let { runCatching { Json.decodeFromString<List<List<String>>>(it) }.getOrNull() }.orEmpty()
+            .mapNotNull { if (it.size == 2) it[0] to it[1] else null }
+
     private fun parseFieldMaps(raw: String?): Map<String, Map<String, String>> =
         raw?.let { runCatching { Json.decodeFromString<Map<String, Map<String, String>>>(it) }.getOrNull() }.orEmpty()
 
@@ -310,6 +328,7 @@ class DsmPrefs(private val context: Context) {
         const val DEFAULT_DECK = "Droid Sentence Miner"
         const val DEFAULT_MODEL = "Droid Sentence Miner"
         const val DEFAULT_IMAGE_MAX_HEIGHT = 462
+        const val MAX_DRIVE_RECENT = 5
         const val DEFAULT_TAGS = "DroidSentenceMiner"
         const val DEFAULT_AUDIO_BUFFER_SECONDS = 300
         const val ENGINE_MEIKI = "meiki"

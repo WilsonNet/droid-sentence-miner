@@ -138,6 +138,7 @@ Endpoints: `/state`, `/scan`, `/frame.png`, `/ocr` (`l,t,r,b` crops the file fir
 `/set_region?l=&t=&r=&b=&orientation=`, `/clear_lines`, `/add_line?text=&ago=&dur=`,
 `/quick?l=&t=&r=&b=` (bubble quick lookup of a box), `/install_ocr_models` (meikiocr download), `/ocr?engine=meiki|mlkit`, `/select_areas` (opens the area editor),
 `/install_dict?id=jitendex|jmnedict` (background install; progress in `/state.dictInstall`),
+`/drive_list?url=` (public Drive folder listing), `/install_drive?url=` (public Drive file, same progress),
 `/anki_notes?word=` (field-level card verification via the AnkiDroid provider),
 `/anki_meta` (decks + note types), `/book?file=` (book-mode page OCR → paragraphs, shown in the Book tab), `/live?show=1&mode=` (live text window), `/mic_fallback?on=`, `/mic_fx`, `/mic_calibrate`, `/mic_measure.wav` (speaker→mic recordings, see `dsm-audio`), `/startoverlay`, `/stopoverlay`, `/request_projection`.
 Regions are screen fractions.
@@ -245,6 +246,16 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   e.g. JMnedict) start at the bottom (`maxPriority + 1`), and new vocabulary dictionaries are inserted
   above existing name dictionaries (`determineInitialPriority`), so proper names never shadow vocabulary.
   Checked automatically on Home, Settings, and Dictionaries screens (plus `/dict_updates`, `/order_dicts`).
+- **Google Drive import** (`dict/DriveLinks.kt` unit-tested, `DictDownloader.listDriveFolder`/`downloadDrive`,
+  `ui/screens/DriveImportSheet.kt`): no Drive API/OAuth (restricted `drive.readonly` scope would need
+  Google verification). Own/private files: the system picker (`OpenMultipleDocuments`), where the
+  Drive app is a document provider and owns sign-in. Public links: folders list via
+  `drive.google.com/embeddedfolderview?id=` (HTML `flip-entry` rows; a private folder answers a
+  sign-in page with no `flip-entries` → "not shared publicly"), files download from
+  `drive.usercontent.google.com/download?id=&export=download&confirm=t` (`confirm=t` skips the
+  virus-scan page for big files; if HTML still comes back its `download-form` is followed once).
+  Drive is in manifest `<queries>` so the sheet can tell if the app is installed. Every import
+  (files, Drive picks) goes through `DictionaryScreen.installQueue`, one at a time.
 - **Per-headword entries** (`TermLookup.LookupDetails.entries` / `forEntry`, unit-tested): Yomitan's
   "group" mode — terms grouped by (expression, kana-folded reading, deinflection reasons) in first
   appearance order. With >1 entry `CardMiner.buildPopupHtml` renders a header + `.dsm-add` button per

@@ -132,3 +132,9 @@ DSM auto OCR + mic fallback on it): see the `dsm-nightshade` skill.
     content sits in a centered `≤ 840 dp` column.
 - **Settings sub-pages**: `Dictionaries` and `Anki` open inside `Settings` (`SettingsSubPage`) and
   are remembered when switching tabs; send `input keyevent BACK` to return to the main Settings list.
+- **Dictionaries page (Xiaomi Pad 7 portrait, 2136×3200)**: from the rail, `Settings` (110, 1914) →
+  `Dictionaries` row (548, 338). *From files* (715, 595), *Google Drive* (1637, 595). In the Drive
+  sheet: *Browse my Drive* (506, 2221) opens the system picker (Drive is the "ドライブ" icon in the
+  top row); the link field is at (1000, 2870) — `input text "<link>"` then `keyevent 66` opens it.
+  After a folder opens the sheet expands: row checkboxes at x ≈ 1827, *Install N* button at the
+  bottom (≈ 1066, 3037). Dictionary-row trash icons are at x ≈ 2004 (find the row by uiautomator).

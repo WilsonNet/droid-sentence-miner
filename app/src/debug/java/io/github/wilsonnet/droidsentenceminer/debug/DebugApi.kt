@@ -12,6 +12,7 @@ import io.github.wilsonnet.droidsentenceminer.book.BookOcr
 import io.github.wilsonnet.droidsentenceminer.MainActivity
 import io.github.wilsonnet.droidsentenceminer.anki.AnkiResult
 import io.github.wilsonnet.droidsentenceminer.capture.ScreenCaptureManager
+import io.github.wilsonnet.droidsentenceminer.dict.DriveLinks
 import io.github.wilsonnet.droidsentenceminer.dict.RecommendedDictionaries
 import io.github.wilsonnet.droidsentenceminer.overlay.OverlayService
 import io.github.wilsonnet.droidsentenceminer.ocr.MeikiModels
@@ -134,6 +135,8 @@ object DebugApi {
             "/order_dicts" -> respondApi(socket) { orderDicts(params) }
             "/dict_updates" -> respondApi(socket) { dictUpdates() }
             "/install_dict" -> respondApi(socket) { installDict(params) }
+            "/drive_list" -> respondApi(socket) { driveList(params) }
+            "/install_drive" -> respondApi(socket) { installDrive(params) }
             "/anki_notes" -> respondApi(socket) { ankiNotes(params) }
             "/anki_meta" -> respondApi(socket) { ankiMeta() }
             "/startoverlay" -> {
@@ -685,6 +688,58 @@ object DebugApi {
             }
         }
         return JSONObject().put("ok", true).put("started", id).put("url", url)
+    }
+
+    /** Lists a public Google Drive folder (`?url=` share link or `?id=` folder id). */
+    private fun driveList(params: Map<String, String>): JSONObject {
+        val id = params["id"] ?: (params["url"]?.let { DriveLinks.parse(it) } as? DriveLinks.Link.Folder)?.id
+            ?: return errorJson("pass ?url=<Drive folder link> or ?id=<folder id>")
+        val folder = runBlocking { AppContainer.from(app).dictDownloader.listDriveFolder(id) }
+        val entries = JSONArray()
+        folder.entries.forEach { entry ->
+            entries.put(
+                JSONObject().put("id", entry.id).put("name", entry.name).put("folder", entry.isFolder)
+                    .put("zip", entry.isZip).put("modified", entry.modified),
+            )
+        }
+        return JSONObject().put("ok", true).put("id", folder.id).put("title", folder.title).put("entries", entries)
+    }
+
+    /** Background install of a public Drive file (`?url=` file link or `?id=`); progress in `/state.dictInstall`. */
+    private fun installDrive(params: Map<String, String>): JSONObject {
+        val fileId = params["id"] ?: (params["url"]?.let { DriveLinks.parse(it) } as? DriveLinks.Link.File)?.id
+            ?: return errorJson("pass ?url=<Drive file link> or ?id=<file id>")
+        if (dictInstall?.done == false) return errorJson("an install is already running")
+        val container = AppContainer.from(app)
+        val install = DictInstall("drive:$fileId")
+        dictInstall = install
+        pool.execute {
+            try {
+                runBlocking {
+                    val zipFile = File(app.cacheDir, "drive-$fileId.zip")
+                    try {
+                        container.dictDownloader.downloadDrive(fileId, zipFile) { downloaded, total ->
+                            install.stage = "downloading"
+                            install.progress = if (total != null && total > 0) (downloaded * 100 / total).toInt() else (downloaded / (1024 * 1024)).toInt()
+                        }
+                        install.stage = "importing"
+                        install.progress = 0
+                        container.importer.import(zipFile) { progress ->
+                            install.stage = progress.stage
+                            install.progress = progress.current.toInt()
+                        }
+                    } finally {
+                        zipFile.delete()
+                    }
+                }
+                install.stage = "done"
+                install.done = true
+            } catch (t: Throwable) {
+                install.error = t.message ?: t.toString()
+                install.done = true
+            }
+        }
+        return JSONObject().put("ok", true).put("started", install.id)
     }
 
     /** Inspect notes via the AnkiDroid content provider (fields + tags). */

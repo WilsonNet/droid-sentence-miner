@@ -58,6 +58,8 @@ All GET, all JSON (except `frame.png`). Regions are screen fractions unless note
 | `/dicts` | Installed dictionaries with revision, term/kanji counts and zip paths |
 | `/order_dicts?ids=1,2,3` | Update dictionary priority order by ID list; returns the updated `/dicts` array |
 | `/dict_updates` | Check remote `indexUrl` (e.g. Jitendex `yomitan.json`) for newer dictionary revisions; returns available updates (`dictId`, `installedRevision`, `latestTitle`, `latestRevision`, `downloadUrl`) |
+| `/drive_list?url=` (or `?id=`) | List a public Google Drive folder: `title`, `entries[]` (`id`, `name`, `folder`, `zip`, `modified`); private/missing folders return `ok:false` with the reason |
+| `/install_drive?url=` (or `?id=`) | Download + import a public Drive file in the background; progress in `/state.dictInstall` (id `drive:<fileId>`) |
 | `/install_dict?id=jitendex` | Download + import a recommended dictionary in the background (`/state.dictInstall` shows progress; ids: jitendex, jmdict, kanjidic, kanjium, jmnedict) |
 | `/anki_notes?word=&model=` | Find notes by first field via the AnkiDroid provider; returns every field name → value, plus tags. Defaults to the configured model |
 | `/anki_meta` | AnkiDroid decks and note types as id → name maps |
@@ -115,6 +117,9 @@ curl -s "localhost:9099/scan?l=0.08&t=0.32&r=0.92&b=0.42" | python3 -m json.tool
 
 # Fresh device? Install Jitendex (background; poll /state until dictInstall.done)
 curl -s "localhost:9099/install_dict?id=jitendex"
+# Public Drive folder → pick a zip id → install it (test folder: 5 small Cantonese dicts, ~4 MB each)
+curl -s "localhost:9099/drive_list?url=https://drive.google.com/drive/folders/1aybpEp9_-JlOpvnJ8-5c0qlfachb83nA"
+curl -s "localhost:9099/install_drive?id=137gaEvCxw54ffVadAAjzDxDWywAiTlJh"   # Canto CEDICT, 105,347 terms
 curl -s localhost:9099/state | python3 -c "import json,sys; print(json.load(sys.stdin).get('dictInstall'))"
 curl -s localhost:9099/dicts | python3 -m json.tool
 

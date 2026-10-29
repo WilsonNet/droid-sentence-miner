@@ -15,6 +15,7 @@
     <queries>
         <package android:name="com.ichi2.anki" />
         <package android:name="com.sec.android.app.camera" />
+        <package android:name="com.google.android.apps.docs" />
         <intent>
             <action android:name="android.media.action.IMAGE_CAPTURE" />
         </intent>

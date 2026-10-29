@@ -107,6 +107,13 @@ GIF for the MP4; recorded on a Xiaomi Pad 7).
   glossaries and dictionary images. Updatable dictionaries (Jitendex, JMnedict, or any Yomitan dictionary
   with an `indexUrl` in `index.json`) are checked for newer revisions automatically and can be
   updated in place with one tap, preserving custom priority order and enabled state.
+- **Install from files or Google Drive** — *From files* picks one or several `.zip`s at once from
+  the device (Downloads, SD card, any document provider). *Google Drive* opens a sheet with two
+  ways in: *Browse my Drive* (Android's file picker, where the Google Drive app is a source, so
+  private files work and the Drive app handles sign-in), or paste a share link to a file or a
+  public folder: DSM lists the folder's `.zip`s (subfolders included), you tick the ones you want
+  and they install one after another. Recently opened folders are remembered. No Google API or
+  in-app login is involved.
 - **Deinflection & word scanning** — a full Japanese deconjugator drives longest-match scanning of
   scanned text and tap-to-look-up, with the same rules Yomitan uses.
 - **Anki mining** — two backends:
@@ -197,7 +204,7 @@ android sdk install platform-tools platforms/android-36 build-tools/35.0.0 emula
 echo "sdk.dir=$ANDROID_HOME" > local.properties
 
 # 3. Build & test
-./gradlew testDebugUnitTest          # 161 JVM unit tests
+./gradlew testDebugUnitTest          # 172 JVM unit tests
 ./gradlew connectedDebugAndroidTest  # 4 on-device tests (VAD + AAC encoding)
 ./gradlew assembleDebug              # app/build/outputs/apk/debug/app-debug.apk
 
@@ -208,8 +215,8 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 ## Usage
 
 1. **Dictionaries** — open *Settings → Dictionaries* and install **Jitendex** and **Kanjium pitch accents**
-   with one tap each (or import any Yomitan `.zip`, e.g. a monolingual dictionary; drag it first
-   if you want only it on cards). In *Settings → OCR*, tap *Download meikiocr models* (31 MB).
+   with one tap each (or import any Yomitan `.zip` with *From files* or *Google Drive*, e.g. a
+   monolingual dictionary; drag it first if you want only it on cards). In *Settings → OCR*, tap *Download meikiocr models* (31 MB).
 2. **Anki** — in *Settings → Anki* pick a backend:
    - *AnkiDroid*: install AnkiDroid, grant the API permission from that page, and enable
      *Settings → Advanced → AnkiDroid API* inside AnkiDroid.
@@ -384,12 +391,13 @@ Glossaries may be strings, arrays, image definitions, deinflection entries or st
   compressor); on-device calibration matches the Python reference fit (each band within 2 dB, separate measurement runs). In
   Nightshade the 6.3 kHz resonance is gone from the clips. Cost: 1.3 % of one core while the mic
   is in use, nothing while device audio works.
-- 161 JVM unit tests: speaker-correction EQ (FFT, biquads, response from pink noise, fit of the
+- 172 JVM unit tests: speaker-correction EQ (FFT, biquads, response from pink noise, fit of the
   measured Pad 7 curve, chain), meikiocr detector/recognizer input sizing, frame change detection (one typewriter glyph counts; direct RGBA buffer with row stride), loudness
   normalization, popup placement (flip/size/shift), screen text layer (subtitle glyphs → screen fractions, signage skipped), book page layout (tategaki order, ruby filter incl. real manga ruby, split sentences, per-character photo positions), H→エ fix, pitch graphs (byte-identical to Yomitan), word audio sources, Anki field mapping, meikiocr decoding, OCR text fixes (一→ー), text areas, line consensus, replay buffer, voice trimming, line tracking, clip windows, subtitle-row
   filtering, deinflector (conjugations across godan/ichidan/suru/kuru/adjectives),
   glossary parsing/rendering, OCR post-processing (merge, furigana filter, normalization),
-  VAD segmentation, PCM utilities, Yomitan index parsing & dictionary update checks.
+  VAD segmentation, PCM utilities, Yomitan index parsing & dictionary update checks, Google Drive
+  link/folder-listing/download-confirm parsing.
 - 4 on-device instrumented tests: VAD segmentation with real waveforms, AAC/M4A encoding through
   MediaCodec, WAV fallback.
 - Book mode on a Galaxy phone (`/book` with synthetic photographed pages, Noto Serif 44 px,

@@ -102,13 +102,73 @@ class DictDownloader {
         destination: File,
         onProgress: (downloaded: Long, total: Long?) -> Unit = { _, _ -> },
     ): File = withContext(Dispatchers.IO) {
-        val request = Request.Builder().url(url).header("User-Agent", "DroidSentenceMiner").build()
+        fetch(url, destination, htmlAsPage = false, onProgress)
+        destination
+    }
+
+    /** A public Google Drive folder's name and rows (see [DriveLinks]). */
+    data class DriveFolder(val id: String, val title: String?, val entries: List<DriveLinks.Entry>)
+
+    suspend fun listDriveFolder(folderId: String): DriveFolder = withContext(Dispatchers.IO) {
+        val request = Request.Builder().url(DriveLinks.folderListUrl(folderId)).header("User-Agent", BROWSER_UA).build()
+        val html = try {
+            client.newCall(request).execute().use { response ->
+                if (response.code == 404) throw YomitanImporter.ImportException("Drive folder not found. Check the link.")
+                if (!response.isSuccessful) throw YomitanImporter.ImportException("Google Drive answered HTTP ${response.code}")
+                response.body?.string().orEmpty()
+            }
+        } catch (e: YomitanImporter.ImportException) {
+            throw e
+        } catch (e: Exception) {
+            throw YomitanImporter.ImportException("Could not reach Google Drive: ${e.message}", e)
+        }
+        val entries = DriveLinks.parseFolder(html) ?: throw YomitanImporter.ImportException(NOT_PUBLIC)
+        DriveFolder(folderId, DriveLinks.folderTitle(html), entries)
+    }
+
+    /**
+     * Downloads a publicly shared Drive file. Returns its file name from Drive, if sent.
+     * Big files get a "can't scan for viruses" page first; its form is followed once.
+     */
+    suspend fun downloadDrive(
+        fileId: String,
+        destination: File,
+        onProgress: (downloaded: Long, total: Long?) -> Unit = { _, _ -> },
+    ): String? = withContext(Dispatchers.IO) {
+        var url = DriveLinks.downloadUrl(fileId)
+        repeat(2) {
+            when (val fetched = fetch(url, destination, htmlAsPage = true, onProgress)) {
+                is Fetched.Saved -> return@withContext fetched.fileName
+                is Fetched.Page -> url = DriveLinks.confirmFormUrl(fetched.html)
+                    ?: throw YomitanImporter.ImportException(NOT_PUBLIC)
+            }
+        }
+        throw YomitanImporter.ImportException(NOT_PUBLIC)
+    }
+
+    private sealed interface Fetched {
+        data class Saved(val fileName: String?) : Fetched
+        data class Page(val html: String) : Fetched
+    }
+
+    private fun fetch(
+        url: String,
+        destination: File,
+        htmlAsPage: Boolean,
+        onProgress: (downloaded: Long, total: Long?) -> Unit,
+    ): Fetched {
+        val agent = if (htmlAsPage) BROWSER_UA else "DroidSentenceMiner"
+        val request = Request.Builder().url(url).header("User-Agent", agent).build()
         try {
             client.newCall(request).execute().use { response ->
+                if (response.code == 404 && htmlAsPage) {
+                    throw YomitanImporter.ImportException("Drive file not found. Check the link.")
+                }
                 if (!response.isSuccessful) {
                     throw YomitanImporter.ImportException("Download failed: HTTP ${response.code}")
                 }
                 val body = response.body ?: throw YomitanImporter.ImportException("Empty download")
+                if (htmlAsPage && body.contentType()?.subtype == "html") return Fetched.Page(body.string())
                 val total = body.contentLength().takeIf { it > 0 }
                 var downloaded = 0L
                 body.byteStream().use { input ->
@@ -123,8 +183,8 @@ class DictDownloader {
                         }
                     }
                 }
+                return Fetched.Saved(DriveLinks.fileName(response.header("Content-Disposition")))
             }
-            destination
         } catch (e: CancellationException) {
             destination.delete()
             throw e
@@ -178,6 +238,11 @@ class DictDownloader {
     }
 
     companion object {
+        // Drive serves its plain HTML pages (folder embeds, download confirms) to browsers.
+        private const val BROWSER_UA = "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Mobile Safari/537.36"
+        private const val NOT_PUBLIC = "This Drive item isn't shared publicly. Set sharing to \"Anyone with the link\", " +
+            "or use Browse my Drive to pick it from your own account."
+
         /**
          * True when [remote] is newer than [installed]. Compares dot/dash-separated numeric
          * segments when both revisions are numeric (e.g. `2026.10.03.0` vs `2026.10.25.0`),
