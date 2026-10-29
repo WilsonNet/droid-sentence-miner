@@ -50,6 +50,20 @@ class TermLookup(
 
     data class Entry(val expression: String, val reading: String, val terms: List<TermResult>)
 
+    /** What the last [scan] cost (debug API `/lookup_bench`). */
+    data class ScanStats(
+        val forms: Int,
+        val rows: Int,
+        val glossaryChars: Long,
+        val deinflectMs: Double,
+        val queryMs: Double,
+        val totalMs: Double,
+    )
+
+    @Volatile
+    var lastScanStats: ScanStats? = null
+        private set
+
     private data class FormSource(
         val position: Int,
         val length: Int,
@@ -61,6 +75,7 @@ class TermLookup(
     suspend fun scan(text: String, maxLength: Int = MAX_TERM_LENGTH): List<ScannedWord> = withContext(Dispatchers.Default) {
         if (text.isBlank()) return@withContext emptyList()
 
+        val started = System.nanoTime()
         val dicts = dictionariesByPriority()
         if (dicts.isEmpty()) return@withContext emptyList()
 
@@ -91,7 +106,10 @@ class TermLookup(
         }
         if (formSources.isEmpty()) return@withContext emptyList()
 
+        val deinflected = System.nanoTime()
         val termsByForm = queryTermsByForms(formSources.keys.toList())
+        val queried = System.nanoTime()
+        val uniqueRows = termsByForm.values.flatten().distinctBy { it.id }
 
         data class Hit(val length: Int, val term: TermResult)
 
@@ -163,6 +181,15 @@ class TermLookup(
             )
             position += chosenLength
         }
+        val done = System.nanoTime()
+        lastScanStats = ScanStats(
+            forms = formSources.size,
+            rows = uniqueRows.size,
+            glossaryChars = uniqueRows.sumOf { it.glossaryJson.length.toLong() },
+            deinflectMs = (deinflected - started) / 1e6,
+            queryMs = (queried - deinflected) / 1e6,
+            totalMs = (done - started) / 1e6,
+        )
         words
     }
 
