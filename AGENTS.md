@@ -255,7 +255,9 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   `drive.usercontent.google.com/download?id=&export=download&confirm=t` (`confirm=t` skips the
   virus-scan page for big files; if HTML still comes back its `download-form` is followed once).
   Drive is in manifest `<queries>` so the sheet can tell if the app is installed. Every import
-  (files, Drive picks) goes through `DictionaryScreen.installQueue`, one at a time.
+  (files, Drive picks) goes through `AppContainer.dictImports` (`DictImportQueue`): one at a time on
+  `appScope` with a partial wake lock, so a batch survives leaving the page/rotation (the screen's
+  scope cancelled it before); picks made mid-batch join the queue. Logs under `DSM-Import`.
 - **Per-headword entries** (`TermLookup.LookupDetails.entries` / `forEntry`, unit-tested): Yomitan's
   "group" mode — terms grouped by (expression, kana-folded reading, deinflection reasons) in first
   appearance order. With >1 entry `CardMiner.buildPopupHtml` renders a header + `.dsm-add` button per

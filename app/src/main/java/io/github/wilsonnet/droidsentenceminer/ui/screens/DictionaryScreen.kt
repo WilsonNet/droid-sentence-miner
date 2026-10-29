@@ -1,13 +1,11 @@
 package io.github.wilsonnet.droidsentenceminer.ui.screens
 
-import android.content.Context
-import android.net.Uri
-import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -30,6 +28,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -53,6 +52,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import io.github.wilsonnet.droidsentenceminer.AppContainer
+import io.github.wilsonnet.droidsentenceminer.dict.DictImportQueue
 import io.github.wilsonnet.droidsentenceminer.dict.DictionaryEntity
 import io.github.wilsonnet.droidsentenceminer.dict.DictionaryUpdate
 import io.github.wilsonnet.droidsentenceminer.dict.RecommendedDictionaries
@@ -83,11 +83,16 @@ fun DictionaryScreen(modifier: Modifier = Modifier) {
         }
     }
 
-    var importing by remember { mutableStateOf(false) }
+    val importState by container.dictImports.state.collectAsState()
+    val importing = importState.running
     var progressText by remember { mutableStateOf<String?>(null) }
     var errorText by remember { mutableStateOf<String?>(null) }
-    var installingId by remember { mutableStateOf<String?>(null) }
-    var updatingDictId by remember { mutableStateOf<Long?>(null) }
+    LaunchedEffect(importing) {
+        if (!importing) {
+            importState.summary?.let { progressText = it }
+            if (importState.failures.isNotEmpty()) errorText = importState.failures.joinToString("\n")
+        }
+    }
     var checkingUpdates by remember { mutableStateOf(false) }
     var checkedOnce by remember { mutableStateOf(false) }
 
@@ -100,132 +105,24 @@ fun DictionaryScreen(modifier: Modifier = Modifier) {
         }
     }
 
-    val busy = importing || installingId != null || updatingDictId != null
+    val installingId = importState.activeKey?.takeIf { it.startsWith("rec:") }?.removePrefix("rec:")
+    val updatingDictId = importState.activeKey?.takeIf { it.startsWith("update:") }?.removePrefix("update:")?.toLongOrNull()
+    val busy = importing
 
     fun installRecommended(dictionary: RecommendedDictionary) {
-        if (busy) return
-        installingId = dictionary.id
         errorText = null
-        progressText = "Downloading ${dictionary.name}…"
-        scope.launch {
-            try {
-                val zipFile = File(context.cacheDir, "recommended-${dictionary.id}.zip")
-                container.dictDownloader.download(dictionary.url, zipFile) { downloaded, total ->
-                    progressText = if (total != null && total > 0) {
-                        "Downloading ${dictionary.name}… ${downloaded * 100 / total}%"
-                    } else {
-                        "Downloading ${dictionary.name}… ${downloaded / (1024 * 1024)} MB"
-                    }
-                }
-                progressText = "Importing ${dictionary.name}…"
-                val entity = withContext(Dispatchers.IO) {
-                    container.importer.importRecommended(dictionary, zipFile) { progress ->
-                        progressText = "Importing ${progress.title ?: dictionary.name}… ${progress.current}"
-                    }
-                }
-                zipFile.delete()
-                runCatching { container.refreshDictUpdates() }
-                progressText = "Installed \"${entity.title}\" (${entity.termCount} terms, ${entity.kanjiCount} kanji)"
-            } catch (e: Exception) {
-                errorText = e.message ?: "Install failed"
-                progressText = null
-            } finally {
-                installingId = null
-            }
-        }
+        container.dictImports.enqueue(listOf(DictImportQueue.Source.Recommended(dictionary)))
     }
 
     fun updateDictionary(update: DictionaryUpdate) {
-        if (busy) return
-        updatingDictId = update.dictId
         errorText = null
-        progressText = "Downloading ${update.latestTitle}…"
-        scope.launch {
-            try {
-                val zipFile = File(context.cacheDir, "update-${update.dictId}.zip")
-                container.dictDownloader.download(update.downloadUrl, zipFile) { downloaded, total ->
-                    progressText = if (total != null && total > 0) {
-                        "Downloading ${update.latestTitle}… ${downloaded * 100 / total}%"
-                    } else {
-                        "Downloading ${update.latestTitle}… ${downloaded / (1024 * 1024)} MB"
-                    }
-                }
-                progressText = "Updating to ${update.latestTitle}…"
-                val entity = withContext(Dispatchers.IO) {
-                    container.importer.import(zipFile) { progress ->
-                        progressText = "Importing ${progress.title ?: update.latestTitle}… ${progress.current}"
-                    }
-                }
-                zipFile.delete()
-                runCatching { container.refreshDictUpdates() }
-                progressText = "Updated to \"${entity.title}\" (${entity.termCount} terms, ${entity.kanjiCount} kanji)"
-            } catch (e: Exception) {
-                errorText = e.message ?: "Update failed"
-                progressText = null
-            } finally {
-                updatingDictId = null
-            }
-        }
-    }
-
-    // Local files and the user's own Drive (via Android's picker) and public Drive links all
-    // go through one sequential queue, so several dictionaries can be picked at once.
-    fun installQueue(items: List<ImportSource>) {
-        if (busy || items.isEmpty()) return
-        importing = true
-        errorText = null
-        scope.launch {
-            val failures = mutableListOf<String>()
-            val installed = mutableListOf<DictionaryEntity>()
-            items.forEachIndexed { index, item ->
-                val prefix = if (items.size > 1) "(${index + 1}/${items.size}) " else ""
-                var name = item.name ?: "dictionary"
-                try {
-                    val entity = when (item) {
-                        is ImportSource.Local -> withContext(Dispatchers.IO) {
-                            container.importer.import(item.uri) { progress ->
-                                progressText = prefix + importProgressText(progress.title ?: name, progress.stage, progress.current)
-                            }
-                        }
-                        is ImportSource.Drive -> {
-                            val zipFile = File(context.cacheDir, "drive-${item.fileId}.zip")
-                            try {
-                                progressText = "${prefix}Downloading $name…"
-                                container.dictDownloader.downloadDrive(item.fileId, zipFile) { downloaded, total ->
-                                    progressText = prefix + downloadProgressText(name, downloaded, total)
-                                }?.let { name = it.removeSuffix(".zip") }
-                                withContext(Dispatchers.IO) {
-                                    container.importer.import(zipFile) { progress ->
-                                        progressText = prefix + importProgressText(progress.title ?: name, progress.stage, progress.current)
-                                    }
-                                }
-                            } finally {
-                                zipFile.delete()
-                            }
-                        }
-                    }
-                    installed += entity
-                } catch (e: Exception) {
-                    failures += "$name: ${e.message ?: "import failed"}"
-                }
-            }
-            runCatching { container.refreshDictUpdates() }
-            progressText = when {
-                installed.size == 1 && failures.isEmpty() -> installed[0].let {
-                    "Imported \"${it.title}\" (${it.termCount} terms, ${it.kanjiCount} kanji)"
-                }
-                installed.isNotEmpty() -> "Imported ${installed.size} of ${items.size} dictionaries"
-                else -> null
-            }
-            errorText = failures.takeIf { it.isNotEmpty() }?.joinToString("\n")
-            importing = false
-        }
+        container.dictImports.enqueue(listOf(DictImportQueue.Source.Update(update)))
     }
 
     val picker = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenMultipleDocuments(),
     ) { uris ->
-        installQueue(uris.map { ImportSource.Local(it, displayName(context, it)) })
+        container.dictImports.enqueue(uris.map { DictImportQueue.Source.Local(it, container.dictImports.nameOf(it)) })
     }
     val zipTypes = arrayOf("application/zip", "application/x-zip-compressed", "*/*")
     var showDriveSheet by remember { mutableStateOf(false) }
@@ -234,273 +131,280 @@ fun DictionaryScreen(modifier: Modifier = Modifier) {
         DriveImportSheet(
             onDismiss = { showDriveSheet = false },
             onBrowseMyDrive = { picker.launch(zipTypes) },
-            onInstall = { files -> installQueue(files.map { ImportSource.Drive(it.fileId, it.name?.removeSuffix(".zip")) }) },
+            onInstall = { files ->
+                container.dictImports.enqueue(files.map { DictImportQueue.Source.Drive(it.fileId, it.name?.removeSuffix(".zip")) })
+            },
         )
     }
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+    LazyColumn(
+        state = listState,
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text("Dictionaries", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-        Text(
-            "Import Yomitan/Yomichan dictionaries (.zip) from this device or Google Drive, several at once. Jitendex, JMdict, KANJIDIC and frequency dictionaries all work.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            FilledTonalButton(
-                enabled = !busy,
-                onClick = { picker.launch(zipTypes) },
-                modifier = Modifier.weight(1f),
-            ) {
-                Icon(Icons.Default.FolderOpen, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text("From files")
-            }
-            FilledTonalButton(
-                enabled = !busy,
-                onClick = { showDriveSheet = true },
-                modifier = Modifier.weight(1f),
-            ) {
-                Icon(Icons.Default.Cloud, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text("Google Drive")
-            }
-        }
-        if (dictionaries.isNotEmpty()) {
-            OutlinedButton(
-                enabled = !busy && !checkingUpdates,
-                onClick = {
-                    checkingUpdates = true
-                    errorText = null
-                    scope.launch {
-                        try {
-                            val found = container.refreshDictUpdates()
-                            progressText = if (found.isEmpty()) {
-                                "All dictionaries are up to date"
-                            } else {
-                                "${found.size} dictionary update${if (found.size > 1) "s" else ""} available"
-                            }
-                        } catch (e: Exception) {
-                            errorText = e.message ?: "Could not check for updates"
-                        } finally {
-                            checkingUpdates = false
-                        }
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                if (checkingUpdates) {
-                    CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
-                    Spacer(Modifier.width(6.dp))
-                }
-                Text("Check for updates")
-            }
-        }
-
-        if (busy || progressText != null) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (busy) {
-                    CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-                    Spacer(Modifier.width(10.dp))
-                }
+        // One scrolling list: with a dozen dictionaries the header no longer squeezes the list.
+        item(key = "header") {
+            Column(Modifier.padding(bottom = 4.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("Dictionaries", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                 Text(
-                    progressText.orEmpty(),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary,
+                    "Import Yomitan/Yomichan dictionaries (.zip) from this device or Google Drive, several at once. Jitendex, JMdict, KANJIDIC and frequency dictionaries all work.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-            }
-        }
-        errorText?.let {
-            Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
-        }
 
-        if (dictionaries.isEmpty() && !importing) {
-            Card(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Recommended dictionaries", fontWeight = FontWeight.SemiBold)
-                    RecommendedDictionaries.ALL.forEach { dict ->
-                        Row(
-                            Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Column(Modifier.weight(1f)) {
-                                Text(dict.name, style = MaterialTheme.typography.bodyLarge)
-                                Text(
-                                    "${dict.description} (~${dict.approximateSizeMb.toInt()} MB)",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                            if (installingId == dict.id) {
-                                CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
-                            } else {
-                                Button(
-                                    enabled = installingId == null && !importing,
-                                    onClick = { installRecommended(dict) },
-                                ) { Text("Install") }
-                            }
-                        }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    FilledTonalButton(
+                        enabled = !busy,
+                        onClick = { picker.launch(zipTypes) },
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Icon(Icons.Default.FolderOpen, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("From files")
+                    }
+                    FilledTonalButton(
+                        enabled = !busy,
+                        onClick = { showDriveSheet = true },
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Icon(Icons.Default.Cloud, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Google Drive")
                     }
                 }
-            }
-        } else if (!importing) {
-            Card(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Add more dictionaries", fontWeight = FontWeight.SemiBold)
-                    Text(
-                        "Install recommended dictionaries with one tap, or import any Yomitan .zip from files or Google Drive above.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    RecommendedDictionaries.ALL.forEach { dict ->
-                        val installedDict = dictionaries.firstOrNull { it.title.contains(dict.name, ignoreCase = true) }
-                        val installed = installedDict != null
-                        val update = installedDict?.let { updates[it.id] }
-                        Row(
-                            Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Column(Modifier.weight(1f)) {
-                                Text(
-                                    dict.name,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                )
-                                if (update != null) {
-                                    Text(
-                                        "Update available: ${update.latestTitle} (rev ${update.latestRevision})",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.primary,
-                                    )
+                if (dictionaries.isNotEmpty()) {
+                    OutlinedButton(
+                        enabled = !busy && !checkingUpdates,
+                        onClick = {
+                            checkingUpdates = true
+                            errorText = null
+                            scope.launch {
+                                try {
+                                    val found = container.refreshDictUpdates()
+                                    progressText = if (found.isEmpty()) {
+                                        "All dictionaries are up to date"
+                                    } else {
+                                        "${found.size} dictionary update${if (found.size > 1) "s" else ""} available"
+                                    }
+                                } catch (e: Exception) {
+                                    errorText = e.message ?: "Could not check for updates"
+                                } finally {
+                                    checkingUpdates = false
                                 }
                             }
-                            if (installingId == dict.id || (installedDict != null && updatingDictId == installedDict.id)) {
-                                CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                            } else if (update != null) {
-                                FilledTonalButton(
-                                    enabled = !busy,
-                                    onClick = { updateDictionary(update) },
-                                ) { Text("Update") }
-                            } else {
-                                OutlinedButton(
-                                    enabled = !busy && !installed,
-                                    onClick = { installRecommended(dict) },
-                                ) { Text(if (installed) "Installed" else "Install") }
-                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        if (checkingUpdates) {
+                            CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                            Spacer(Modifier.width(6.dp))
                         }
+                        Text("Check for updates")
                     }
                 }
-            }
-        }
 
-        LazyColumn(
-            state = listState,
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            items(orderedList, key = { it.id }) { dict ->
-                val index = orderedList.indexOfFirst { it.id == dict.id }
-                val isDragging = dict.id == draggingItemId
-                val update = updates[dict.id]
+                val shownProgress = if (importing) importState.progress ?: "Starting import…" else progressText
+                if (busy || shownProgress != null) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (busy) {
+                            CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                            Spacer(Modifier.width(10.dp))
+                        }
+                        Text(
+                            shownProgress.orEmpty(),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                    if (importing && importState.total > 1) {
+                        LinearProgressIndicator(
+                            progress = { (importState.current - 1).coerceAtLeast(0) / importState.total.toFloat() },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
+                errorText?.let {
+                    Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                }
 
-                val dragModifier = Modifier.pointerInput(dict.id) {
-                    detectDragGestures(
-                        onDragStart = {
-                            draggingItemId = dict.id
-                            dragDeltaY = 0f
-                        },
-                        onDragEnd = {
-                            val finalOrder = orderedList.map { it.id }
-                            draggingItemId = null
-                            dragDeltaY = 0f
-                            scope.launch {
-                                container.db.dictionaryDao().updatePriorities(finalOrder)
-                            }
-                        },
-                        onDragCancel = {
-                            draggingItemId = null
-                            dragDeltaY = 0f
-                            orderedList = dictionaries
-                        },
-                        onDrag = { change, dragAmount ->
-                            change.consume()
-                            dragDeltaY += dragAmount.y
-
-                            val currentIdx = orderedList.indexOfFirst { it.id == dict.id }
-                            if (currentIdx != -1) {
-                                val currentInfo = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == dict.id }
-                                if (currentInfo != null) {
-                                    val currentCenter = currentInfo.offset + dragDeltaY + currentInfo.size / 2f
-                                    if (dragDeltaY > 0 && currentIdx < orderedList.size - 1) {
-                                        val nextId = orderedList[currentIdx + 1].id
-                                        val nextInfo = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == nextId }
-                                        val nextCenter = if (nextInfo != null) {
-                                            nextInfo.offset + nextInfo.size / 2f
-                                        } else {
-                                            currentInfo.offset + currentInfo.size + currentInfo.size / 2f
-                                        }
-                                        if (currentCenter > nextCenter) {
-                                            val step = (nextInfo?.offset ?: (currentInfo.offset + currentInfo.size)) - currentInfo.offset
-                                            orderedList = orderedList.toMutableList().apply {
-                                                add(currentIdx + 1, removeAt(currentIdx))
-                                            }
-                                            dragDeltaY -= step
-                                        }
-                                    } else if (dragDeltaY < 0 && currentIdx > 0) {
-                                        val prevId = orderedList[currentIdx - 1].id
-                                        val prevInfo = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == prevId }
-                                        val prevCenter = if (prevInfo != null) {
-                                            prevInfo.offset + prevInfo.size / 2f
-                                        } else {
-                                            currentInfo.offset - currentInfo.size / 2f
-                                        }
-                                        if (currentCenter < prevCenter) {
-                                            val step = currentInfo.offset - (prevInfo?.offset ?: (currentInfo.offset - currentInfo.size))
-                                            orderedList = orderedList.toMutableList().apply {
-                                                add(currentIdx - 1, removeAt(currentIdx))
-                                            }
-                                            dragDeltaY += step
-                                        }
+                if (dictionaries.isEmpty()) {
+                    Card(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("Recommended dictionaries", fontWeight = FontWeight.SemiBold)
+                            RecommendedDictionaries.ALL.forEach { dict ->
+                                Row(
+                                    Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Column(Modifier.weight(1f)) {
+                                        Text(dict.name, style = MaterialTheme.typography.bodyLarge)
+                                        Text(
+                                            "${dict.description} (~${dict.approximateSizeMb.toInt()} MB)",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                    if (installingId == dict.id) {
+                                        CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
+                                    } else {
+                                        Button(
+                                            enabled = installingId == null && !importing,
+                                            onClick = { installRecommended(dict) },
+                                        ) { Text("Install") }
                                     }
                                 }
                             }
-                        },
-                    )
+                        }
+                    }
+                } else {
+                    Card(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("Add more dictionaries", fontWeight = FontWeight.SemiBold)
+                            Text(
+                                "Install recommended dictionaries with one tap, or import any Yomitan .zip from files or Google Drive above.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            RecommendedDictionaries.ALL.forEach { dict ->
+                                val installedDict = dictionaries.firstOrNull { it.title.contains(dict.name, ignoreCase = true) }
+                                val installed = installedDict != null
+                                val update = installedDict?.let { updates[it.id] }
+                                Row(
+                                    Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Column(Modifier.weight(1f)) {
+                                        Text(
+                                            dict.name,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                        )
+                                        if (update != null) {
+                                            Text(
+                                                "Update available: ${update.latestTitle} (rev ${update.latestRevision})",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.primary,
+                                            )
+                                        }
+                                    }
+                                    if (installingId == dict.id || (installedDict != null && updatingDictId == installedDict.id)) {
+                                        CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                                    } else if (update != null) {
+                                        FilledTonalButton(
+                                            enabled = !busy,
+                                            onClick = { updateDictionary(update) },
+                                        ) { Text("Update") }
+                                    } else {
+                                        OutlinedButton(
+                                            enabled = !busy && !installed,
+                                            onClick = { installRecommended(dict) },
+                                        ) { Text(if (installed) "Installed" else "Install") }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
+            }
+        }
+        items(orderedList, key = { it.id }) { dict ->
+            val index = orderedList.indexOfFirst { it.id == dict.id }
+            val isDragging = dict.id == draggingItemId
+            val update = updates[dict.id]
 
-                DictionaryRow(
-                    modifier = Modifier.animateItem(),
-                    dict = dict,
-                    priorityIndex = index,
-                    update = update,
-                    updating = updatingDictId == dict.id,
-                    busy = busy,
-                    isDragging = isDragging,
-                    dragDeltaY = if (isDragging) dragDeltaY else 0f,
-                    dragModifier = dragModifier,
-                    onUpdate = { if (update != null) updateDictionary(update) },
-                    onToggle = { enabled ->
-                        scope.launch { container.db.dictionaryDao().setEnabled(dict.id, enabled) }
+            val dragModifier = Modifier.pointerInput(dict.id) {
+                detectDragGestures(
+                    onDragStart = {
+                        draggingItemId = dict.id
+                        dragDeltaY = 0f
                     },
-                    onDelete = {
-                        scope.launch(Dispatchers.IO) {
-                            container.db.termDao().deleteByDict(dict.id)
-                            container.db.kanjiDao().deleteByDict(dict.id)
-                            container.db.tagDao().deleteByDict(dict.id)
-                            container.db.metaDao().deleteTermMetaByDict(dict.id)
-                            container.db.metaDao().deleteKanjiMetaByDict(dict.id)
-                            container.db.dictionaryDao().delete(dict.id)
-                            dict.zipPath?.let { path -> runCatching { File(path).delete() } }
-                            runCatching { File(context.cacheDir, "dict-images/${dict.id}").deleteRecursively() }
-                            runCatching { container.refreshDictUpdates() }
+                    onDragEnd = {
+                        val finalOrder = orderedList.map { it.id }
+                        draggingItemId = null
+                        dragDeltaY = 0f
+                        scope.launch {
+                            container.db.dictionaryDao().updatePriorities(finalOrder)
+                        }
+                    },
+                    onDragCancel = {
+                        draggingItemId = null
+                        dragDeltaY = 0f
+                        orderedList = dictionaries
+                    },
+                    onDrag = { change, dragAmount ->
+                        change.consume()
+                        dragDeltaY += dragAmount.y
+
+                        val currentIdx = orderedList.indexOfFirst { it.id == dict.id }
+                        if (currentIdx != -1) {
+                            val currentInfo = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == dict.id }
+                            if (currentInfo != null) {
+                                val currentCenter = currentInfo.offset + dragDeltaY + currentInfo.size / 2f
+                                if (dragDeltaY > 0 && currentIdx < orderedList.size - 1) {
+                                    val nextId = orderedList[currentIdx + 1].id
+                                    val nextInfo = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == nextId }
+                                    val nextCenter = if (nextInfo != null) {
+                                        nextInfo.offset + nextInfo.size / 2f
+                                    } else {
+                                        currentInfo.offset + currentInfo.size + currentInfo.size / 2f
+                                    }
+                                    if (currentCenter > nextCenter) {
+                                        val step = (nextInfo?.offset ?: (currentInfo.offset + currentInfo.size)) - currentInfo.offset
+                                        orderedList = orderedList.toMutableList().apply {
+                                            add(currentIdx + 1, removeAt(currentIdx))
+                                        }
+                                        dragDeltaY -= step
+                                    }
+                                } else if (dragDeltaY < 0 && currentIdx > 0) {
+                                    val prevId = orderedList[currentIdx - 1].id
+                                    val prevInfo = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == prevId }
+                                    val prevCenter = if (prevInfo != null) {
+                                        prevInfo.offset + prevInfo.size / 2f
+                                    } else {
+                                        currentInfo.offset - currentInfo.size / 2f
+                                    }
+                                    if (currentCenter < prevCenter) {
+                                        val step = currentInfo.offset - (prevInfo?.offset ?: (currentInfo.offset - currentInfo.size))
+                                        orderedList = orderedList.toMutableList().apply {
+                                            add(currentIdx - 1, removeAt(currentIdx))
+                                        }
+                                        dragDeltaY += step
+                                    }
+                                }
+                            }
                         }
                     },
                 )
             }
+
+            DictionaryRow(
+                modifier = Modifier.animateItem(),
+                dict = dict,
+                priorityIndex = index,
+                update = update,
+                updating = updatingDictId == dict.id,
+                busy = busy,
+                isDragging = isDragging,
+                dragDeltaY = if (isDragging) dragDeltaY else 0f,
+                dragModifier = dragModifier,
+                onUpdate = { if (update != null) updateDictionary(update) },
+                onToggle = { enabled ->
+                    scope.launch { container.db.dictionaryDao().setEnabled(dict.id, enabled) }
+                },
+                onDelete = {
+                    scope.launch(Dispatchers.IO) {
+                        container.db.termDao().deleteByDict(dict.id)
+                        container.db.kanjiDao().deleteByDict(dict.id)
+                        container.db.tagDao().deleteByDict(dict.id)
+                        container.db.metaDao().deleteTermMetaByDict(dict.id)
+                        container.db.metaDao().deleteKanjiMetaByDict(dict.id)
+                        container.db.dictionaryDao().delete(dict.id)
+                        dict.zipPath?.let { path -> runCatching { File(path).delete() } }
+                        runCatching { File(context.cacheDir, "dict-images/${dict.id}").deleteRecursively() }
+                        runCatching { container.refreshDictUpdates() }
+                    }
+                },
+            )
         }
     }
 }
@@ -598,30 +502,4 @@ private fun DictionaryRow(
             }
         }
     }
-}
-
-private sealed interface ImportSource {
-    val name: String?
-
-    data class Local(val uri: Uri, override val name: String?) : ImportSource
-    data class Drive(val fileId: String, override val name: String?) : ImportSource
-}
-
-private fun displayName(context: Context, uri: Uri): String? = runCatching {
-    context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
-        if (cursor.moveToFirst()) cursor.getString(0)?.removeSuffix(".zip") else null
-    }
-}.getOrNull()
-
-private fun downloadProgressText(name: String, downloaded: Long, total: Long?): String =
-    if (total != null && total > 0) {
-        "Downloading $name… ${downloaded * 100 / total}%"
-    } else {
-        "Downloading $name… ${downloaded / (1024 * 1024)} MB"
-    }
-
-private fun importProgressText(title: String, stage: String, current: Long): String = buildString {
-    append(title)
-    if (stage.isNotBlank()) append(" · ").append(stage)
-    if (current > 0) append(" · ").append(current)
 }

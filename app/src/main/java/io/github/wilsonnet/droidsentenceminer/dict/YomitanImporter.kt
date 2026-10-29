@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -12,6 +13,7 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.decodeToSequence
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -51,8 +53,24 @@ class YomitanImporter(
     suspend fun import(uri: Uri, onProgress: (Progress) -> Unit = {}): DictionaryEntity = withContext(Dispatchers.IO) {
         val tempZip = newTempZip()
         try {
+            // Cloud providers (Google Drive) download while we read, so this step can take a while.
+            onProgress(Progress(null, "Reading file"))
             context.contentResolver.openInputStream(uri)?.use { input ->
-                tempZip.outputStream().use { output -> input.copyTo(output) }
+                tempZip.outputStream().use { output ->
+                    val buffer = ByteArray(256 * 1024)
+                    var copied = 0L
+                    var reported = 0L
+                    while (true) {
+                        val read = input.read(buffer)
+                        if (read < 0) break
+                        output.write(buffer, 0, read)
+                        copied += read
+                        if (copied - reported >= 1024 * 1024) {
+                            reported = copied
+                            onProgress(Progress(null, "Reading file · ${copied / (1024 * 1024)} MB"))
+                        }
+                    }
+                }
             } ?: throw ImportException("Could not open the selected file")
         } catch (e: Exception) {
             tempZip.delete()
@@ -119,8 +137,10 @@ class YomitanImporter(
             onProgress(Progress(title, "Done", count, count, done = true))
             db.dictionaryDao().getAll().first { it.id == dictId }
         } catch (e: Throwable) {
-            db.metaDao().deleteTermMetaByDict(dictId)
-            db.dictionaryDao().delete(dictId)
+            withContext(NonCancellable) {
+                db.metaDao().deleteTermMetaByDict(dictId)
+                db.dictionaryDao().delete(dictId)
+            }
             throw e
         }
     }
@@ -203,12 +223,16 @@ class YomitanImporter(
 
                     db.dictionaryDao().getAll().first { it.id == dictId }
                 } catch (e: Throwable) {
-                    db.termDao().deleteByDict(dictId)
-                    db.kanjiDao().deleteByDict(dictId)
-                    db.tagDao().deleteByDict(dictId)
-                    db.metaDao().deleteTermMetaByDict(dictId)
-                    db.metaDao().deleteKanjiMetaByDict(dictId)
-                    db.dictionaryDao().delete(dictId)
+                    // NonCancellable: on cancellation every suspend DAO call would throw at once,
+                    // leaving a half-imported dictionary row (0 terms, zip deleted) behind.
+                    withContext(NonCancellable) {
+                        db.termDao().deleteByDict(dictId)
+                        db.kanjiDao().deleteByDict(dictId)
+                        db.tagDao().deleteByDict(dictId)
+                        db.metaDao().deleteTermMetaByDict(dictId)
+                        db.metaDao().deleteKanjiMetaByDict(dictId)
+                        db.dictionaryDao().delete(dictId)
+                    }
                     throw e
                 }
             }
@@ -224,102 +248,17 @@ class YomitanImporter(
         }
     }
 
+    // Banks are streamed item by item and inserted in chunks: a monolingual dictionary's single
+    // term bank can be >100 MB of JSON, and reading it into one String overran the 256 MB heap.
     private suspend fun importTerms(zip: ZipFile, dictId: Long, onProgress: (Progress) -> Unit) {
-        val banks = zip.bankEntries("term_bank")
-        var total = 0L
-        for (bank in banks) {
-            coroutineContext.ensureActive()
-            val rows = parseTermBank(zip, bank.name)
-            rows.chunked(INSERT_CHUNK).forEach { chunk ->
-                coroutineContext.ensureActive()
-                db.termDao().insertAll(chunk.map { it.copy(dictId = dictId) })
-            }
-            total += rows.size
-            onProgress(Progress(null, "Importing terms", total))
-        }
-    }
-
-    private suspend fun importKanji(zip: ZipFile, dictId: Long, onProgress: (Progress) -> Unit) {
-        val banks = zip.bankEntries("kanji_bank")
-        var total = 0L
-        for (bank in banks) {
-            coroutineContext.ensureActive()
-            val rows = parseKanjiBank(zip, bank.name)
-            rows.chunked(INSERT_CHUNK).forEach { chunk ->
-                coroutineContext.ensureActive()
-                db.kanjiDao().insertAll(chunk.map { it.copy(dictId = dictId) })
-            }
-            total += rows.size
-            onProgress(Progress(null, "Importing kanji", total))
-        }
-    }
-
-    private suspend fun importTags(zip: ZipFile, dictId: Long) {
-        val rows = mutableListOf<TagEntity>()
-        for (bank in zip.bankEntries("tag_bank")) {
-            val array = zip.readEntryJsonArray(bank.name) ?: continue
-            for (item in array) {
-                val arr = item as? JsonArray ?: continue
-                rows += TagEntity(
-                    dictId = dictId,
-                    name = arr.str(0),
-                    category = arr.str(1),
-                    order = arr.int(2) ?: 0,
-                    notes = arr.str(3),
-                    score = arr.int(4) ?: 0,
-                )
-            }
-        }
-        rows.chunked(INSERT_CHUNK).forEach { db.tagDao().insertAll(it) }
-    }
-
-    private suspend fun importTermMeta(zip: ZipFile, dictId: Long) {
-        val rows = mutableListOf<TermMetaEntity>()
-        for (bank in zip.bankEntries("term_meta_bank")) {
-            val array = zip.readEntryJsonArray(bank.name) ?: continue
-            for (item in array) {
-                val arr = item as? JsonArray ?: continue
-                val expression = arr.str(0)
-                if (expression.isBlank()) continue
-                rows += TermMetaEntity(
-                    dictId = dictId,
-                    expression = expression,
-                    mode = arr.str(1),
-                    dataJson = arr.getOrNull(2)?.toString() ?: "{}",
-                )
-            }
-        }
-        rows.chunked(INSERT_CHUNK).forEach { db.metaDao().insertTermMeta(it) }
-    }
-
-    private suspend fun importKanjiMeta(zip: ZipFile, dictId: Long) {
-        val rows = mutableListOf<KanjiMetaEntity>()
-        for (bank in zip.bankEntries("kanji_meta_bank")) {
-            val array = zip.readEntryJsonArray(bank.name) ?: continue
-            for (item in array) {
-                val arr = item as? JsonArray ?: continue
-                val character = arr.str(0)
-                if (character.isBlank()) continue
-                rows += KanjiMetaEntity(
-                    dictId = dictId,
-                    character = character,
-                    mode = arr.str(1),
-                    dataJson = arr.getOrNull(2)?.toString() ?: "{}",
-                )
-            }
-        }
-        rows.chunked(INSERT_CHUNK).forEach { db.metaDao().insertKanjiMeta(it) }
-    }
-
-    private fun parseTermBank(zip: ZipFile, entry: String): List<TermEntity> {
-        val array = zip.readEntryJsonArray(entry) ?: return emptyList()
-        val result = ArrayList<TermEntity>(array.size)
-        for (item in array) {
-            val arr = item as? JsonArray ?: continue
+        val total = streamBanks(
+            zip, "term_bank", { db.termDao().insertAll(it) },
+            onChunk = { onProgress(Progress(null, "Importing terms", it)) },
+        ) { arr ->
             val expression = arr.str(0)
-            if (expression.isBlank()) continue
-            result += TermEntity(
-                dictId = 0,
+            if (expression.isBlank()) return@streamBanks null
+            TermEntity(
+                dictId = dictId,
                 expression = expression,
                 reading = arr.str(1),
                 definitionTags = arr.str(2),
@@ -330,18 +269,15 @@ class YomitanImporter(
                 termTags = arr.str(7),
             )
         }
-        return result
+        onProgress(Progress(null, "Importing terms", total))
     }
 
-    private fun parseKanjiBank(zip: ZipFile, entry: String): List<KanjiEntity> {
-        val array = zip.readEntryJsonArray(entry) ?: return emptyList()
-        val result = ArrayList<KanjiEntity>(array.size)
-        for (item in array) {
-            val arr = item as? JsonArray ?: continue
+    private suspend fun importKanji(zip: ZipFile, dictId: Long, onProgress: (Progress) -> Unit) {
+        val total = streamBanks(zip, "kanji_bank", { db.kanjiDao().insertAll(it) }) { arr ->
             val character = arr.str(0)
-            if (character.isBlank()) continue
-            result += KanjiEntity(
-                dictId = 0,
+            if (character.isBlank()) return@streamBanks null
+            KanjiEntity(
+                dictId = dictId,
                 character = character,
                 onyomi = arr.str(1),
                 kunyomi = arr.str(2),
@@ -350,7 +286,79 @@ class YomitanImporter(
                 statsJson = arr.getOrNull(5)?.toString() ?: "{}",
             )
         }
-        return result
+        onProgress(Progress(null, "Importing kanji", total))
+    }
+
+    private suspend fun importTags(zip: ZipFile, dictId: Long) {
+        streamBanks(zip, "tag_bank", { db.tagDao().insertAll(it) }) { arr ->
+            TagEntity(
+                dictId = dictId,
+                name = arr.str(0),
+                category = arr.str(1),
+                order = arr.int(2) ?: 0,
+                notes = arr.str(3),
+                score = arr.int(4) ?: 0,
+            )
+        }
+    }
+
+    private suspend fun importTermMeta(zip: ZipFile, dictId: Long) {
+        streamBanks(zip, "term_meta_bank", { db.metaDao().insertTermMeta(it) }) { arr ->
+            val expression = arr.str(0)
+            if (expression.isBlank()) return@streamBanks null
+            TermMetaEntity(
+                dictId = dictId,
+                expression = expression,
+                mode = arr.str(1),
+                dataJson = arr.getOrNull(2)?.toString() ?: "{}",
+            )
+        }
+    }
+
+    private suspend fun importKanjiMeta(zip: ZipFile, dictId: Long) {
+        streamBanks(zip, "kanji_meta_bank", { db.metaDao().insertKanjiMeta(it) }) { arr ->
+            val character = arr.str(0)
+            if (character.isBlank()) return@streamBanks null
+            KanjiMetaEntity(
+                dictId = dictId,
+                character = character,
+                mode = arr.str(1),
+                dataJson = arr.getOrNull(2)?.toString() ?: "{}",
+            )
+        }
+    }
+
+    /** Streams every `<prefix>_N.json` bank's rows through [map] into [insert], [INSERT_CHUNK] at a time. */
+    private suspend fun <T> streamBanks(
+        zip: ZipFile,
+        prefix: String,
+        insert: suspend (List<T>) -> Unit,
+        onChunk: (Long) -> Unit = {},
+        map: (JsonArray) -> T?,
+    ): Long {
+        var total = 0L
+        val chunk = ArrayList<T>(INSERT_CHUNK)
+        for (bank in zip.bankEntries(prefix)) {
+            coroutineContext.ensureActive()
+            zip.getInputStream(bank).use { input ->
+                for (item in jsonArrayItems(input)) {
+                    val row = (item as? JsonArray)?.let(map) ?: continue
+                    chunk += row
+                    if (chunk.size >= INSERT_CHUNK) {
+                        coroutineContext.ensureActive()
+                        insert(chunk.toList())
+                        total += chunk.size
+                        chunk.clear()
+                        onChunk(total)
+                    }
+                }
+            }
+        }
+        if (chunk.isNotEmpty()) {
+            insert(chunk.toList())
+            total += chunk.size
+        }
+        return total
     }
 
     fun parseIndex(jsonString: String): DictionaryIndex = YomitanIndexParser.parse(jsonString)
@@ -454,10 +462,10 @@ internal fun ZipFile.readEntryText(name: String): String? {
     return getInputStream(entry).bufferedReader(Charsets.UTF_8).use { it.readText() }
 }
 
-internal fun ZipFile.readEntryJsonArray(name: String): JsonArray? {
-    val text = readEntryText(name) ?: return null
-    return runCatching { Json.parseToJsonElement(text) as? JsonArray }.getOrNull()
-}
+/** Lazily decodes the items of a top-level JSON array without holding the whole document. */
+@OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+internal fun jsonArrayItems(input: InputStream): Sequence<JsonElement> =
+    Json.decodeToSequence(input.buffered(64 * 1024), JsonElement.serializer(), kotlinx.serialization.json.DecodeSequenceMode.ARRAY_WRAPPED)
 
 private fun JsonArray.str(index: Int): String {
     val element = getOrNull(index) ?: return ""

@@ -50,6 +50,11 @@ class AppContainer(private val context: Context) {
     val lookup: TermLookup by lazy { TermLookup(db) }
     val importer: YomitanImporter by lazy { YomitanImporter(context, db) }
     val dictDownloader: DictDownloader by lazy { DictDownloader() }
+    val dictImports by lazy {
+        io.github.wilsonnet.droidsentenceminer.dict.DictImportQueue(context, importer, dictDownloader, db, appScope) {
+            runCatching { refreshDictUpdates() }
+        }
+    }
 
     val ankiDroid: AnkiDroidBridge by lazy { AnkiDroidBridge(context) }
     val ankiConnect: AnkiConnectBridge by lazy { AnkiConnectBridge(prefs) }
