@@ -136,7 +136,7 @@ data class TermMetaResult(
     val dataJson: String,
 )
 
-/** A word that was found inside scanned text. */
+/** A word that was found inside scanned text. [results] are headwords only (no glossary): see [TermLookup.scan]. */
 data class ScannedWord(
     val text: String,
     val start: Int,

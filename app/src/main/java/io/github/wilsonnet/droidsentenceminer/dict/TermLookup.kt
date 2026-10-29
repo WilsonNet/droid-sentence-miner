@@ -1,7 +1,10 @@
 package io.github.wilsonnet.droidsentenceminer.dict
 
+import androidx.room.InvalidationTracker
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Yomitan-style lookup engine.
@@ -13,6 +16,10 @@ import kotlinx.coroutines.withContext
  * The algorithm is a Kotlin port of the matching strategy used by Yomitan / Yomihon:
  * generate deinflection candidates for every substring, batch-query the database,
  * then pick the longest valid match at each position.
+ *
+ * Both read term rows without their glossary ([TermHead]) first; [lookup] then fetches the
+ * glossaries of the rows that matched by id, [scan] never does. With big monolingual
+ * dictionaries installed a line scan matches thousands of rows of kilobytes each.
  */
 class TermLookup(
     private val db: DictDatabase,
@@ -50,11 +57,10 @@ class TermLookup(
 
     data class Entry(val expression: String, val reading: String, val terms: List<TermResult>)
 
-    /** What the last [scan] cost (debug API `/lookup_bench`). */
+    /** What the last uncached [scan] cost (debug API `/lookup_bench`). */
     data class ScanStats(
         val forms: Int,
         val rows: Int,
-        val glossaryChars: Long,
         val deinflectMs: Double,
         val queryMs: Double,
         val totalMs: Double,
@@ -72,12 +78,64 @@ class TermLookup(
         val reasons: List<String>,
     )
 
+    private data class ScanKey(val text: String, val maxLength: Int)
+
+    // A tap scans its whole line (wordAt), the tap re-read scans it again, and neighbouring taps
+    // hit the same subtitle: keep the last lines. Cleared on any dictionary write; a result
+    // computed while a write happened (the generation moved on) is not stored.
+    private val scanCache = LruCache<ScanKey, List<ScannedWord>>(SCAN_CACHE_SIZE)
+    private val tagCache = ConcurrentHashMap<Long, Map<String, String>>()
+
+    @Volatile
+    private var enabledCache: Map<Long, DictionaryEntity>? = null
+
+    @Volatile
+    private var cacheGeneration = 0L
+
+    private val observing = AtomicBoolean(false)
+
+    /**
+     * Every import, update, delete, enable or reorder writes the `dictionaries` row last
+     * (`updateCounts` after the terms and tags), so watching that table alone keeps the caches
+     * right without a per-row trigger on `terms`. Registered on first use, off the main thread:
+     * `addObserver` blocks while Room installs its trigger.
+     */
+    private fun ensureObserving() {
+        if (!observing.compareAndSet(false, true)) return
+        db.invalidationTracker.addObserver(
+            object : InvalidationTracker.Observer(arrayOf("dictionaries")) {
+                override fun onInvalidated(tables: Set<String>) = invalidateCaches()
+            },
+        )
+    }
+
+    /** Drops every cache; Room calls it whenever the dictionaries table is written. */
+    fun invalidateCaches() {
+        cacheGeneration++
+        scanCache.clear()
+        tagCache.clear()
+        enabledCache = null
+    }
+
+    /**
+     * Words of [text], longest match first at each position. [ScannedWord.results] are ranked but
+     * carry no glossary, sequence or term tags (empty / 0): callers only need the ranges and headwords; use
+     * [lookup] for definitions. Cached per text until a dictionary table changes.
+     */
     suspend fun scan(text: String, maxLength: Int = MAX_TERM_LENGTH): List<ScannedWord> = withContext(Dispatchers.Default) {
         if (text.isBlank()) return@withContext emptyList()
+        val key = ScanKey(text, maxLength)
+        scanCache[key]?.let { return@withContext it }
+        val generation = cacheGeneration
+        val words = scanUncached(text, maxLength)
+        if (generation == cacheGeneration) scanCache[key] = words
+        words
+    }
 
+    private suspend fun scanUncached(text: String, maxLength: Int): List<ScannedWord> {
         val started = System.nanoTime()
         val dicts = dictionariesByPriority()
-        if (dicts.isEmpty()) return@withContext emptyList()
+        if (dicts.isEmpty()) return emptyList()
 
         // form -> uses of that form across the text
         val formSources = HashMap<String, MutableList<FormSource>>(1024)
@@ -104,50 +162,44 @@ class TermLookup(
                 }
             }
         }
-        if (formSources.isEmpty()) return@withContext emptyList()
+        if (formSources.isEmpty()) return emptyList()
 
         val deinflected = System.nanoTime()
-        val termsByForm = queryTermsByForms(formSources.keys.toList())
+        val headsByForm = queryHeadsByForms(formSources.keys)
         val queried = System.nanoTime()
-        val uniqueRows = termsByForm.values.flatten().distinctBy { it.id }
-
-        data class Hit(val length: Int, val term: TermResult)
 
         val hitsByPosition = HashMap<Int, MutableMap<Int, MutableList<TermResult>>>()
         for ((form, sources) in formSources) {
-            val rows = termsByForm[form] ?: continue
+            val rows = headsByForm[form] ?: continue
             for (row in rows) {
                 val dict = dicts[row.dictId] ?: continue
+                val expected = InflectionType.parseRules(row.rules)
                 for (source in sources) {
-                    val expected = InflectionType.parseRules(row.rules)
                     if (!InflectionType.conditionsMatch(source.conditions, expected)) continue
-                    val exactExpression = row.expression == source.surface
-                    val term = TermResult(
-                        dictId = row.dictId,
-                        dictionaryTitle = dict.title,
-                        dictionaryPriority = dict.priority,
-                        expression = row.expression,
-                        reading = row.reading,
-                        definitionTags = row.definitionTags,
-                        rules = row.rules,
-                        score = row.score,
-                        glossaryJson = row.glossaryJson,
-                        sequence = row.sequence,
-                        termTags = row.termTags,
-                        matchedForm = form,
-                        deinflectionReasons = source.reasons,
-                    )
-                    if (!exactExpression && source.conditions != 0L && expected != 0L) {
-                        // deinflected match must be compatible with the term rules (already checked above)
-                    }
+                    val term = row.toResult(dict, body = null, matchedForm = form, reasons = source.reasons)
                     val positionMap = hitsByPosition.getOrPut(source.position) { HashMap() }
                     positionMap.getOrPut(source.length) { mutableListOf() }.add(term)
                 }
             }
         }
-        if (hitsByPosition.isEmpty()) return@withContext emptyList()
+        val words = if (hitsByPosition.isEmpty()) emptyList() else longestMatches(text, maxLength, hitsByPosition)
+        val done = System.nanoTime()
+        lastScanStats = ScanStats(
+            forms = formSources.size,
+            rows = headsByForm.values.sumOf { it.size },
+            deinflectMs = (deinflected - started) / 1e6,
+            queryMs = (queried - deinflected) / 1e6,
+            totalMs = (done - started) / 1e6,
+        )
+        return words
+    }
 
-        // Longest-match-wins walk.
+    /** Longest-match-wins walk over the hits (position -> length -> terms). */
+    private fun longestMatches(
+        text: String,
+        maxLength: Int,
+        hitsByPosition: Map<Int, Map<Int, List<TermResult>>>,
+    ): List<ScannedWord> {
         val words = mutableListOf<ScannedWord>()
         var position = 0
         while (position < text.length) {
@@ -172,25 +224,15 @@ class TermLookup(
                 position++
                 continue
             }
-            val ranked = rankTerms(surface, terms)
             words += ScannedWord(
                 text = surface,
                 start = position,
                 end = position + chosenLength,
-                results = ranked,
+                results = rankTerms(surface, terms),
             )
             position += chosenLength
         }
-        val done = System.nanoTime()
-        lastScanStats = ScanStats(
-            forms = formSources.size,
-            rows = uniqueRows.size,
-            glossaryChars = uniqueRows.sumOf { it.glossaryJson.length.toLong() },
-            deinflectMs = (deinflected - started) / 1e6,
-            queryMs = (queried - deinflected) / 1e6,
-            totalMs = (done - started) / 1e6,
-        )
-        words
+        return words
     }
 
     /**
@@ -223,10 +265,11 @@ class TermLookup(
                 .add(candidate.conditions to candidate.reasons.toList())
         }
 
-        val termsByForm = queryTermsByForms(formConditions.keys.toList())
-        val results = mutableListOf<TermResult>()
+        val headsByForm = queryHeadsByForms(formConditions.keys)
+        // Rows whose rules fit one of the candidates; only their glossaries are read.
+        val matches = mutableListOf<HeadMatch>()
         val deinflectionReasons = linkedSetOf<String>()
-        for ((form, rows) in termsByForm) {
+        for ((form, rows) in headsByForm) {
             val uses = formConditions[form] ?: continue
             for (row in rows) {
                 val dict = dicts[row.dictId] ?: continue
@@ -235,23 +278,11 @@ class TermLookup(
                     InflectionType.conditionsMatch(conditions, expected)
                 } ?: continue
                 deinflectionReasons += matchingUse.second
-                results += TermResult(
-                    dictId = row.dictId,
-                    dictionaryTitle = dict.title,
-                    dictionaryPriority = dict.priority,
-                    expression = row.expression,
-                    reading = row.reading,
-                    definitionTags = row.definitionTags,
-                    rules = row.rules,
-                    score = row.score,
-                    glossaryJson = row.glossaryJson,
-                    sequence = row.sequence,
-                    termTags = row.termTags,
-                    matchedForm = form,
-                    deinflectionReasons = matchingUse.second,
-                )
+                matches += HeadMatch(row, dict, form, matchingUse.second)
             }
         }
+        val bodies = queryBodies(matches.map { it.head.id })
+        val results = matches.map { it.head.toResult(it.dict, bodies[it.head.id], it.form, it.reasons) }
 
         val ranked = rankTerms(word, results)
         val frequencies = lookupTermMeta(formConditions.keys.toList(), dicts)
@@ -265,6 +296,8 @@ class TermLookup(
             deinflection = deinflectionReasons.filter { it.isNotBlank() },
         )
     }
+
+    private class HeadMatch(val head: TermHead, val dict: DictionaryEntity, val form: String, val reasons: List<String>)
 
     suspend fun lookupKanji(characters: List<String>): List<KanjiResult> = withContext(Dispatchers.Default) {
         if (characters.isEmpty()) return@withContext emptyList()
@@ -287,15 +320,20 @@ class TermLookup(
     }
 
     private suspend fun dictionariesByPriority(): Map<Long, DictionaryEntity> {
-        return db.dictionaryDao().getEnabled().associateBy { it.id }
+        enabledCache?.let { return it }
+        ensureObserving()
+        val generation = cacheGeneration
+        val loaded = db.dictionaryDao().getEnabled().associateBy { it.id }
+        if (generation == cacheGeneration) enabledCache = loaded
+        return loaded
     }
 
-    private suspend fun queryTermsByForms(forms: List<String>): Map<String, List<TermEntity>> {
+    /** Heads of every enabled row whose expression or reading is one of [forms], keyed by that form. */
+    private suspend fun queryHeadsByForms(forms: Collection<String>): Map<String, List<TermHead>> {
         if (forms.isEmpty()) return emptyMap()
-        val result = HashMap<String, MutableList<TermEntity>>()
-        forms.chunked(DB_CHUNK).forEach { chunk ->
-            val rows = db.termDao().findByForms(chunk)
-            for (row in rows) {
+        val result = HashMap<String, MutableList<TermHead>>()
+        forms.chunked(TERM_CHUNK).forEach { chunk ->
+            for (row in db.termDao().findHeadsByForms(chunk)) {
                 result.getOrPut(row.expression) { mutableListOf() }.add(row)
                 if (row.reading.isNotBlank() && row.reading != row.expression) {
                     result.getOrPut(row.reading) { mutableListOf() }.add(row)
@@ -304,6 +342,32 @@ class TermLookup(
         }
         return result
     }
+
+    private suspend fun queryBodies(ids: List<Long>): Map<Long, TermBody> {
+        if (ids.isEmpty()) return emptyMap()
+        val result = HashMap<Long, TermBody>(ids.size * 2)
+        ids.distinct().chunked(DB_CHUNK).forEach { chunk ->
+            db.termDao().findBodies(chunk).forEach { result[it.id] = it }
+        }
+        return result
+    }
+
+    /** [body] null: a scan hit, which carries no glossary, sequence or term tags. */
+    private fun TermHead.toResult(dict: DictionaryEntity, body: TermBody?, matchedForm: String, reasons: List<String>) = TermResult(
+        dictId = dictId,
+        dictionaryTitle = dict.title,
+        dictionaryPriority = dict.priority,
+        expression = expression,
+        reading = reading,
+        definitionTags = definitionTags,
+        rules = rules,
+        score = score,
+        glossaryJson = body?.glossaryJson.orEmpty(),
+        sequence = body?.sequence ?: 0L,
+        termTags = body?.termTags.orEmpty(),
+        matchedForm = matchedForm,
+        deinflectionReasons = reasons,
+    )
 
     private suspend fun lookupTermMeta(forms: List<String>, dicts: Map<Long, DictionaryEntity>): List<TermMetaResult> {
         if (forms.isEmpty()) return emptyList()
@@ -323,12 +387,21 @@ class TermLookup(
         return result
     }
 
+    /** Tag name -> category per dictionary (only categorized tags), cached until the tags table changes. */
     suspend fun tagCategories(dictIds: Collection<Long>): Map<Long, Map<String, String>> {
         if (dictIds.isEmpty()) return emptyMap()
-        return db.tagDao().getAll()
-            .filter { it.dictId in dictIds && it.category.isNotBlank() }
-            .groupBy { it.dictId }
-            .mapValues { (_, tags) -> tags.associate { it.name to it.category } }
+        ensureObserving()
+        val missing = dictIds.filter { !tagCache.containsKey(it) }
+        val loaded = if (missing.isEmpty()) {
+            emptyMap()
+        } else {
+            val generation = cacheGeneration
+            val rows = db.tagDao().categorized(missing).groupBy { it.dictId }
+                .mapValues { (_, tags) -> tags.associate { it.name to it.category } }
+            if (generation == cacheGeneration) missing.forEach { tagCache[it] = rows[it].orEmpty() }
+            rows
+        }
+        return dictIds.associateWith { loaded[it] ?: tagCache[it].orEmpty() }.filterValues { it.isNotEmpty() }
     }
 
     private fun rankTerms(surface: String, terms: List<TermResult>): List<TermResult> {
@@ -362,6 +435,10 @@ class TermLookup(
         private const val MAX_TERM_LENGTH = 16
         private const val DB_CHUNK = 800
 
+        /** Forms per terms query: bound twice (expression IN, reading IN), and old SQLite allows 999 args. */
+        private const val TERM_CHUNK = 450
+        private const val SCAN_CACHE_SIZE = 32
+
         fun isKanji(c: Char): Boolean = Character.UnicodeScript.of(c.code) == Character.UnicodeScript.HAN
 
         fun isKana(c: Char): Boolean {
@@ -381,5 +458,26 @@ class TermLookup(
 
 /** Katakana folded to hiragana, so トル and とる group together (Yomitan's reading normalizer). */
 internal fun kanaKey(reading: String): String = buildString(reading.length) {
-    for (c in reading) append(if (c in '\u30A1'..'\u30F6') c - 0x60 else c)
+    for (c in reading) append(if (c in 'ァ'..'ヶ') c - 0x60 else c)
+}
+
+/** A small thread-safe LRU map (android.util.LruCache is a stub in JVM unit tests). */
+internal class LruCache<K, V>(private val maxSize: Int) {
+    private val map = object : LinkedHashMap<K, V>(16, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<K, V>?): Boolean = size > maxSize
+    }
+
+    @Synchronized
+    operator fun get(key: K): V? = map[key]
+
+    @Synchronized
+    operator fun set(key: K, value: V) {
+        map[key] = value
+    }
+
+    @Synchronized
+    fun clear() = map.clear()
+
+    @Synchronized
+    fun size(): Int = map.size
 }

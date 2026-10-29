@@ -3,6 +3,14 @@ package io.github.wilsonnet.droidsentenceminer.dict
 /** Renders parsed glossary entries to sanitized HTML (used in the popup WebView and in Anki cards). */
 object GlossaryHtml {
 
+    private val camelBoundary = Regex("([a-z0-9])([A-Z])")
+    private val nonDataKeyChars = Regex("[^a-z0-9_-]")
+    private val nonCssKeyChars = Regex("[^a-z-]")
+
+    // Structured content repeats the same few keys (class, content, fontSize, ...) on every node.
+    private val dataKeys = java.util.concurrent.ConcurrentHashMap<String, String>()
+    private val cssKeys = java.util.concurrent.ConcurrentHashMap<String, String>()
+
     /** Convert content nodes to HTML. [imageUrl] maps a dictionary-internal path to a displayable URL. */
     fun render(
         entries: List<GlossaryEntry>,
@@ -11,6 +19,18 @@ object GlossaryHtml {
         includeImages: Boolean = true,
     ): String {
         val sb = StringBuilder()
+        renderTo(sb, entries, imageUrl, includeDeinflectionForms, includeImages)
+        return sb.toString()
+    }
+
+    /** [render] appending to [sb], without building a string per node. */
+    fun renderTo(
+        sb: StringBuilder,
+        entries: List<GlossaryEntry>,
+        imageUrl: (String) -> String? = { null },
+        includeDeinflectionForms: Boolean = false,
+        includeImages: Boolean = true,
+    ) {
         for (entry in entries) {
             if (entry.isDeinflection) {
                 sb.append("<div class=\"gloss-deinflection\">")
@@ -22,51 +42,55 @@ object GlossaryHtml {
                 }
                 sb.append("</div>")
             } else {
-                entry.content.forEach { sb.append(renderNode(it, imageUrl, includeImages)) }
+                entry.content.forEach { renderNode(sb, it, imageUrl, includeImages) }
             }
         }
-        return sb.toString()
     }
 
-    private fun renderNode(node: GlossaryContent, imageUrl: (String) -> String?, includeImages: Boolean): String = when (node) {
-        is GlossaryContent.Text -> escape(node.text)
-        is GlossaryContent.LineBreak -> "<br>"
-        is GlossaryContent.Image -> {
-            if (!includeImages) {
-                val label = node.alt ?: node.title ?: "image"
-                "<span class=\"gloss-image-placeholder\">[${escape(label)}]</span>"
-            } else {
-                val url = imageUrl(node.path) ?: node.path
-                val styleParts = buildList {
-                    val unit = node.sizeUnits ?: "px"
-                    node.width?.let { add("width:${formatDim(it)}$unit") }
-                    node.height?.let { add("height:${formatDim(it)}$unit") }
+    private fun renderNode(sb: StringBuilder, node: GlossaryContent, imageUrl: (String) -> String?, includeImages: Boolean) {
+        when (node) {
+            is GlossaryContent.Text -> appendEscaped(sb, node.text)
+            is GlossaryContent.LineBreak -> sb.append("<br>")
+            is GlossaryContent.Image -> {
+                if (!includeImages) {
+                    val label = node.alt ?: node.title ?: "image"
+                    sb.append("<span class=\"gloss-image-placeholder\">[").append(escape(label)).append("]</span>")
+                } else {
+                    val url = imageUrl(node.path) ?: node.path
+                    val styleParts = buildList {
+                        val unit = node.sizeUnits ?: "px"
+                        node.width?.let { add("width:${formatDim(it)}$unit") }
+                        node.height?.let { add("height:${formatDim(it)}$unit") }
+                    }
+                    val styleAttr = if (styleParts.isNotEmpty()) " style=\"${escapeAttr(styleParts.joinToString("; "))}\"" else ""
+                    val titleAttr = node.title?.takeIf { it.isNotEmpty() }?.let { " title=\"${escapeAttr(it)}\"" } ?: ""
+                    sb.append("<span class=\"gloss-image-container\"><img src=\"${escapeAttr(url)}\"$styleAttr$titleAttr alt=\"${escapeAttr(node.alt ?: "")}\"></span>")
                 }
-                val styleAttr = if (styleParts.isNotEmpty()) " style=\"${escapeAttr(styleParts.joinToString("; "))}\"" else ""
-                val titleAttr = node.title?.takeIf { it.isNotEmpty() }?.let { " title=\"${escapeAttr(it)}\"" } ?: ""
-                "<span class=\"gloss-image-container\"><img src=\"${escapeAttr(url)}\"$styleAttr$titleAttr alt=\"${escapeAttr(node.alt ?: "")}\"></span>"
             }
+            is GlossaryContent.Element -> renderElement(sb, node, imageUrl, includeImages)
         }
-        is GlossaryContent.Element -> renderElement(node, imageUrl, includeImages)
     }
 
     private fun formatDim(v: Double): String =
         if (v == v.toLong().toDouble()) v.toLong().toString() else v.toString()
 
-    private fun renderElement(node: GlossaryContent.Element, imageUrl: (String) -> String?, includeImages: Boolean): String {
-        val tag = when (node.tag.lowercase()) {
+    private fun renderElement(sb: StringBuilder, node: GlossaryContent.Element, imageUrl: (String) -> String?, includeImages: Boolean) {
+        val tag = when (val lower = node.tag.lowercase()) {
             "div", "span", "ul", "ol", "li", "table", "thead", "tbody", "tfoot", "tr", "td", "th",
             "b", "strong", "i", "em", "u", "s", "sub", "sup", "ruby", "rt", "rp", "small", "p", "a",
             "details", "summary",
-            -> node.tag.lowercase()
-            "br" -> return "<br>"
+            -> lower
+            "br" -> {
+                sb.append("<br>")
+                return
+            }
             else -> "div"
         }
-        val sb = StringBuilder("<$tag")
+        sb.append('<').append(tag)
         for ((k, v) in node.data) {
             val dataKey = dataAttrKey(k)
             if (dataKey.isNotEmpty()) {
-                sb.append(" data-sc-$dataKey=\"${escapeAttr(v)}\"")
+                sb.append(" data-sc-").append(dataKey).append("=\"").append(escapeAttr(v)).append('"')
             }
         }
         for ((k, v) in node.properties) {
@@ -79,20 +103,15 @@ object GlossaryHtml {
                 "open" -> if (tag == "details") "open" else null
                 else -> null
             } ?: continue
-            sb.append(" $attrName=\"${escapeAttr(v)}\"")
+            sb.append(' ').append(attrName).append("=\"").append(escapeAttr(v)).append('"')
         }
-        val css = if (node.style.isNotEmpty()) {
-            node.style.entries.joinToString("; ") { (k, v) -> "${cssKey(k)}: ${cssValue(v)}" }
-        } else {
-            ""
+        if (node.style.isNotEmpty()) {
+            val css = node.style.entries.joinToString("; ") { (k, v) -> "${cssKey(k)}: ${cssValue(v)}" }
+            if (css.isNotEmpty()) sb.append(" style=\"").append(escapeAttr(css)).append('"')
         }
-        if (css.isNotEmpty()) {
-            sb.append(" style=\"${escapeAttr(css)}\"")
-        }
-        sb.append(">")
-        node.children.forEach { sb.append(renderNode(it, imageUrl, includeImages)) }
-        sb.append("</$tag>")
-        return sb.toString()
+        sb.append('>')
+        node.children.forEach { renderNode(sb, it, imageUrl, includeImages) }
+        sb.append("</").append(tag).append('>')
     }
 
     private fun isSafeHref(href: String): Boolean {
@@ -100,29 +119,34 @@ object GlossaryHtml {
         return trimmed.startsWith("?") || trimmed.startsWith("http://") || trimmed.startsWith("https://") || trimmed.startsWith("#")
     }
 
-    private fun dataAttrKey(key: String): String =
-        key.replace(Regex("([a-z0-9])([A-Z])"), "$1-$2").lowercase().replace(Regex("[^a-z0-9_-]"), "")
+    private fun dataAttrKey(key: String): String = dataKeys.getOrPut(key) {
+        key.replace(camelBoundary, "$1-$2").lowercase().replace(nonDataKeyChars, "")
+    }
 
     /** Very small CSS value sanitizer: strips anything that could break out of a style attribute. */
     private fun cssValue(value: String): String = value.replace("\"", "'").replace("<", "").replace(">", "")
 
     /** Converts camelCase structured-content style keys (`listStyleType`, `fontSize`) to CSS (`list-style-type`, `font-size`). */
-    private fun cssKey(key: String): String =
-        key.replace(Regex("([a-z0-9])([A-Z])"), "$1-$2").lowercase().replace(Regex("[^a-z-]"), "")
+    private fun cssKey(key: String): String = cssKeys.getOrPut(key) {
+        key.replace(camelBoundary, "$1-$2").lowercase().replace(nonCssKeyChars, "")
+    }
 
-    fun escape(text: String): String = buildString(text.length) {
-        text.forEach { ch ->
+    fun escape(text: String): String = buildString(text.length) { appendEscaped(this, text) }
+
+    private fun appendEscaped(sb: StringBuilder, text: String) {
+        for (ch in text) {
             when (ch) {
-                '&' -> append("&amp;")
-                '<' -> append("&lt;")
-                '>' -> append("&gt;")
-                '"' -> append("&quot;")
-                else -> append(ch)
+                '&' -> sb.append("&amp;")
+                '<' -> sb.append("&lt;")
+                '>' -> sb.append("&gt;")
+                '"' -> sb.append("&quot;")
+                else -> sb.append(ch)
             }
         }
     }
 
     private fun escapeAttr(value: String): String = escape(value).replace("'", "&#39;")
+
 
     /** Full HTML document for the popup WebView. */
     fun wrapDocument(bodyHtml: String, styles: String? = null, darkMode: Boolean = false): String {
@@ -166,9 +190,7 @@ object GlossaryHtml {
             li { margin:2px 0; }
             table { border-collapse: collapse; }
             th, td { border: 1px solid rgba(128,128,128,0.35); padding: 2px 6px; }
-            ${styles.orEmpty()}
-            </style></head>
-            <body><div class="glossary">$bodyHtml</div></body></html>
-        """.trimIndent()
+        """.trimIndent() + // body and styles are appended untrimmed: trimIndent over 100s of KB of HTML is not free
+            "\n" + styles.orEmpty() + "\n</style></head>\n<body><div class=\"glossary\">" + bodyHtml + "</div></body></html>"
     }
 }

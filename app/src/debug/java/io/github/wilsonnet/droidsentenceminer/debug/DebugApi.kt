@@ -587,13 +587,16 @@ object DebugApi {
     /**
      * Times one screen-dictionary tap: [TermLookup.wordAt] (scans the whole line), [TermLookup.lookup]
      * of the word under the finger and [CardMiner.buildPopupHtml]. Run 0 is reported apart (cold:
-     * SQLite page cache, JIT); the rest as median/min/max ms.
+     * SQLite page cache, JIT); the rest as median/min/max ms. `fresh=1` (default) drops the lookup
+     * caches before every run, so `wordAt` is the uncached scan of a new line; `fresh=0` measures a
+     * second tap on the same line.
      */
     private fun lookupBench(params: Map<String, String>): JSONObject {
         val text = params["text"] ?: return errorJson("missing 'text' parameter")
         val index = params["index"]?.toIntOrNull() ?: 0
         val n = (params["n"]?.toIntOrNull() ?: 10).coerceIn(1, 200)
         val dark = params["dark"] == "1"
+        val fresh = params["fresh"] != "0"
         val container = AppContainer.from(app)
         val runs = mutableListOf<LongArray>()
         var word = ""
@@ -601,6 +604,7 @@ object DebugApi {
         var htmlBytes = 0
         runBlocking {
             repeat(n + 1) {
+                if (fresh) container.lookup.invalidateCaches()
                 val t0 = System.nanoTime()
                 val range = container.lookup.wordAt(text, index)
                 val t1 = System.nanoTime()
@@ -633,7 +637,7 @@ object DebugApi {
             .put("coldMs", cold)
             .put("warmMs", warm)
             .put("lastScan", container.lookup.lastScanStats?.let {
-                JSONObject().put("forms", it.forms).put("rows", it.rows).put("glossaryChars", it.glossaryChars)
+                JSONObject().put("forms", it.forms).put("rows", it.rows)
                     .put("deinflectMs", it.deinflectMs).put("queryMs", it.queryMs).put("totalMs", it.totalMs)
             })
     }

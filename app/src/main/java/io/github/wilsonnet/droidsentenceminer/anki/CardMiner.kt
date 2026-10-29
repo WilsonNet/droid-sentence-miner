@@ -65,7 +65,7 @@ class CardMiner(
                 sb.append("</div>")
             }
             val entries = GlossaryParser.parse(term.glossaryJson)
-            sb.append(GlossaryHtml.render(entries, includeImages = false))
+            GlossaryHtml.renderTo(sb, entries, includeImages = false)
         }
         val dictStyles = terms.mapNotNull { dicts[it.dictId] }.distinctBy { it.id }
             .mapNotNull { DictArchive.styles(context, it)?.takeIf { s -> s.isNotBlank() } }
@@ -251,12 +251,11 @@ class CardMiner(
                 sb.append("</div>")
             }
             val entries = GlossaryParser.parse(term.glossaryJson)
-            sb.append(
-                GlossaryHtml.render(
-                    entries,
-                    imageUrl = { path -> dicts[term.dictId]?.let { DictArchive.imageFile(context, it, path)?.let { f -> "file://${f.absolutePath}" } } },
-                    includeImages = true,
-                ),
+            GlossaryHtml.renderTo(
+                sb,
+                entries,
+                imageUrl = { path -> dicts[term.dictId]?.let { DictArchive.imageFile(context, it, path)?.let { f -> "file://${f.absolutePath}" } } },
+                includeImages = true,
             )
         }
     }
