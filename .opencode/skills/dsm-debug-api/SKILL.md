@@ -53,6 +53,7 @@ All GET, all JSON (except `frame.png`). Regions are screen fractions unless note
 | `/live?show=1\|0&mode=compact\|normal\|fullscreen` | Live text window: open/hide it and/or switch mode; returns `shown`, `mode`, `rect` ([x, y, w, h] px) |
 | `/book?file=/sdcard/...` | Book mode: read a page photo (EXIF-rotated, ≤3000 px) with ML Kit into ordered paragraphs (`text`, `vertical`, `box`) and show it in the Book tab — validates tategaki order without a camera |
 | `/lookup?word=<urlencoded>` | Dictionary lookup summary (reading, term count, base form, term_meta rows incl. pitch) |
+| `/lookup_bench?text=&index=&n=10&fresh=1&dark=0` | Times one screen-dictionary tap on `text` at char `index`: `wordAt` (whole-line scan), `lookup` of that word, `buildPopupHtml`. Returns `coldMs` (run 0) and `warmMs` median/min/max over `n` runs, `termCount`, `htmlBytes`, `dicts`, and `lastScan` (forms, rows, deinflect/query/total ms of the last uncached scan). `fresh=1` drops the lookup caches before each run (a new line); `fresh=0` = a second tap on the same line. Stop auto OCR first |
 | `/popup.html?word=&dark=0\|1` | Full HTML document rendered for the popup WebView (including dictionary `styles.css`, `data-sc-*` attributes, and tag categories) |
 | `/mine?word=&sentence=` | Look a word up and add a card via the configured Anki backend (AnkiDroid/AnkiConnect) |
 | `/dicts` | Installed dictionaries with revision, term/kanji counts and zip paths |

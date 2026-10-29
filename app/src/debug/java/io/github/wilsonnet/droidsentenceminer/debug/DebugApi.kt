@@ -120,6 +120,7 @@ object DebugApi {
             "/ocr_bench" -> respondApi(socket) { ocrBench(params) }
                 "/book" -> respondApi(socket) { bookFile(params) }
             "/lookup" -> respondApi(socket) { lookup(params) }
+            "/lookup_bench" -> respondApi(socket) { lookupBench(params) }
             "/popup.html" -> {
                 val word = params["word"] ?: return respondText(socket, 400, "missing 'word'")
                 val dark = params["dark"]?.let { it == "1" || it == "true" } ?: false
@@ -584,6 +585,64 @@ object DebugApi {
             .put("termCount", details.terms.size)
             .put("baseForm", details.baseForm)
             .put("meta", JSONArray(details.frequencies.map { "${it.dictionaryTitle}|${it.mode}|${it.expression}|${it.dataJson.take(120)}" }))
+    }
+
+    /**
+     * Times one screen-dictionary tap: [TermLookup.wordAt] (scans the whole line), [TermLookup.lookup]
+     * of the word under the finger and [CardMiner.buildPopupHtml]. Run 0 is reported apart (cold:
+     * SQLite page cache, JIT); the rest as median/min/max ms. `fresh=1` (default) drops the lookup
+     * caches before every run, so `wordAt` is the uncached scan of a new line; `fresh=0` measures a
+     * second tap on the same line.
+     */
+    private fun lookupBench(params: Map<String, String>): JSONObject {
+        val text = params["text"] ?: return errorJson("missing 'text' parameter")
+        val index = params["index"]?.toIntOrNull() ?: 0
+        val n = (params["n"]?.toIntOrNull() ?: 10).coerceIn(1, 200)
+        val dark = params["dark"] == "1"
+        val fresh = params["fresh"] != "0"
+        val container = AppContainer.from(app)
+        val runs = mutableListOf<LongArray>()
+        var word = ""
+        var termCount = 0
+        var htmlBytes = 0
+        runBlocking {
+            repeat(n + 1) {
+                if (fresh) container.lookup.invalidateCaches()
+                val t0 = System.nanoTime()
+                val range = container.lookup.wordAt(text, index)
+                val t1 = System.nanoTime()
+                word = text.substring(range.first, minOf(range.last + 1, text.length))
+                val details = container.lookup.lookup(word)
+                val t2 = System.nanoTime()
+                val html = container.miner.buildPopupHtml(word, details, dark)
+                val t3 = System.nanoTime()
+                termCount = details.terms.size
+                htmlBytes = html.length
+                runs += longArrayOf(t1 - t0, t2 - t1, t3 - t2, t3 - t0)
+            }
+        }
+        fun ms(ns: Long) = Math.round(ns / 10_000.0) / 100.0
+        val names = listOf("wordAt", "lookup", "popupHtml", "total")
+        val cold = JSONObject()
+        names.forEachIndexed { i, name -> cold.put(name, ms(runs[0][i])) }
+        val warm = JSONObject()
+        names.forEachIndexed { i, name ->
+            val sorted = runs.drop(1).map { it[i] }.sorted()
+            warm.put(name, JSONObject().put("median", ms(sorted[sorted.size / 2])).put("min", ms(sorted.first())).put("max", ms(sorted.last())))
+        }
+        return JSONObject()
+            .put("ok", true)
+            .put("word", word)
+            .put("termCount", termCount)
+            .put("htmlBytes", htmlBytes)
+            .put("dicts", runBlocking { container.db.dictionaryDao().getEnabled().size })
+            .put("n", n)
+            .put("coldMs", cold)
+            .put("warmMs", warm)
+            .put("lastScan", container.lookup.lastScanStats?.let {
+                JSONObject().put("forms", it.forms).put("rows", it.rows)
+                    .put("deinflectMs", it.deinflectMs).put("queryMs", it.queryMs).put("totalMs", it.totalMs)
+            })
     }
 
     private fun mine(params: Map<String, String>): JSONObject {

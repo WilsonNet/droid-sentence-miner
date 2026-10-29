@@ -52,6 +52,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import io.github.wilsonnet.droidsentenceminer.AppContainer
+import io.github.wilsonnet.droidsentenceminer.dict.DictArchive
 import io.github.wilsonnet.droidsentenceminer.dict.DictImportQueue
 import io.github.wilsonnet.droidsentenceminer.dict.DictionaryEntity
 import io.github.wilsonnet.droidsentenceminer.dict.DictionaryUpdate
@@ -399,6 +400,7 @@ fun DictionaryScreen(modifier: Modifier = Modifier) {
                         container.db.metaDao().deleteTermMetaByDict(dict.id)
                         container.db.metaDao().deleteKanjiMetaByDict(dict.id)
                         container.db.dictionaryDao().delete(dict.id)
+                        DictArchive.invalidate(dict.id)
                         dict.zipPath?.let { path -> runCatching { File(path).delete() } }
                         runCatching { File(context.cacheDir, "dict-images/${dict.id}").deleteRecursively() }
                         runCatching { container.refreshDictUpdates() }

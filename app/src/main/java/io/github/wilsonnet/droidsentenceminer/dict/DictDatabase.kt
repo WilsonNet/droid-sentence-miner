@@ -58,6 +58,26 @@ data class TermEntity(
     val termTags: String,
 )
 
+/**
+ * A term row without its glossary: what scanning needs (match, rules, ranking). Glossaries of big
+ * monolingual dictionaries run to kilobytes per row, and a line scan matches thousands of rows
+ * (every substring, every reading), so they are fetched by id only for the rows that are shown.
+ * Only columns stored *before* `glossaryJson` are read: `sequence` and `termTags` come after it,
+ * and reaching them makes SQLite walk the overflow pages of every long glossary.
+ */
+data class TermHead(
+    val id: Long,
+    val dictId: Long,
+    val expression: String,
+    val reading: String,
+    val definitionTags: String,
+    val rules: String,
+    val score: Int,
+)
+
+/** The rest of a term row, read by id for the rows a lookup shows. */
+data class TermBody(val id: Long, val glossaryJson: String, val sequence: Long, val termTags: String)
+
 @Entity(
     tableName = "kanji",
     indices = [Index("character"), Index("dictId")],
@@ -181,14 +201,23 @@ interface TermDao {
     @Query("SELECT COUNT(*) FROM terms WHERE dictId = :dictId")
     suspend fun countByDict(dictId: Long): Long
 
+    /**
+     * Enabled rows whose expression or reading is one of [forms], without the glossary column
+     * (fetch it with [findBodies]). [forms] is bound twice: keep it ≤ 450 (old SQLite allows
+     * 999 arguments).
+     */
     @Query(
         """
-        SELECT t.* FROM terms t
+        SELECT t.id, t.dictId, t.expression, t.reading, t.definitionTags, t.rules, t.score
+        FROM terms t
         INNER JOIN dictionaries d ON d.id = t.dictId
         WHERE d.enabled = 1 AND (t.expression IN (:forms) OR t.reading IN (:forms))
         """,
     )
-    suspend fun findByForms(forms: List<String>): List<TermEntity>
+    suspend fun findHeadsByForms(forms: List<String>): List<TermHead>
+
+    @Query("SELECT id, glossaryJson, sequence, termTags FROM terms WHERE id IN (:ids)")
+    suspend fun findBodies(ids: List<Long>): List<TermBody>
 
     @Query(
         """
@@ -235,6 +264,9 @@ interface TagDao {
 
     @Query("SELECT * FROM tags")
     suspend fun getAll(): List<TagEntity>
+
+    @Query("SELECT * FROM tags WHERE dictId IN (:dictIds) AND category != ''")
+    suspend fun categorized(dictIds: List<Long>): List<TagEntity>
 }
 
 @Dao
