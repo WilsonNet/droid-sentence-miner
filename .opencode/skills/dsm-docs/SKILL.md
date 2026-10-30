@@ -15,10 +15,13 @@ together). Stale docs cost the next agent hours: they trust AGENTS.md and the sk
 
 | Changed… | Update |
 | --- | --- |
-| User-visible feature, setting, workflow | `README.md` → *Features*, *Usage*, (if architecture) *How it works* |
-| Measured accuracy/timing, test counts | `README.md` → *Validation* (numbers + how measured); `./gradlew testDebugUnitTest` count in *Building* |
-| Something deferred / known limitation | `README.md` → *Roadmap* |
+| User-visible feature, setting, workflow | `docs/features.md` (full description) and/or `docs/usage.md`; the one-line list in `README.md` → *What it does* only for headline features; `CHANGELOG.md` → *Unreleased*; user guides in `site/src/content/docs/` |
+| Architecture / pipeline / dictionary format support | `docs/architecture.md` |
+| Measured accuracy/timing, test counts | `docs/validation.md` (numbers + how measured); test count in `docs/building.md` |
+| Something deferred / known limitation | `docs/roadmap.md` (remove items once shipped; they go to `CHANGELOG.md`) |
+| Every user-visible change, fix or removal | `CHANGELOG.md` → *Unreleased* (Added / Changed / Fixed), one user-facing line each |
 | New third-party code, model, idea source | `README.md` → *Credits* (+ license if it ships or is downloaded) |
+| Build steps, SDK setup | `docs/building.md` (+ `AGENTS.md` → *Toolchain* for agents) |
 | Toolchain, versions, build flags, devices | `AGENTS.md` → *Toolchain* / *Common commands* |
 | Non-obvious behavior, pitfall, design invariant | `AGENTS.md` → *Gotchas learned the hard way* (what + why + where in code) |
 | New package/dir | `AGENTS.md` → *Project layout* |
@@ -31,6 +34,11 @@ together). Stale docs cost the next agent hours: they trust AGENTS.md and the sk
 | App/game/dialog navigation, coordinates, adb UI flows | `.opencode/skills/dsm-navigation/SKILL.md` |
 | End-of-task wisdom harvest workflow | `.opencode/skills/wisdom-increaser/SKILL.md` |
 | Website landing copy, docs pages, deploy workflow | `site/README.md` + `README.md` website URLs + `AGENTS.md` → *Website* |
+
+`README.md` is the project's front page for humans: what it is, demo, short feature list,
+download/quick start, where the docs are, how to contribute, credits, license. Keep it short —
+details belong in `docs/`, history in `CHANGELOG.md`. A release (`dsm-release`) turns
+*Unreleased* into the new version's section.
 
 ## Checklist
 

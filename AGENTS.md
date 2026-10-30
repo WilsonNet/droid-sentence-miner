@@ -5,7 +5,8 @@ Notes for CLI/agent-driven development of this Android app. No Android Studio is
 ## Every task ends with a docs pass
 
 After any change to behavior, UI, settings, toolchain, debug API, dependencies or measured
-numbers, update the markdown docs **in the same push**: `README.md`, this file, and the skills in
+numbers, update the markdown docs **in the same push**: `CHANGELOG.md` (*Unreleased*), `docs/*.md`
+(features, usage, architecture, building, validation, roadmap), `README.md` (short front page only), this file, and the skills in
 `.opencode/skills/` (also visible to Claude Code via `.claude/skills` and Antigravity via `.agents/skills`). The checklist of which file
 owns what is in `.opencode/skills/dsm-docs/SKILL.md` — follow it before committing.
 
@@ -500,5 +501,7 @@ tools/ocr-eval/   OCR benchmark scripts (desktop meikiocr, on-device runner/A-B 
 tools/mic-eval/   microphone fallback scoring (LTAS/PESQ/STOI vs clean speech) + Python port of the EQ fit
 tools/meiki-variants/  builds the meikiocr model cuts in app/src/main/assets/meiki (make_assets.py)
 site/             Astro/Starlight marketing site + docs (Node 24, pnpm 12)
+docs/             contributor docs (features, usage, architecture, building, validation, roadmap) + README media
+CHANGELOG.md      user-visible changes per release (Unreleased on top)
 .opencode/skills/ dsm-debug-api, dsm-navigation, dsm-nightshade, dsm-audio, dsm-ocr-eval, dsm-docs, wisdom-increaser, dsm-promo-media, dsm-release (symlinked as .claude/skills and .agents/skills)
 ```

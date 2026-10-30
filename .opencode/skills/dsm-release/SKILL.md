@@ -31,6 +31,8 @@ installs next to debug builds; they have separate data.
 git status                       # clean, on main, everything pushed
 git log --oneline $(git describe --tags --abbrev=0 2>/dev/null)..HEAD   # what's in it
 # Pick the version with the user (semver; 0.x while pre-1.0)
+# CHANGELOG.md: rename "## [Unreleased]" to "## [0.2.0] — <date>", add a fresh empty
+# "## [Unreleased]" above it, update the compare links at the bottom; commit + push first.
 git tag -a v0.2.0 -m "v0.2.0"
 git -c credential.helper= -c credential.helper='!gh auth git-credential' \
   push https://github.com/WilsonNet/droid-sentence-miner.git v0.2.0
