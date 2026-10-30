@@ -240,8 +240,12 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   `<details>` (tap), not hover. Popup images point at `https://dict-media.invalid/<dictId>/<path>`,
   answered by `DictMedia.intercept` in both WebViews' `shouldInterceptRequest` (cached open `ZipFile`,
   extracted to `cacheDir/dict-images/<id>`, >1600 px rasters → WebP), so building the popup reads no
-  zip; responses carry `Access-Control-Allow-Origin: *` because monochrome images are CSS masks
-  (CORS) from a `file://` page. Cards: `CardMiner.buildCard` renders inline styles
+  zip. Both popup WebViews load the page with base URL `DictMedia.PAGE_BASE_URL` (the same
+  `https://dict-media.invalid/` origin): from a `file:///` base the image requests were blocked.
+  Never put Yomitan's `max-height: 100vh` back on `.gloss-image-container`: the popup WebView lays
+  out before it has a height, `vh` is 0 and `overflow:hidden` hid every image (found with
+  DevTools: `adb forward tcp:9222 localabstract:webview_devtools_remote_<pid>`, then
+  `Runtime.evaluate` over `websocat` on the `/json` page's `webSocketDebuggerUrl`). Cards: `CardMiner.buildCard` renders inline styles
   (Yomitan's `structured-content-style.json`) with `src="dsm_dict_<hash>.<ext>"` and
   `AnkiCard.glossaryMedia`; bridges store them and swap in the stored name (AnkiDroid's
   `addMediaFromUri` renames files). Real shapes: Pixiv = one 1em `assets/pixiv-logo.png` footer icon; 広辞苑 = unsized photos + 1em monochrome SVG gaiji; 三省堂 = 0.5em accent SVGs + collapsed pictures.
@@ -272,6 +276,26 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   (files, Drive picks) goes through `AppContainer.dictImports` (`DictImportQueue`): one at a time on
   `appScope` with a partial wake lock, so a batch survives leaving the page/rotation (the screen's
   scope cancelled it before); picks made mid-batch join the queue. Logs under `DSM-Import`.
+- **Lookup with many dictionaries** (`dict/TermLookup.kt`, `DictDatabase.findHeadsByForms`/`findBodies`):
+  the whole-line scan behind every tap (`wordAt`) reads `TermHead` rows only (columns stored *before*
+  `glossaryJson`; touching `sequence`/`termTags` after it makes SQLite read every long glossary's
+  overflow pages), `lookup` filters deinflection rules on heads and fetches glossaries by id for the
+  matches. 450 forms per query (bound twice; Android < 11 caps SQL arguments at 999). Last 32 line
+  scans, enabled-dict list and tag categories are cached and dropped on any write to `dictionaries`
+  (every import/delete/toggle/reorder ends with one). Measured with `/lookup_bench` on the Xiaomi
+  Pad 7 with 8 dicts (Jitendex, Kanjium, Pixiv, 広辞苑, 三省堂, 実用日本語表現, 新明解, 大辞林;
+  ~2.1 M rows), median ms per tap, new line → same line again: 歯がゆく (long line) 297 → 147 and
+  309 → 7; 詳しい 234 → 113 and 277 → 10; 猫 97 → 38 and 103 → 16; こう (487 terms, 630 KB HTML)
+  468 → 170 and 520 → 120 — the rest of こう is building/rendering that much HTML.
+- **Importing big dictionaries** (`YomitanImporter.streamBanks`, `jsonArrayItems`): banks are streamed
+  with `Json.decodeToSequence` and inserted 4000 rows at a time; reading a bank into one String
+  OOM'd on 広辞苑 (268 MB allocation, 256 MB heap — and an `OutOfMemoryError` killed the process, so
+  `DictImportQueue` now catches it per dictionary). `largeHeap` is on. Failed-import cleanup runs in
+  `withContext(NonCancellable)`: on cancellation every suspend DAO call threw at once, which left
+  JMnedict as a row with 0 terms and its zip deleted. Each batch starts by deleting orphan zips in
+  `files/dicts` and stale `drive-`/`recommended-`/`update-*.zip` downloads in the cache.
+  6 monolingual zips (540 MB) from Drive: 1.56 M terms in 7 min 45 s; `dict.db` is ~2.5 GB with
+  those 8 dicts.
 - **Per-headword entries** (`TermLookup.LookupDetails.entries` / `forEntry`, unit-tested): Yomitan's
   "group" mode — terms grouped by (expression, kana-folded reading, deinflection reasons) in first
   appearance order. With >1 entry `CardMiner.buildPopupHtml` renders a header + `.dsm-add` button per

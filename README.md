@@ -207,7 +207,7 @@ android sdk install platform-tools platforms/android-36 build-tools/35.0.0 emula
 echo "sdk.dir=$ANDROID_HOME" > local.properties
 
 # 3. Build & test
-./gradlew testDebugUnitTest          # TESTCOUNT JVM unit tests
+./gradlew testDebugUnitTest          # 191 JVM unit tests
 ./gradlew connectedDebugAndroidTest  # 4 on-device tests (VAD + AAC encoding)
 ./gradlew assembleDebug              # app/build/outputs/apk/debug/app-debug.apk
 
@@ -345,6 +345,17 @@ Glossaries may be strings, arrays, image definitions, deinflection entries or st
 
 ## Validation
 
+- Lookup speed with 8 dictionaries (~2.1 M rows: Jitendex, Kanjium, Pixiv, 広辞苑, 三省堂, 実用日本語表現,
+  新明解, 大辞林), Xiaomi Pad 7, `/lookup_bench` median per tap (line scan + lookup + popup
+  HTML), before → after the lean-scan/cache work:
+
+  | Tap | New line | Same line again |
+  | --- | --- | --- |
+  | 歯がゆく (long line) | 297 → 147 ms | 309 → 7 ms |
+  | 詳しい | 234 → 113 ms | 277 → 10 ms |
+  | 猫 | 97 → 38 ms | 103 → 16 ms |
+  | こう (487 terms, 630 KB HTML) | 468 → 170 ms | 520 → 120 ms |
+
 - Dictionary import, Xiaomi Pad 7, 6 monolingual zips (540 MB) picked at once from the user's own
   Drive via *Browse my Drive*: Pixiv Light (723,926 terms), 広辞苑 第七版 (257,602), 三省堂国語辞典
   第八版 (93,091), 実用日本語表現辞典 v2 (55,377), 新明解 第八版 (100,593), 大辞林 第四版 (334,748):
@@ -399,7 +410,7 @@ Glossaries may be strings, arrays, image definitions, deinflection entries or st
   compressor); on-device calibration matches the Python reference fit (each band within 2 dB, separate measurement runs). In
   Nightshade the 6.3 kHz resonance is gone from the clips. Cost: 1.3 % of one core while the mic
   is in use, nothing while device audio works.
-- TESTCOUNT JVM unit tests: speaker-correction EQ (FFT, biquads, response from pink noise, fit of the
+- 191 JVM unit tests: speaker-correction EQ (FFT, biquads, response from pink noise, fit of the
   measured Pad 7 curve, chain), meikiocr detector/recognizer input sizing, frame change detection (one typewriter glyph counts; direct RGBA buffer with row stride), loudness
   normalization, popup placement (flip/size/shift), screen text layer (subtitle glyphs → screen fractions, signage skipped), book page layout (tategaki order, ruby filter incl. real manga ruby, split sentences, per-character photo positions), H→エ fix, pitch graphs (byte-identical to Yomitan), word audio sources, Anki field mapping, meikiocr decoding, OCR text fixes (一→ー), text areas, line consensus, replay buffer, voice trimming, line tracking, clip windows, subtitle-row
   filtering, deinflector (conjugations across godan/ichidan/suru/kuru/adjectives),

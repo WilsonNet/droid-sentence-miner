@@ -63,8 +63,22 @@ size, and removes low-confidence engine lines when a stronger line exists.
 ## Lookup
 
 `JapaneseDeinflector` expands every substring of the OCR text into dictionary-form candidates
-using Yomitan/Jiten rules. A single batched SQL query resolves them, and longest-match-wins builds
+using Yomitan/Jiten rules. Batched SQL queries resolve them, and longest-match-wins builds
 the clickable word list. Grammar-only single-kana matches are filtered as noise.
+
+The scan behind each tap reads only the light columns of each row (headword, reading, tags,
+rules). Glossaries are fetched only for the word you tapped, and recent lines stay cached, so
+many large dictionaries stay fast. On a Xiaomi Pad 7 with eight dictionaries (about 2.1 million
+entries, including 広辞苑, 大辞林 and Pixiv), a tap on a new line takes about 40–150 ms and a
+second tap on the same line about 10 ms.
+
+Dictionary images (Pixiv icons, 広辞苑 photos, 三省堂 symbols) use Yomitan's image markup and
+CSS. The popup loads them from the dictionary zip only as they are shown, and large pictures are
+downscaled. Mined cards get the images as Anki media.
+
+Dictionary banks are read as a stream and inserted in chunks, so a 200 MB dictionary imports
+without running out of memory. Imports run one at a time on an app-wide queue that keeps going
+when you leave the page.
 
 Dictionaries are stored in Room (`dict.db`): `terms`, `kanji`, `tags`, `term_meta`, `kanji_meta`,
 `dictionaries` and `mined_cards`. `dict.db` uses destructive migration, so it holds no user text

@@ -138,3 +138,10 @@ DSM auto OCR + mic fallback on it): see the `dsm-nightshade` skill.
   top row); the link field is at (1000, 2870) — `input text "<link>"` then `keyevent 66` opens it.
   After a folder opens the sheet expands: row checkboxes at x ≈ 1827, *Install N* button at the
   bottom (≈ 1066, 3037). Dictionary-row trash icons are at x ≈ 2004 (find the row by uiautomator).
+- **Lookup popup from the Texts tab (Pad 7 portrait)**: `curl "localhost:9099/add_line?text=<urlencoded>"`
+  puts a line at the top; tap the line once to expand it, then tap the word (same point). The
+  popup's WebView spans y ≈ 1120–2115 — swipe *inside* that band (`input swipe 1068 2000 1068 1300
+  600`) to scroll it; a swipe below it scrolls the Texts list instead. The first tap after
+  `am start` is often dropped (rail tab stays put): wait ~2.5 s and tap again, or re-check with
+  uiautomator before the next step. Inspect the popup DOM with DevTools over adb (recipe in AGENTS.md
+  → *Glossary images*).
