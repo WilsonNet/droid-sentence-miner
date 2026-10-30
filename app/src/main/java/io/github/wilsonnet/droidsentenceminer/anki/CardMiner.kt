@@ -7,6 +7,7 @@ import io.github.wilsonnet.droidsentenceminer.audio.M4aEncoder
 import io.github.wilsonnet.droidsentenceminer.core.DsmPrefs
 import io.github.wilsonnet.droidsentenceminer.dict.DictArchive
 import io.github.wilsonnet.droidsentenceminer.dict.DictDatabase
+import io.github.wilsonnet.droidsentenceminer.dict.DictMedia
 import io.github.wilsonnet.droidsentenceminer.dict.GlossaryHtml
 import io.github.wilsonnet.droidsentenceminer.dict.GlossaryParser
 import io.github.wilsonnet.droidsentenceminer.dict.PitchAccent
@@ -47,6 +48,9 @@ class CardMiner(
         val firstOnly = prefs.glossaryFirstDictionary.first()
         val terms = if (firstOnly) resolved.terms.filter { it.dictId == resolved.terms.firstOrNull()?.dictId } else resolved.terms
         val tagCategories = lookup.tagCategories(terms.map { it.dictId }.toSet())
+        // Glossary images become Anki media; the card's <img src> is the media file name.
+        val glossaryMedia = LinkedHashMap<String, GlossaryMedia>()
+        var mediaBytes = 0L
         for (term in terms) {
             if (!firstOnly && term.dictId != currentDictId) {
                 currentDictId = term.dictId
@@ -65,7 +69,26 @@ class CardMiner(
                 sb.append("</div>")
             }
             val entries = GlossaryParser.parse(term.glossaryJson)
-            GlossaryHtml.renderTo(sb, entries, includeImages = false)
+            val dict = dicts[term.dictId]
+            GlossaryHtml.renderTo(
+                sb,
+                entries,
+                imageUrl = imageUrl@{ path ->
+                    dict ?: return@imageUrl null
+                    val media = DictMedia.file(context, dict, path) ?: return@imageUrl null
+                    val name = DictMedia.ankiName(dict, path, media)
+                    if (name !in glossaryMedia) {
+                        val size = media.file.length()
+                        if (glossaryMedia.size >= MAX_GLOSSARY_MEDIA || mediaBytes + size > MAX_GLOSSARY_MEDIA_BYTES) return@imageUrl null
+                        val bytes = runCatching { media.file.readBytes() }.getOrNull() ?: return@imageUrl null
+                        glossaryMedia[name] = GlossaryMedia(name, bytes, media.mimeType)
+                        mediaBytes += bytes.size
+                    }
+                    name
+                },
+                inlineImageStyles = true,
+                dictionary = term.dictionaryTitle,
+            )
         }
         val dictStyles = terms.mapNotNull { dicts[it.dictId] }.distinctBy { it.id }
             .mapNotNull { DictArchive.styles(context, it)?.takeIf { s -> s.isNotBlank() } }
@@ -114,6 +137,7 @@ class CardMiner(
             wordAudioName = wordAudio?.let { "dsm_${sanitizeForFilename(expression)}_pron.${it.extension}" },
             sourceTitle = "Droid Sentence Miner (screen OCR)",
             tags = tags,
+            glossaryMedia = glossaryMedia.values.toList(),
         )
     }
 
@@ -251,16 +275,23 @@ class CardMiner(
                 sb.append("</div>")
             }
             val entries = GlossaryParser.parse(term.glossaryJson)
+            val dict = dicts[term.dictId]
             GlossaryHtml.renderTo(
                 sb,
                 entries,
-                imageUrl = { path -> dicts[term.dictId]?.let { DictArchive.imageFile(context, it, path)?.let { f -> "file://${f.absolutePath}" } } },
+                // Served lazily by the WebView (DictMedia.intercept): no zip reads while building the page.
+                imageUrl = { path -> dict?.let { DictMedia.url(it, path) } },
                 includeImages = true,
+                dictionary = term.dictionaryTitle,
             )
         }
     }
 
     private companion object {
+        /** Per card: enough for picture dictionaries, bounded so one huge entry can't make a 50 MB note. */
+        const val MAX_GLOSSARY_MEDIA = 30
+        const val MAX_GLOSSARY_MEDIA_BYTES = 12L * 1024 * 1024
+
         /** Entry headers with their add buttons (states set by the popup, see WebViewBlock). */
         const val ENTRY_STYLE = """<style>
 .dsm-entry { margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(128,128,128,0.35); }

@@ -130,10 +130,14 @@ class AnkiConnectBridge(
             storeMedia(card.wordAudioName ?: "dsm_word.mp3", bytes)?.let { "[sound:$it]" }
         }
 
+        val meaningHtml = CardHtml.withStoredMedia(card.meaningHtml, card.glossaryMedia) { media ->
+            storeMedia(media.name, media.bytes)
+        }
+
         val valueMap = mapOf(
             CardFields.EXPRESSION to card.expression,
             CardFields.READING to card.reading,
-            CardFields.MEANING to card.meaningHtml,
+            CardFields.MEANING to meaningHtml,
             // Our note type bolds the word; other note types (Anime Cards, Lapis...) get the sentence as
                 // plain text like Yomitan's {sentence}.
                 CardFields.SENTENCE to CardHtml.sentenceFor(model, card),

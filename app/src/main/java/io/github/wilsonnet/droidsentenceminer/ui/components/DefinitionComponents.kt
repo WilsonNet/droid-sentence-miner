@@ -82,6 +82,10 @@ fun WebViewBlock(
                         }
 
                         override fun shouldOverrideUrlLoading(view: WebView, request: android.webkit.WebResourceRequest): Boolean = true
+
+                        // Glossary images, read from the dictionary zip on the WebView's IO thread.
+                        override fun shouldInterceptRequest(view: WebView, request: android.webkit.WebResourceRequest) =
+                            io.github.wilsonnet.droidsentenceminer.dict.DictMedia.intercept(view.context.applicationContext, request)
                     }
                     if (scripted) {
                         addJavascriptInterface(
@@ -106,7 +110,7 @@ fun WebViewBlock(
                     view.tag = html
                     view.loaded = false
                     val page = html + (if (onTextTap != null) TAP_SCRIPT else "") + (if (onEntryMine != null) ENTRY_SCRIPT else "")
-                    view.loadDataWithBaseURL("file:///", page, "text/html", "UTF-8", null)
+                    view.loadDataWithBaseURL(io.github.wilsonnet.droidsentenceminer.dict.DictMedia.PAGE_BASE_URL, page, "text/html", "UTF-8", null)
                 }
                 view.states = entryStates.entries.joinToString(",", "{", "}") { (i, st) -> "\"$i\":\"$st\"" }
                 view.applyStates()
@@ -167,6 +171,8 @@ document.addEventListener('click', function (e) {
       return;
     }
   }
+  // A tap on a glossary image (or a collapsed image's [Image] toggle) is not a lookup.
+  if (e.target.closest && e.target.closest('.gloss-image-link, .gloss-image-summary')) return;
   var r = document.caretRangeFromPoint(e.clientX, e.clientY);
   if (!r || r.startContainer.nodeType !== 3) return;
   var node = r.startContainer, off = r.startOffset;

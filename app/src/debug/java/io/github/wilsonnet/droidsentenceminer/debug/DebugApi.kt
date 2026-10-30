@@ -131,6 +131,16 @@ object DebugApi {
                 }
                 respondBytes(socket, "text/html; charset=utf-8", html.toByteArray())
             }
+            "/dict_media" -> {
+                // The bytes the popup WebView gets for a glossary image (extracted, downscaled if huge).
+                val id = params["dict"]?.toLongOrNull() ?: return respondText(socket, 400, "missing 'dict'")
+                val path = params["path"] ?: return respondText(socket, 400, "missing 'path'")
+                val dict = runBlocking { AppContainer.from(app).db.dictionaryDao().getAll().firstOrNull { it.id == id } }
+                    ?: return respondText(socket, 404, "no dictionary $id")
+                val media = io.github.wilsonnet.droidsentenceminer.dict.DictMedia.file(app, dict, path)
+                    ?: return respondText(socket, 404, "no $path in ${dict.title}")
+                respondBytes(socket, media.mimeType, media.file.readBytes())
+            }
             "/mine" -> respondApi(socket) { mine(params) }
             "/dicts" -> respondApi(socket) { dicts() }
             "/order_dicts" -> respondApi(socket) { orderDicts(params) }
@@ -216,7 +226,10 @@ object DebugApi {
                     val mapped = io.github.wilsonnet.droidsentenceminer.anki.AnkiFieldMapper.mapToNamedFields(fieldNames, values, container.prefs.ankiFieldMap(model))
                     val fields = JSONObject()
                     fieldNames.forEach { fields.put(it, mapped[it] ?: "") }
+                    val media = JSONArray()
+                    card.glossaryMedia.forEach { media.put(JSONObject().put("name", it.name).put("bytes", it.bytes.size).put("mime", it.mimeType)) }
                     JSONObject().put("ok", true).put("model", model).put("deck", container.prefs.ankiDeck.first()).put("fields", fields)
+                        .put("glossaryMedia", media)
                 }
             }
             "/anki_sample" -> respondApi(socket) {

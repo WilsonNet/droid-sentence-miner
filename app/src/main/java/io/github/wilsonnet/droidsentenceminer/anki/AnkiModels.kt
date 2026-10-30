@@ -21,10 +21,15 @@ data class AnkiCard(
     val pitchGraphHtml: String = "",
     val sourceTitle: String? = null,
     val tags: List<String> = emptyList(),
+    /** Dictionary images referenced by [meaningHtml] (`src="<name>"`), stored as Anki media on add. */
+    val glossaryMedia: List<GlossaryMedia> = emptyList(),
 ) {
     override fun equals(other: Any?): Boolean = this === other
     override fun hashCode(): Int = System.identityHashCode(this)
 }
+
+/** A glossary image for the card; [name] is what the glossary HTML references until the backend stores it. */
+class GlossaryMedia(val name: String, val bytes: ByteArray, val mimeType: String)
 
 sealed interface AnkiResult<out T> {
     data class Success<T>(val value: T) : AnkiResult<T>
@@ -106,6 +111,28 @@ object CardHtml {
         }
         sb.append("</div>")
         return sb.toString()
+    }
+
+    /**
+     * Stores each glossary image with [store] (returns the name the collection saved it under, null
+     * on failure) and points [meaningHtml] at those names. Failed images become their placeholder name,
+     * which Anki shows as a missing image rather than dropping the glossary.
+     */
+    inline fun withStoredMedia(meaningHtml: String, media: List<GlossaryMedia>, store: (GlossaryMedia) -> String?): String {
+        var html = meaningHtml
+        for (item in media) {
+            val stored = runCatching { store(item) }.getOrNull()
+            if (stored != null && stored != item.name) html = html.replace(item.name, stored)
+        }
+        return html
+    }
+
+    /** File name in AnkiDroid's `addMediaFromUri` result (`<img src="name" />` or `[sound:name]`). */
+    fun mediaNameOf(fieldText: String?): String? {
+        if (fieldText == null) return null
+        Regex("src=\"([^\"]+)\"").find(fieldText)?.let { return it.groupValues[1] }
+        Regex("\\[sound:([^\\]]+)]").find(fieldText)?.let { return it.groupValues[1] }
+        return fieldText.trim().takeIf { it.isNotEmpty() && !it.contains('<') }
     }
 
     fun frequencyLine(lookup: TermLookup.LookupDetails): String? {

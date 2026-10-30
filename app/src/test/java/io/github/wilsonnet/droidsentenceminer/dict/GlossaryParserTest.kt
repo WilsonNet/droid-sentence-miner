@@ -107,7 +107,8 @@ class GlossaryParserTest {
         assertTrue(html.contains("""href="?query=%E4%B8%B8""""))
         assertTrue(html.contains("""colspan="2""""))
         assertTrue(html.contains("""rowspan="3""""))
-        assertTrue(html.contains("""<span class="gloss-image-container"><img src="jitendex/graphics/a.avif" style="width:253.12px; height:250px" alt=""></span>"""))
+        assertTrue(html.contains("""<span class="gloss-image-container" style="width:253.12px">"""))
+        assertTrue(html.contains("""<img class="gloss-image" src="jitendex/graphics/a.avif" alt="""""))
     }
 
     @Test

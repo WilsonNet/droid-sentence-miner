@@ -104,7 +104,8 @@ GIF for the MP4; recorded on a Xiaomi Pad 7).
   definition ranking and `{glossary-first}` mining. Proper-name dictionaries (JMnedict) automatically
   start at the bottom of the list so they never shadow standard vocabulary.
   Term, kanji, tag, term-meta and kanji-meta banks are all parsed, including structured-content
-  glossaries and dictionary images. Updatable dictionaries (Jitendex, JMnedict, or any Yomitan dictionary
+  glossaries and dictionary images (rendered like Yomitan: preferred size, aspect ratio, em units,
+  pixelated/monochrome/collapsed images, captions; stored as Anki media on cards). Updatable dictionaries (Jitendex, JMnedict, or any Yomitan dictionary
   with an `indexUrl` in `index.json`) are checked for newer revisions automatically and can be
   updated in place with one tap, preserving custom priority order and enabled state.
 - **Install from files or Google Drive** — *From files* picks one or several `.zip`s at once from
@@ -206,7 +207,7 @@ android sdk install platform-tools platforms/android-36 build-tools/35.0.0 emula
 echo "sdk.dir=$ANDROID_HOME" > local.properties
 
 # 3. Build & test
-./gradlew testDebugUnitTest          # 172 JVM unit tests
+./gradlew testDebugUnitTest          # TESTCOUNT JVM unit tests
 ./gradlew connectedDebugAndroidTest  # 4 on-device tests (VAD + AAC encoding)
 ./gradlew assembleDebug              # app/build/outputs/apk/debug/app-debug.apk
 
@@ -319,7 +320,7 @@ Yomitan/Yomichan format 3 (and legacy format 2) zips are supported:
 | `kanji_bank_N.json` | `[character, onyomi, kunyomi, tags, meanings, stats]` |
 | `tag_bank_N.json` | tag metadata shown as chips |
 | `term_meta_bank_N.json` / `kanji_meta_bank_N.json` | frequency and pitch metadata |
-| `styles.css` + images | applied in the popup WebView; images embedded in Anki via media files |
+| `styles.css` + images | applied in the popup WebView (images served lazily from the zip, >1600 px downscaled); images stored as Anki media on cards |
 
 Glossaries may be strings, arrays, image definitions, deinflection entries or structured content
 (div/span/ul/table/ruby...), all parsed and rendered.
@@ -398,13 +399,13 @@ Glossaries may be strings, arrays, image definitions, deinflection entries or st
   compressor); on-device calibration matches the Python reference fit (each band within 2 dB, separate measurement runs). In
   Nightshade the 6.3 kHz resonance is gone from the clips. Cost: 1.3 % of one core while the mic
   is in use, nothing while device audio works.
-- 172 JVM unit tests: speaker-correction EQ (FFT, biquads, response from pink noise, fit of the
+- TESTCOUNT JVM unit tests: speaker-correction EQ (FFT, biquads, response from pink noise, fit of the
   measured Pad 7 curve, chain), meikiocr detector/recognizer input sizing, frame change detection (one typewriter glyph counts; direct RGBA buffer with row stride), loudness
   normalization, popup placement (flip/size/shift), screen text layer (subtitle glyphs → screen fractions, signage skipped), book page layout (tategaki order, ruby filter incl. real manga ruby, split sentences, per-character photo positions), H→エ fix, pitch graphs (byte-identical to Yomitan), word audio sources, Anki field mapping, meikiocr decoding, OCR text fixes (一→ー), text areas, line consensus, replay buffer, voice trimming, line tracking, clip windows, subtitle-row
   filtering, deinflector (conjugations across godan/ichidan/suru/kuru/adjectives),
-  glossary parsing/rendering, OCR post-processing (merge, furigana filter, normalization),
+  glossary parsing/rendering (incl. Yomitan-style images: Pixiv logo, 広辞苑/三省堂 node shapes, sizes, monochrome, collapsed, Anki media names), OCR post-processing (merge, furigana filter, normalization),
   VAD segmentation, PCM utilities, Yomitan index parsing & dictionary update checks, Google Drive
-  link/folder-listing/download-confirm parsing.
+  link/folder-listing/download-confirm parsing, streamed bank parsing.
 - 4 on-device instrumented tests: VAD segmentation with real waveforms, AAC/M4A encoding through
   MediaCodec, WAV fallback.
 - Book mode on a Galaxy phone (`/book` with synthetic photographed pages, Noto Serif 44 px,
