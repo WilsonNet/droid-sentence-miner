@@ -113,7 +113,9 @@ GIF for the MP4; recorded on a Xiaomi Pad 7).
   private files work and the Drive app handles sign-in), or paste a share link to a file or a
   public folder: DSM lists the folder's `.zip`s (subfolders included), you tick the ones you want
   and they install one after another. Recently opened folders are remembered. No Google API or
-  in-app login is involved.
+  in-app login is involved. The install queue runs app-wide (leaving the page or rotating doesn't
+  stop it), recommended installs and updates join the same queue, and banks are streamed, so big
+  monolingual dictionaries (広辞苑, 大辞林, Pixiv) import without running out of memory.
 - **Deinflection & word scanning** — a full Japanese deconjugator drives longest-match scanning of
   scanned text and tap-to-look-up, with the same rules Yomitan uses.
 - **Anki mining** — two backends:
@@ -342,6 +344,11 @@ Glossaries may be strings, arrays, image definitions, deinflection entries or st
 
 ## Validation
 
+- Dictionary import, Xiaomi Pad 7, 6 monolingual zips (540 MB) picked at once from the user's own
+  Drive via *Browse my Drive*: Pixiv Light (723,926 terms), 広辞苑 第七版 (257,602), 三省堂国語辞典
+  第八版 (93,091), 実用日本語表現辞典 v2 (55,377), 新明解 第八版 (100,593), 大辞林 第四版 (334,748):
+  1.56 M terms in 7 min 45 s, app in the foreground. Before streaming the banks, 広辞苑 crashed the
+  app (one term bank needed a 268 MB String on a 256 MB heap).
 - OCR accuracy, same crops for both engines (character error rate / exact lines; Galaxy S24+;
   recipe and scripts in `.opencode/skills/dsm-ocr-eval` and `tools/ocr-eval`):
 
