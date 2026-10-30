@@ -133,7 +133,7 @@ curl -s "localhost:9099/mine?word=%E3%81%AA%E3%81%84&sentence=..."   # Anki card
 ```
 
 Endpoints: `/state`, `/scan`, `/frame.png`, `/ocr` (`l,t,r,b` crops the file first),
-`/ocr_bench?dir=&n=&threads=&variants=&anyw=&xnnpack=&cfg=` (meikiocr per-stage timings over a folder), `/lookup`, `/lookup_bench?text=&index=&n=&fresh=` (tap → popup HTML timings), `/popup.html?word=&dark=` (exact popup WebView HTML), `/mine`, `/dicts`, `/order_dicts?ids=`, `/dict_updates`,
+`/ocr_bench?dir=&n=&threads=&variants=&anyw=&xnnpack=&cfg=` (meikiocr per-stage timings over a folder), `/lookup`, `/lookup_bench?text=&index=&n=&fresh=` (tap → popup HTML timings), `/popup.html?word=&dark=` (exact popup WebView HTML), `/dict_media?dict=&path=` (a glossary image as the popup gets it), `/mine`, `/dicts`, `/order_dicts?ids=`, `/dict_updates`,
 `/autoocr?on=1|0`, `/lines?limit=`, `/clip.wav?id=&trim=0|1`, `/line_shot.jpg?id=`, `/mine_line?id=&word=`,
 `/set_region?l=&t=&r=&b=&orientation=`, `/clear_lines`, `/add_line?text=&ago=&dur=`,
 `/quick?l=&t=&r=&b=` (bubble quick lookup of a box), `/install_ocr_models` (meikiocr download), `/ocr?engine=meiki|mlkit`, `/select_areas` (opens the area editor),
@@ -231,6 +231,20 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   so Anki cards get the same styling. `DictArchive.styles` caches `styles.css` in memory per dict ID
   and `YomitanImporter` stores it on `DictionaryEntity.styles`. Internal query links (`?query=…`) in
   `TAP_SCRIPT` trigger recursive lookup directly.
+- **Glossary images** (`dict/GlossaryHtml.renderImage`, `dict/DictMedia.kt`, unit-tested in
+  `GlossaryImageTest`): same DOM/data attributes as Yomitan's `createDefinitionImage`
+  (`a.gloss-image-link > span.gloss-image-container > sizer/background/overlay/img`) + its CSS
+  (`GlossaryHtml.IMAGE_CSS`). A dictionary file's `width`/`height` are Yomitan's *preferred* size
+  (its importer stores the file's real size as width/height); we don't read real sizes, so with one or
+  no dimension the `<img>` keeps its own aspect ratio (no padding sizer). Collapsed images are a
+  `<details>` (tap), not hover. Popup images point at `https://dict-media.invalid/<dictId>/<path>`,
+  answered by `DictMedia.intercept` in both WebViews' `shouldInterceptRequest` (cached open `ZipFile`,
+  extracted to `cacheDir/dict-images/<id>`, >1600 px rasters → WebP), so building the popup reads no
+  zip; responses carry `Access-Control-Allow-Origin: *` because monochrome images are CSS masks
+  (CORS) from a `file://` page. Cards: `CardMiner.buildCard` renders inline styles
+  (Yomitan's `structured-content-style.json`) with `src="dsm_dict_<hash>.<ext>"` and
+  `AnkiCard.glossaryMedia`; bridges store them and swap in the stored name (AnkiDroid's
+  `addMediaFromUri` renames files). Real shapes: Pixiv = one 1em `assets/pixiv-logo.png` footer icon; 広辞苑 = unsized photos + 1em monochrome SVG gaiji; 三省堂 = 0.5em accent SVGs + collapsed pictures.
 - **Dictionary update checks, drag-and-drop ordering & JMnedict** (`dict/RecommendedDictionaries.kt`,
   `dict/YomitanImporter.kt`, `dict/DictArchive.kt`, `ui/screens/DictionaryScreen.kt`): `DictDownloader.checkUpdates`
   reads `index.json` from each installed dictionary's zip (`DictArchive.index`, falling back to

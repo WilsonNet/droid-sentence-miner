@@ -54,7 +54,8 @@ All GET, all JSON (except `frame.png`). Regions are screen fractions unless note
 | `/book?file=/sdcard/...` | Book mode: read a page photo (EXIF-rotated, ≤3000 px) with ML Kit into ordered paragraphs (`text`, `vertical`, `box`) and show it in the Book tab — validates tategaki order without a camera |
 | `/lookup?word=<urlencoded>` | Dictionary lookup summary (reading, term count, base form, term_meta rows incl. pitch) |
 | `/lookup_bench?text=&index=&n=10&fresh=1&dark=0` | Times one screen-dictionary tap on `text` at char `index`: `wordAt` (whole-line scan), `lookup` of that word, `buildPopupHtml`. Returns `coldMs` (run 0) and `warmMs` median/min/max over `n` runs, `termCount`, `htmlBytes`, `dicts`, and `lastScan` (forms, rows, deinflect/query/total ms of the last uncached scan). `fresh=1` drops the lookup caches before each run (a new line); `fresh=0` = a second tap on the same line. Stop auto OCR first |
-| `/popup.html?word=&dark=0\|1` | Full HTML document rendered for the popup WebView (including dictionary `styles.css`, `data-sc-*` attributes, and tag categories) |
+| `/popup.html?word=&dark=0\|1` | Full HTML document rendered for the popup WebView (including dictionary `styles.css`, `data-sc-*` attributes, and tag categories). Glossary images are `https://dict-media.invalid/<dictId>/<path>` URLs that only the app's WebView resolves — fetch one with `/dict_media` |
+| `/dict_media?dict=<id>&path=<urlencoded>` | Bytes of a glossary image exactly as the popup WebView gets it (extracted from the zip, >1600 px downscaled to WebP), e.g. `dict=4&path=assets%2Fpixiv-logo.png` |
 | `/mine?word=&sentence=` | Look a word up and add a card via the configured Anki backend (AnkiDroid/AnkiConnect) |
 | `/dicts` | Installed dictionaries with revision, term/kanji counts and zip paths |
 | `/order_dicts?ids=1,2,3` | Update dictionary priority order by ID list; returns the updated `/dicts` array |
@@ -70,7 +71,7 @@ All GET, all JSON (except `frame.png`). Regions are screen fractions unless note
 | `/word_audio?term=&reading=&custom=` | Fetch word audio like a card would; returns which source answered |
 | `/anki_sample?model=&limit=` | Read-only: newest notes of a note type with every field (see how the user fills it) |
 | `/anki_templates?model=` | Read-only: card templates (which fields the card shows) |
-| `/preview_card?word=&line=` or `&sentence=` | Build a card and map it onto the configured note type **without** adding it (honours a custom Fields mapping) |
+| `/preview_card?word=&line=` or `&sentence=` | Build a card and map it onto the configured note type **without** adding it (honours a custom Fields mapping); `glossaryMedia` lists the dictionary images the card would store as Anki media (`name`, `bytes`, `mime`) — the glossary field's `<img src>` uses those names |
 | `/select_areas` | Open the text-area editor overlay over whatever is on screen |
 | `/install_ocr_models` | Download the meikiocr models (blocking; ~31 MB) |
 | `/add_line?text=&ago=&dur=` | Log a synthetic line in the past (tests clip/mining without OCR) |

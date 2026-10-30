@@ -113,10 +113,15 @@ class AnkiDroidBridge(private val context: Context) : AnkiBridge {
                 addMedia(bytes, card.wordAudioName ?: "dsm_word.mp3", "audio")
             }
 
+            // AnkiDroid renames media it stores (preferred name + random suffix): use the name it returns.
+            val meaningHtml = CardHtml.withStoredMedia(card.meaningHtml, card.glossaryMedia) { media ->
+                CardHtml.mediaNameOf(addMedia(media.bytes, media.name, "image"))
+            }
+
             val values = mapOf(
                 CardFields.EXPRESSION to card.expression,
                 CardFields.READING to card.reading,
-                CardFields.MEANING to card.meaningHtml,
+                CardFields.MEANING to meaningHtml,
                 // Our note type bolds the word; other note types (Anime Cards, Lapis...) get the sentence as
                 // plain text like Yomitan's {sentence}.
                 CardFields.SENTENCE to CardHtml.sentenceFor(model, card),

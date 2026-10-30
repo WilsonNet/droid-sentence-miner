@@ -366,14 +366,17 @@ private fun WebViewBlock(html: String, dark: Boolean, modifier: Modifier = Modif
                     settings.allowContentAccess = true
                     setBackgroundColor(Color.TRANSPARENT)
                     isVerticalScrollBarEnabled = true
-                    webViewClient = WebViewClient()
+                    webViewClient = object : WebViewClient() {
+                        override fun shouldInterceptRequest(view: WebView, request: android.webkit.WebResourceRequest) =
+                            io.github.wilsonnet.droidsentenceminer.dict.DictMedia.intercept(view.context.applicationContext, request)
+                    }
                     webView = this
                 }
             },
             update = { view ->
                 if (view.tag != html) {
                     view.tag = html
-                    view.loadDataWithBaseURL("file:///", html, "text/html", "UTF-8", null)
+                    view.loadDataWithBaseURL(io.github.wilsonnet.droidsentenceminer.dict.DictMedia.PAGE_BASE_URL, html, "text/html", "UTF-8", null)
                 }
             },
         )
