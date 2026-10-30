@@ -6,6 +6,8 @@ versions are the `v*` tags that publish a signed APK on
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-10-29
+
 ### Added
 - **Install dictionaries from files or Google Drive.** *From files* picks several `.zip`s at once.
   *Google Drive* opens your own Drive through Android's file picker (sign-in stays in the Drive
@@ -81,7 +83,8 @@ First release.
 - Microphone fallback for apps that block audio capture; typewriter-text handling for visual novels.
 - Tablet/landscape layout with a navigation rail.
 
-[Unreleased]: https://github.com/WilsonNet/droid-sentence-miner/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/WilsonNet/droid-sentence-miner/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/WilsonNet/droid-sentence-miner/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/WilsonNet/droid-sentence-miner/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/WilsonNet/droid-sentence-miner/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/WilsonNet/droid-sentence-miner/releases/tag/v0.1.0
