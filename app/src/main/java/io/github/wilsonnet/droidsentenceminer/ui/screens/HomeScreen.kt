@@ -92,6 +92,8 @@ fun HomeScreen(modifier: Modifier = Modifier) {
     val recentCards by remember { container.db.minedCardDao().observeRecent() }
         .collectAsState(initial = emptyList())
 
+    LaunchedEffect(Unit) { container.appUpdater.checkOnce() }
+
     LaunchedEffect(dictionaries.size) {
         if (dictionaries.isNotEmpty() && dictUpdates.isEmpty()) {
             runCatching { container.refreshDictUpdates() }
@@ -177,6 +179,8 @@ fun HomeScreen(modifier: Modifier = Modifier) {
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+
+        io.github.wilsonnet.droidsentenceminer.ui.components.AppUpdateBanner(container.appUpdater)
 
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {

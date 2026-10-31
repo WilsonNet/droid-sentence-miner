@@ -78,6 +78,7 @@ fun SettingsScreen(modifier: Modifier = Modifier, onOpen: (String) -> Unit = {})
     var meikiError by remember { mutableStateOf<String?>(null) }
     val audioTrim by container.prefs.audioTrim.collectAsState(initial = false)
     val wordAudio by container.prefs.wordAudio.collectAsState(initial = true)
+    val appUpdateCheck by container.prefs.appUpdateCheck.collectAsState(initial = true)
     val micFallback by container.prefs.audioMicFallback.collectAsState(initial = false)
     val normalize by container.prefs.audioNormalize.collectAsState(initial = true)
     val noiseSuppression by container.prefs.audioNoiseSuppression.collectAsState(initial = true)
@@ -397,6 +398,14 @@ fun SettingsScreen(modifier: Modifier = Modifier, onOpen: (String) -> Unit = {})
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("About", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 Text("Droid Sentence Miner ${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.bodyMedium)
+                if (io.github.wilsonnet.droidsentenceminer.update.AppUpdater.ENABLED) {
+                    io.github.wilsonnet.droidsentenceminer.ui.components.AppUpdateRow(container.appUpdater)
+                    SettingSwitch(
+                        title = "Check for updates automatically",
+                        description = "Ask GitHub for a newer release when the app opens. Updating always waits for your tap.",
+                        checked = appUpdateCheck,
+                    ) { value -> scope.launch { container.prefs.setAppUpdateCheck(value) } }
+                }
                 Text(
                     "A native Android sentence miner inspired by GameSentenceMiner: popup OCR, Yomitan dictionaries and Anki mining.",
                     style = MaterialTheme.typography.bodySmall,

@@ -485,6 +485,13 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   popup's composition scope and closing the popup cancelled the card. The popup checks
   `CardMiner.isInAnki` (the bridges' `isDuplicate(word, deck, model)` — first field of the
   configured note type, same rule `addNote` refuses with) and shows ✓ In Anki.
+- **In-app updates** (`update/AppUpdater.kt`, `ui/components/AppUpdateCard.kt`, release builds
+  only — `AppUpdater.ENABLED = !BuildConfig.DEBUG`): GitHub `releases/latest` → first `.apk` asset,
+  compared with `AppVersion` (unit-tested); download to `cache/updates/` (FileProvider path
+  `updates`), then `ACTION_VIEW` to the system installer (`REQUEST_INSTALL_PACKAGES`; without the
+  per-app "install unknown apps" grant it opens that settings page first). Home checks once per
+  process unless pref `app_update_check` is off. So **every pushed `v*` tag is offered to every
+  installed app** — never tag test builds.
 - **Release builds run R8**: native code that looks up Java classes by name breaks when they are
   renamed/stripped — ONNX Runtime crashed on the first meikiocr run (`ClassNotFoundException:
   ai.onnxruntime.TensorInfo`) until `-keep class ai.onnxruntime.**` in `proguard-rules.pro`. Before a

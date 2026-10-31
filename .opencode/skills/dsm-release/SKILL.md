@@ -25,6 +25,18 @@ public and people download the APK. Never create or push tags on your own, not e
 The release app id is `io.github.wilsonnet.droidsentenceminer` (no `.debug` suffix), so it
 installs next to debug builds; they have separate data.
 
+**Every published release reaches installed apps** (0.5.0+): `update/AppUpdater` asks
+`api.github.com/repos/WilsonNet/droid-sentence-miner/releases/latest` when Home opens, compares
+its tag with `BuildConfig.VERSION_NAME` (`AppVersion`, semver) and offers the first `.apk` asset.
+The APK must keep its name pattern `*.apk` and the release must not be a draft/prerelease (those
+are not `latest`). Debug builds never check.
+
+Testing an update end to end: install release N from GitHub (`gh release download vN -p '*.apk'`),
+publish N+1, open the app → Home banner → *Update* → installer. On HyperOS the first `adb install`
+of the release package is cancelled by the security center (see below); after that `install -r`
+works. Check the result with `adb shell dumpsys package io.github.wilsonnet.droidsentenceminer |
+grep versionName`.
+
 ## Steps
 
 ```bash

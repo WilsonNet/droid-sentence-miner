@@ -119,6 +119,8 @@ Everything the app does, in detail. The short version is in the [README](../READ
   uses for Japanese, in the same order: JapanesePod101 (placeholder clip rejected by hash),
   JapanesePod101 dictionary search, Jisho; plus an optional custom URL (`{term}`/`{reading}`,
   e.g. a local audio server) tried first.
+- **In-app updates** — release builds check GitHub Releases when the app opens (switch in
+  *Settings → About*); *Update* on Home downloads the APK and opens Android's installer.
 - **Glossary like Yomitan's markers** — *Settings → Cards → Glossary*: only the first dictionary
   (`{glossary-first}`, default), all dictionaries without their names (`{glossary-no-dictionary}`),
   or all under their names (`{glossary}`). The popup can override it per card.

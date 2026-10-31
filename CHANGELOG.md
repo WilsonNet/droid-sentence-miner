@@ -6,7 +6,13 @@ versions are the `v*` tags that publish a signed APK on
 
 ## [Unreleased]
 
+## [0.5.0] — 2026-10-31
+
 ### Added
+- **In-app updates.** When a newer release is out on GitHub, Home shows *Update available* with an
+  *Update* button: it downloads the APK and opens Android's installer (allow installs from Droid
+  Sentence Miner once). Dictionaries, settings and history are kept. *Settings → About* has
+  *Check for updates* and a switch to turn the automatic check off.
 - **Edit a card before adding it.** Next to *+ Anki* in the lookup popup (and on each headword's
   button) a ✎ opens the card editor: trim the sentence (type, or tap one of its sentences to keep
   just that one — handy for long visual-novel lines) and the sentence audio (waveform, play, one two-handle slider), or drop the audio.
@@ -128,7 +134,8 @@ First release.
 - Microphone fallback for apps that block audio capture; typewriter-text handling for visual novels.
 - Tablet/landscape layout with a navigation rail.
 
-[Unreleased]: https://github.com/WilsonNet/droid-sentence-miner/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/WilsonNet/droid-sentence-miner/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/WilsonNet/droid-sentence-miner/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/WilsonNet/droid-sentence-miner/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/WilsonNet/droid-sentence-miner/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/WilsonNet/droid-sentence-miner/compare/v0.1.0...v0.2.0

@@ -46,6 +46,7 @@ class DsmPrefs(private val context: Context) {
         val audioMicEq = booleanPreferencesKey("audio_mic_eq")
         val audioMicEqProfile = stringPreferencesKey("audio_mic_eq_profile")
         val wordAudio = booleanPreferencesKey("word_audio")
+        val appUpdateCheck = booleanPreferencesKey("app_update_check")
         /** Legacy on/off for [GlossaryMode.FIRST]; read only when [glossaryMode] was never set. */
         val glossaryFirstDictionary = booleanPreferencesKey("glossary_first_dictionary")
         val glossaryMode = stringPreferencesKey("glossary_mode")
@@ -102,6 +103,8 @@ class DsmPrefs(private val context: Context) {
     // Off by default: energy VAD can't separate voice from loud BGM/ambience reliably.
     val audioTrim: Flow<Boolean> = context.dataStore.data.map { it[Keys.audioTrim] ?: false }
     val wordAudio: Flow<Boolean> = context.dataStore.data.map { it[Keys.wordAudio] ?: true }
+    /** Release builds look for a newer GitHub release when Home opens (update/AppUpdater). */
+    val appUpdateCheck: Flow<Boolean> = context.dataStore.data.map { it[Keys.appUpdateCheck] ?: true }
 
     /** Record the microphone when the playing app blocks audio capture (see AudioCaptureManager). */
     val audioMicFallback: Flow<Boolean> = context.dataStore.data.map { it[Keys.audioMicFallback] ?: false }
@@ -267,6 +270,7 @@ class DsmPrefs(private val context: Context) {
         if (profile == null) it.remove(Keys.audioMicEqProfile) else it[Keys.audioMicEqProfile] = profile.encode()
     }
     suspend fun setWordAudio(value: Boolean) = edit { it[Keys.wordAudio] = value }
+    suspend fun setAppUpdateCheck(value: Boolean) = edit { it[Keys.appUpdateCheck] = value }
     suspend fun setGlossaryMode(value: GlossaryMode) = edit {
         it[Keys.glossaryMode] = value.id
         it.remove(Keys.glossaryFirstDictionary)
