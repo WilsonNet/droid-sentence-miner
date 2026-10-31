@@ -27,7 +27,15 @@ versions are the `v*` tags that publish a signed APK on
 - Mining no longer waits for word audio after the sentence clip: both are fetched at once, and
   word-audio sources get 8 s in total (a word with no audio anywhere held the card for 15+ s).
 
+- **Pitch accent in the lookup popup**: the same graphs the card gets, under each headword.
+- **Share sheet**: share text from any app to Droid Sentence Miner to look it up (a short shared
+  sentence is scanned for words, not looked up whole), or share a page photo to read it in Book mode.
+
 ### Fixed
+- Tapping a noun followed by で selected the particle too and looked it up as a "te-form"
+  (学校で, 本当ですか, 元気でいて, 象徴ではある): stems can no longer match nouns or entries of
+  monolingual dictionaries; inflected verbs and adjectives still do.
+- Sentence audio added through AnkiDroid was stored as `….m4a_<n>.mp3`; it is now `…_<n>.m4a`.
 - Starting auto OCR over a landscape game with the tablet held upright: the screen-sharing consent
   closed by itself within a second (the dialog rotated the screen), so capture never started.
 - Every mined card left its sentence clip file in the app's cache; they are deleted now (and old

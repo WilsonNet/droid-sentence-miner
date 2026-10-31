@@ -100,6 +100,18 @@ object InflectionType {
         return (candidateConditions and expectedConditions) != 0L
     }
 
+    /**
+     * Whether a deinflected candidate can be a dictionary entry with [termRules]. Like
+     * [conditionsMatch], but a term without rules (a noun, any entry of a monolingual dictionary)
+     * never matches a candidate that can only be a stem: 学校で, 本当で(すか) and 象徴ではある were
+     * read as te-forms of the nouns 学校, 本当 and 象徴, so a tap selected the particle too.
+     */
+    fun termMatches(candidateConditions: Long, termRules: Long): Boolean {
+        if (candidateConditions == 0L) return true
+        if (termRules == 0L) return candidateConditions and ALL_STEMS.inv() != 0L
+        return (candidateConditions and termRules) != 0L
+    }
+
     fun parseRules(rules: String?): Long {
         if (rules.isNullOrBlank()) return UNSPECIFIED
 

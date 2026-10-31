@@ -134,6 +134,13 @@ fun BookScreen(modifier: Modifier = Modifier) {
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri: Uri? ->
         if (uri != null) read(uri)
     }
+    val shared by container.sharedBookPhoto.collectAsState()
+    LaunchedEffect(shared) {
+        shared?.let {
+            container.sharedBookPhoto.value = null
+            read(it)
+        }
+    }
 
     val open = page
     if (readerOpen && open != null) {

@@ -26,7 +26,9 @@ import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -80,6 +82,9 @@ private val TABS = listOf(
 @Composable
 private fun AppRoot() {
     var tab by rememberSaveable { mutableIntStateOf(0) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val sharedPhoto by remember { AppContainer.from(context).sharedBookPhoto }.collectAsState()
+    androidx.compose.runtime.LaunchedEffect(sharedPhoto) { if (sharedPhoto != null) tab = 1 }
     // Dictionaries and Anki setup live under Settings; null = the settings list itself.
     var settingsPage by rememberSaveable { mutableStateOf<String?>(null) }
     // Tablets and landscape phones: tabs in a side rail, so the bottom bar doesn't eat the short side.

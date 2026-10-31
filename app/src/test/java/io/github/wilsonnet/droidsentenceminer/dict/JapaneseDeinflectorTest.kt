@@ -1,6 +1,7 @@
 package io.github.wilsonnet.droidsentenceminer.dict
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -97,5 +98,21 @@ class JapaneseDeinflectorTest {
     @Test
     fun `dictionary form is always a candidate`() {
         assertTrue("食べる" in terms("食べる"))
+    }
+
+    @Test
+    fun ruleLessTermsDoNotMatchBareStems() {
+        fun matches(text: String, term: String, rules: String?) =
+            JapaneseDeinflector.deinflect(text).any { it.term == term && InflectionType.termMatches(it.conditions, InflectionType.parseRules(rules)) }
+        // Nouns (no rules in Jitendex, and every entry of a monolingual dictionary).
+        assertFalse(matches("学校で", "学校", null))
+        assertFalse(matches("象徴ではある", "象徴", null))
+        assertFalse(matches("本当で", "本当", null))
+        // Inflected verbs and adjectives still reach rule-less monolingual entries.
+        assertTrue(matches("食べた", "食べる", null))
+        assertTrue(matches("高くて", "高い", null))
+        assertTrue(matches("書きます", "書く", null))
+        // And the word itself always matches.
+        assertTrue(matches("学校", "学校", null))
     }
 }

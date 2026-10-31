@@ -120,7 +120,7 @@ Everything the app does, in detail. The short version is in the [README](../READ
 - **Glossary like Yomitan's markers** — *Settings → Cards → Glossary*: all dictionaries without
   their names (`{glossary-no-dictionary}`, default), all under their names (`{glossary}`), or only
   the first dictionary (`{glossary-first}`).
-- **Pitch accent graph** — the same SVG Yomitan's `{pitch-accent-graphs}` writes (byte-identical to
+- **Pitch accent graph** — shown in the lookup popup under each headword, and on the card: the same SVG Yomitan's `{pitch-accent-graphs}` writes (byte-identical to
   the user's existing Yomitan cards), filled into a pitch/graph field such as Anime Cards' *Graph*.
   Uses any installed Yomitan pitch dictionary, or the free Kanjium pitch accents (124k words,
   one-click install from *Settings → Dictionaries* or the Home setup card).
@@ -140,6 +140,8 @@ Everything the app does, in detail. The short version is in the [README](../READ
   squeezes loud peaks so normalization can lift thin, quiet dialogue. Works with the speaker on;
   picks up room noise; records nothing with headphones.
 - **Mining history** — recent cards with a status showing whether they made it into Anki.
+- **Share sheet** — text shared to the app (`ACTION_SEND`) opens the same lookup as a selection;
+  a shared image opens in Book mode (`SharePhotoActivity` copies it into the cache first).
 - **Text selection lookup** — other apps can send selected text via `ACTION_PROCESS_TEXT`, including
   Samsung's text selection on screenshots/images and Circle to Search. A selected word is matched to
   the newest logged line containing it, so the card still gets the full sentence, screenshot and

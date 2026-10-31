@@ -106,10 +106,7 @@ class CardMiner(
 
         val reading = resolved.reading.orEmpty()
         val expression = resolved.baseForm.ifBlank { word }
-        val pitchGraph = PitchAccent.ankiGraphs(
-            reading.ifBlank { expression },
-            resolved.frequencies.filter { it.mode == "pitch" && it.expression == expression }.mapNotNull { PitchAccent.parse(it.dataJson) },
-        )
+        val pitchGraph = pitchGraphs(resolved, word)
         val tAudio = android.os.SystemClock.elapsedRealtime()
         val wordAudio = wordAudioJob.await()
         android.util.Log.i(TAG, "「$expression」: waited ${android.os.SystemClock.elapsedRealtime() - tAudio} ms for word audio (${wordAudio?.source})")
@@ -284,6 +281,9 @@ class CardMiner(
                 entry.terms.first().deinflectionReasons.takeIf { it.isNotEmpty() }?.let {
                     sb.append("<div class=\"gloss-deinflection\">").append(GlossaryHtml.escape(it.joinToString(" « "))).append("</div>")
                 }
+                pitchGraphs(details.forEntry(index)).takeIf { it.isNotEmpty() }?.let {
+                    sb.append("<div class=\"dsm-pitch\">").append(it).append("</div>")
+                }
                 CardHtml.frequencyLine(details.forEntry(index))?.let {
                     sb.append("<div class=\"gloss-header\"><span class=\"gloss-frequency\">").append(GlossaryHtml.escape(it)).append("</span></div>")
                 }
@@ -298,12 +298,22 @@ class CardMiner(
             "<div class=\"gloss-header\"><span class=\"gloss-frequency\">${GlossaryHtml.escape(frequencies)}</span></div>"
         } else {
             ""
-        }
+        } + (pitchGraphs(details).takeIf { entries.size <= 1 && it.isNotEmpty() }?.let { "<div class=\"dsm-pitch\">$it</div>" } ?: "")
         val dictStyles = details.terms.mapNotNull { dicts[it.dictId] }.distinctBy { it.id }
             .mapNotNull { DictArchive.styles(context, it)?.takeIf { s -> s.isNotBlank() } }
             .joinToString("\n")
             .take(20_000)
         GlossaryHtml.wrapDocument(freqHtml + sb.toString(), styles = POPUP_CSS + "\n" + dictStyles, darkMode = darkMode)
+    }
+
+    /** Yomitan's pitch-accent graphs for the looked-up word: the card's pitch field and the popup. */
+    private fun pitchGraphs(details: TermLookup.LookupDetails, word: String = details.baseForm): String {
+        val expression = details.baseForm.ifBlank { word }
+        val reading = details.reading.orEmpty().ifBlank { expression }
+        return PitchAccent.ankiGraphs(
+            reading,
+            details.frequencies.filter { it.mode == "pitch" && it.expression == expression }.mapNotNull { PitchAccent.parse(it.dataJson) },
+        )
     }
 
     private fun appendTerms(
@@ -389,6 +399,8 @@ class CardMiner(
 .dsm-add[data-state=added] { background: #2E7D32; color: #fff; }
 .dsm-add[data-state=in-anki] { background: transparent; opacity: 0.7; }
 .dsm-add[data-state=failed] { background: #B3261E; color: #fff; }
+.dsm-pitch { margin: 2px 0 4px; font-size: 1.1em; }
+.dsm-pitch svg { margin-right: 6px; }
 .gloss-dictionary { display: flex; align-items: center; gap: 8px; }
 .gloss-dictionary[data-card="0"] { opacity: 0.6; }
 .dsm-on-card { font-size: 0.75em; font-weight: 600; padding: 1px 8px; border-radius: 10px;

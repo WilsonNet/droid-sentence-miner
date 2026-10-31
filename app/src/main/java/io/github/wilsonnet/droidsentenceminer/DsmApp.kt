@@ -66,6 +66,9 @@ class AppContainer(private val context: Context) {
     /** The last photographed page; kept here so it survives tab switches and rotation. */
     val bookPage = MutableStateFlow<BookPage?>(null)
 
+    /** A photo shared into the app (share sheet → Droid Sentence Miner), waiting for the Book tab to read it. */
+    val sharedBookPhoto = MutableStateFlow<android.net.Uri?>(null)
+
     /** Available dictionary updates keyed by `DictionaryEntity.id`, populated by [refreshDictUpdates]. */
     val dictUpdates = MutableStateFlow<Map<Long, io.github.wilsonnet.droidsentenceminer.dict.DictionaryUpdate>>(emptyMap())
 

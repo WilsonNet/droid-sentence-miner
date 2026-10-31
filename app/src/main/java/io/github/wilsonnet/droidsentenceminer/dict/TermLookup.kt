@@ -175,7 +175,7 @@ class TermLookup(
                 val dict = dicts[row.dictId] ?: continue
                 val expected = InflectionType.parseRules(row.rules)
                 for (source in sources) {
-                    if (!InflectionType.conditionsMatch(source.conditions, expected)) continue
+                    if (!InflectionType.termMatches(source.conditions, expected)) continue
                     val term = row.toResult(dict, body = null, matchedForm = form, reasons = source.reasons)
                     val positionMap = hitsByPosition.getOrPut(source.position) { HashMap() }
                     positionMap.getOrPut(source.length) { mutableListOf() }.add(term)
@@ -275,7 +275,7 @@ class TermLookup(
                 val dict = dicts[row.dictId] ?: continue
                 val expected = InflectionType.parseRules(row.rules)
                 val matchingUse = uses.firstOrNull { (conditions, _) ->
-                    InflectionType.conditionsMatch(conditions, expected)
+                    InflectionType.termMatches(conditions, expected)
                 } ?: continue
                 deinflectionReasons += matchingUse.second
                 matches += HeadMatch(row, dict, form, matchingUse.second)

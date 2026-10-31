@@ -92,7 +92,7 @@ class BookOcr(private val engine: MlKitJapaneseOcr = MlKitJapaneseOcr(twoPass = 
                     if (degrees == 0f) decoded
                     else Bitmap.createBitmap(decoded, 0, 0, decoded.width, decoded.height, Matrix().apply { postRotate(degrees) }, true)
                 }
-            }.getOrNull()
+            }.onFailure { android.util.Log.w("DSM-Book", "Could not read $uri", it) }.getOrNull()
         }
 
         /** The paragraph cut out of the page for the card's picture, at most 1280 px. */

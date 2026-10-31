@@ -325,6 +325,22 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   has an 8 s total budget. Stage timings: `adb logcat -s DSM-Mine`.
   Layout checked on the Pad 7 with `wm size 1080x2340` / `904x2316` / `1856x2160` + `wm density 420`
   (Galaxy phone, Fold cover, Fold inner) — always `wm size reset; wm density reset` after.
+- **Deinflection vs. rule-less terms** (`InflectionType.termMatches`, unit-tested): a candidate whose
+  conditions are only stems (連用形/く/て…) never matches a term without rules (nouns; *every* entry
+  of a monolingual dictionary) — `conditionsMatch` treated "no rules" as "anything", so 学校で,
+  本当ですか, 象徴ではある were te-forms of the noun. Verb/adjective results still match rule-less
+  entries. Check with `/lookup_bench?text=…&index=0` (`word` = what a tap selects).
+- **AnkiDroid media names**: `addMediaFromUri` stores `<preferred name>_<random>.<ext from the
+  shared file's MIME type>` — pass the name *without* extension; `.m4a` resolves to `audio/mpeg`
+  (`.mp3`) unless `DsmFileProvider.getType` answers `audio/mp4`.
+- **Share sheet**: text → `ProcessTextActivity` (also `PROCESS_TEXT`); images → `SharePhotoActivity`
+  (copies to `cache/shared/page`, sets `AppContainer.sharedBookPhoto`, opens `MainActivity`; the
+  Book tab reads it). The chooser filters injected taps while any overlay window is up, and
+  `am start --grant-read-uri-permission` can't grant MediaStore URIs from the shell
+  (`SecurityException` in `DSM-Book`) — test shares by hand. HyperOS routes image shares through
+  Gallery's privacy step (`transforToGallery`): from the Gallery app it passes (`returnFromGallery:
+  resultCode = 1001`, then our activity starts); for a photo opened via a VIEW intent it cancelled
+  itself (`resultCode = 0`) before the target started — not ours to fix.
 - **Lookup popup** (`WordLookupPopup`, `DefinitionComponents.kt`): non-focusable `Popup` placed by
   `AnchoredPopupPosition` from the word's window rect (`getPathForRange` + `positionInWindow`), so
   taps pass through to the text. Book tab pre-creates a WebView after the first frame (Chromium cold

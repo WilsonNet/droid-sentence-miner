@@ -204,7 +204,9 @@ class AnkiDroidBridge(private val context: Context) : AnkiBridge {
         ankiPackage?.let { pkg ->
             context.grantUriPermission(pkg, uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        return api.addMediaFromUri(uri, file.name, mimeType)
+        // AnkiDroid stores it as "<preferred name>_<random>.<extension from the MIME type>":
+        // a name with its extension came out as dsm_x.m4a_123.mp3.
+        return api.addMediaFromUri(uri, file.nameWithoutExtension, mimeType)
     }
 
     companion object {

@@ -40,6 +40,10 @@ import kotlinx.coroutines.launch
  */
 class ProcessTextActivity : ComponentActivity() {
 
+    private companion object {
+        const val SENTENCE_MARKS = "。、！？!?「」『』…"
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val text = intent.getCharSequenceExtra(Intent.EXTRA_PROCESS_TEXT)?.toString()
@@ -70,7 +74,8 @@ class ProcessTextActivity : ComponentActivity() {
             // Ties the selection to the text log so the card gets a full sentence and its audio.
             line = container.textLog.lineForSharedText(text.trim().take(400))
             val trimmed = text.trim().take(400)
-            if (trimmed.length <= 12) {
+            // A short selection is the word; shared text is usually a sentence, even a short one.
+            if (trimmed.length <= 12 && trimmed.none { it in SENTENCE_MARKS }) {
                 selected = trimmed
                 matches = emptyList()
             } else {
