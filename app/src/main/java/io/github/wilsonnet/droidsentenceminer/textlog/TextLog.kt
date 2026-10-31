@@ -120,15 +120,17 @@ class TextLog(
     suspend fun clip(line: TextLineEntity, trim: Boolean? = null): Clip? {
         val bounds = clipBounds(line)
         return withContext(Dispatchers.Default) {
-            val raw = audioBuffer.slice(bounds.startMs, bounds.endMs) ?: return@withContext null
-            if (raw.durationMs < 200) return@withContext null
-            val clip = if (trim ?: prefs.audioTrim.first()) {
+            val sliced = audioBuffer.slice(bounds.startMs, bounds.endMs) ?: return@withContext null
+            if (sliced.durationMs < 200) return@withContext null
+            // Normalize before trimming: the trimmer has an absolute floor, and quiet microphone
+            // audio sat under it, so only the loudest syllables survived (a 8.6 s line → 3.8 s).
+            val raw = if (prefs.audioNormalize.first()) AudioPcm.normalize(sliced) else sliced
+            if (trim ?: prefs.audioTrim.first()) {
                 val result = VoiceTrimmer.trim(raw)
                 Clip(result.segment, ClipWindow.Bounds(bounds.startMs + result.startMs, bounds.startMs + result.endMs), result.trimmed)
             } else {
                 Clip(raw, bounds, false)
             }
-            if (prefs.audioNormalize.first()) clip.copy(segment = AudioPcm.normalize(clip.segment)) else clip
         }
     }
 

@@ -19,18 +19,18 @@ import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
+import androidx.compose.material3.RangeSlider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -58,11 +58,49 @@ fun AudioEditorDialog(
     onDismiss: () -> Unit,
     onApply: (AudioSegment) -> Unit,
 ) {
+    val durationMs = segment.durationMs.toFloat().coerceAtLeast(1f)
+    var range by remember(segment) { mutableStateOf(0f..durationMs) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Audio") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    "Trim the voice line that will be attached to the card.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                AudioTrimmer(segment, range, onRangeChange = { range = it })
+            }
+        },
+        confirmButton = {
+            Button(onClick = { trimmed(segment, range)?.let(onApply) }) { Text("Use this audio") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Skip audio") }
+        },
+    )
+}
+
+/** [segment] cut to [range] (ms) with short fades, as it goes on the card; null if too short. */
+fun trimmed(segment: AudioSegment, range: ClosedFloatingPointRange<Float>): AudioSegment? =
+    AudioPcm.trim(segment, range.start.roundToLong(), range.endInclusive.roundToLong())?.let { AudioPcm.fadeEdges(it) }
+
+/**
+ * Waveform with the kept [range] (ms) highlighted, play/stop of that range and one two-handle
+ * slider to move its ends. The player is released when this leaves the composition.
+ */
+@Composable
+fun AudioTrimmer(
+    segment: AudioSegment,
+    range: ClosedFloatingPointRange<Float>,
+    onRangeChange: (ClosedFloatingPointRange<Float>) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val context = LocalContext.current
     val durationMs = segment.durationMs.toFloat().coerceAtLeast(1f)
-
-    var startMs by remember(segment) { mutableFloatStateOf(0f) }
-    var endMs by remember(segment) { mutableFloatStateOf(durationMs) }
+    val currentRange by rememberUpdatedState(range)
     var playing by remember { mutableStateOf(false) }
     var positionMs by remember { mutableStateOf(0f) }
     var player by remember { mutableStateOf<MediaPlayer?>(null) }
@@ -77,10 +115,11 @@ fun AudioEditorDialog(
         }
     }
 
-    DisposableEffect(Unit) {
+    DisposableEffect(segment) {
         onDispose {
             runCatching { player?.release() }
             player = null
+            playing = false
             wavFile.delete()
         }
     }
@@ -90,7 +129,7 @@ fun AudioEditorDialog(
             player?.let { mp ->
                 val pos = runCatching { mp.currentPosition.toFloat() }.getOrDefault(0f)
                 positionMs = pos
-                if (pos >= endMs - 20f) {
+                if (pos >= currentRange.endInclusive - 20f) {
                     playing = false
                     runCatching { mp.pause() }
                 }
@@ -105,13 +144,14 @@ fun AudioEditorDialog(
             runCatching { player?.pause() }
             return
         }
+        val startMs = range.start.roundToLong().toInt()
         val existing = player
         if (existing == null) {
             val mp = MediaPlayer()
             runCatching {
                 mp.setDataSource(wavFile.absolutePath)
                 mp.prepare()
-                mp.seekTo(startMs.roundToLong().toInt())
+                mp.seekTo(startMs)
                 mp.start()
                 mp.setVolume(1f, 1f)
                 player = mp
@@ -119,8 +159,8 @@ fun AudioEditorDialog(
             }.onFailure { playing = false }
         } else {
             runCatching {
-                if (existing.currentPosition < startMs || existing.currentPosition >= endMs) {
-                    existing.seekTo(startMs.roundToLong().toInt())
+                if (existing.currentPosition < range.start || existing.currentPosition >= range.endInclusive) {
+                    existing.seekTo(startMs)
                 }
                 existing.start()
                 playing = true
@@ -128,117 +168,72 @@ fun AudioEditorDialog(
         }
     }
 
-    AlertDialog(
-        onDismissRequest = {
-            runCatching { player?.release() }
-            player = null
-            onDismiss()
-        },
-        title = { Text("Audio") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(
-                    "Trim the voice line that will be attached to the card.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .height(110.dp)
-                        .background(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.shapes.small)
-                        .padding(6.dp),
-                ) {
-                    Canvas(Modifier.fillMaxWidth().height(98.dp)) {
-                        val w = size.width
-                        val h = size.height
-                        val mid = h / 2f
-                        val perBar = w / peaks.size.coerceAtLeast(1)
-                        for (i in peaks.indices) {
-                            val amp = peaks[i] * (h / 2f)
-                            val x = i * perBar + perBar / 2f
-                            drawRect(
-                                color = Color(0xFF4CD9B4),
-                                topLeft = Offset(x, mid - amp),
-                                size = Size(perBar * 0.7f, amp * 2f),
-                            )
-                        }
-                        // trim shading
-                        val startX = (startMs / durationMs) * w
-                        val endX = (endMs / durationMs) * w
-                        drawRect(
-                            color = Color(0x33000000),
-                            topLeft = Offset(0f, 0f),
-                            size = Size(startX, h),
-                        )
-                        drawRect(
-                            color = Color(0x33000000),
-                            topLeft = Offset(endX, 0f),
-                            size = Size(w - endX, h),
-                        )
-                        drawLine(Color.White, Offset(startX, 0f), Offset(startX, h), strokeWidth = 3f)
-                        drawLine(Color.White, Offset(endX, 0f), Offset(endX, h), strokeWidth = 3f)
-                        // playhead
-                        val px = (positionMs / durationMs) * w
-                        if (px in 0f..w) {
-                            drawLine(Color(0xFFFFC857), Offset(px, 0f), Offset(px, h), strokeWidth = 2f)
-                        }
-                    }
-                }
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = { togglePlay() }) {
-                        Icon(
-                            if (playing) Icons.Default.Stop else Icons.Default.PlayArrow,
-                            contentDescription = if (playing) "Stop" else "Play",
-                            modifier = Modifier.size(28.dp),
-                        )
-                    }
-                    Text(
-                        "${(positionMs / 1000f).format1()}s / ${(durationMs / 1000f).format1()}s",
-                        style = MaterialTheme.typography.bodySmall,
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        val wave = MaterialTheme.colorScheme.primary
+        // The cut-off ends: the waveform shows through, faded.
+        val shade = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(84.dp)
+                .background(MaterialTheme.colorScheme.surfaceContainerHighest, MaterialTheme.shapes.small)
+                .padding(horizontal = 6.dp, vertical = 4.dp),
+        ) {
+            Canvas(Modifier.fillMaxWidth().height(76.dp)) {
+                val w = size.width
+                val h = size.height
+                val mid = h / 2f
+                val perBar = w / peaks.size.coerceAtLeast(1)
+                for (i in peaks.indices) {
+                    val amp = peaks[i] * (h / 2f)
+                    val x = i * perBar + perBar / 2f
+                    drawRect(
+                        color = wave,
+                        topLeft = Offset(x, mid - amp),
+                        size = Size(perBar * 0.7f, amp * 2f),
                     )
                 }
-
-                Text("Start: ${(startMs / 1000f).format1()}s", style = MaterialTheme.typography.labelMedium)
-                Slider(
-                    value = startMs,
-                    onValueChange = { value ->
-                        startMs = value.coerceIn(0f, endMs - MIN_CLIP_MS)
-                    },
-                    valueRange = 0f..durationMs,
-                )
-                Text("End: ${(endMs / 1000f).format1()}s", style = MaterialTheme.typography.labelMedium)
-                Slider(
-                    value = endMs,
-                    onValueChange = { value ->
-                        endMs = value.coerceIn(startMs + MIN_CLIP_MS, durationMs)
-                    },
-                    valueRange = 0f..durationMs,
-                )
-                Spacer(Modifier.width(2.dp))
-                Text(
-                    "Clip: ${((endMs - startMs) / 1000f).format1()}s",
-                    style = MaterialTheme.typography.bodyMedium,
+                // trim shading
+                val startX = (range.start / durationMs) * w
+                val endX = (range.endInclusive / durationMs) * w
+                drawRect(color = shade, topLeft = Offset(0f, 0f), size = Size(startX, h))
+                drawRect(color = shade, topLeft = Offset(endX, 0f), size = Size(w - endX, h))
+                drawLine(wave, Offset(startX, 0f), Offset(startX, h), strokeWidth = 3f)
+                drawLine(wave, Offset(endX, 0f), Offset(endX, h), strokeWidth = 3f)
+                // playhead
+                val px = (positionMs / durationMs) * w
+                if (playing && px in 0f..w) {
+                    drawLine(Color(0xFFFFC857), Offset(px, 0f), Offset(px, h), strokeWidth = 2f)
+                }
+            }
+        }
+        RangeSlider(
+            value = range,
+            onValueChange = { value ->
+                if (value.endInclusive - value.start >= MIN_CLIP_MS) onRangeChange(value)
+            },
+            valueRange = 0f..durationMs,
+        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            FilledTonalIconButton(onClick = { togglePlay() }) {
+                Icon(
+                    if (playing) Icons.Default.Stop else Icons.Default.PlayArrow,
+                    contentDescription = if (playing) "Stop" else "Play",
                 )
             }
-        },
-        confirmButton = {
-            Button(onClick = {
-                runCatching { player?.release() }
-                player = null
-                val trimmed = AudioPcm.trim(segment, startMs.roundToLong(), endMs.roundToLong())
-                if (trimmed != null) onApply(AudioPcm.fadeEdges(trimmed))
-            }) { Text("Use this audio") }
-        },
-        dismissButton = {
-            TextButton(onClick = {
-                runCatching { player?.release() }
-                player = null
-                onDismiss()
-            }) { Text("Skip audio") }
-        },
-    )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                "${(range.start / 1000f).format1()}s – ${(range.endInclusive / 1000f).format1()}s",
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                "${((range.endInclusive - range.start) / 1000f).format1()}s of ${(durationMs / 1000f).format1()}s",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
 }
 
 private fun Float.format1(): String = "%.1f".format(this)

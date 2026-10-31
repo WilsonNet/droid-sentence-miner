@@ -1,6 +1,7 @@
 package io.github.wilsonnet.droidsentenceminer.audio
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -56,6 +57,16 @@ class AudioPcmTest {
         assertEquals(20, peaks.size)
         assertTrue(peaks.all { it in 0f..1f })
         assertTrue(peaks.any { it > 0.9f })
+    }
+
+    @Test
+    fun `a silent clip draws small, not full height`() {
+        // Nightshade, unvoiced line through the microphone: hiss around 20 RMS.
+        val hiss = ShortArray(2000) { if (it % 2 == 0) 60 else -60 }
+        val segment = AudioSegment(hiss, 24_000, 1)
+        assertTrue(AudioPcm.peaks(segment, buckets = 10).all { it < 0.1f })
+        assertTrue(AudioPcm.isSilent(segment))
+        assertFalse(AudioPcm.isSilent(AudioSegment(ShortArray(10) { 3000 }, 24_000, 1)))
     }
 
     @Test

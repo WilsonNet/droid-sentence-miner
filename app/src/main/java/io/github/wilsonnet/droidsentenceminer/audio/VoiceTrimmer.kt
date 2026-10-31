@@ -24,6 +24,8 @@ object VoiceTrimmer {
         padStartMs: Int = 300,
         padEndMs: Int = 500,
         absoluteFloor: Double = 180.0,
+        /** Share of the noise → peak gap a window must clear. */
+        relativeThreshold: Double = 0.05,
     ): Result {
         val mono = AudioPcm.downmixToMono(segment)
         val windowFrames = (mono.sampleRate * windowMs / 1000).coerceAtLeast(1)
@@ -44,7 +46,7 @@ object VoiceTrimmer {
         val noise = sorted[(sorted.size * 0.2).toInt()]
         val peak = sorted[(sorted.size * 0.98).toInt().coerceAtMost(sorted.size - 1)]
         if (peak < absoluteFloor) return untouched
-        val threshold = maxOf(absoluteFloor, noise * 2.0, noise + (peak - noise) * 0.05)
+        val threshold = maxOf(absoluteFloor, noise * 2.0, noise + (peak - noise) * relativeThreshold)
 
         val smoothed = smooth(energies, (smoothMs / windowMs).coerceAtLeast(1))
         val minRun = (minSpeechMs / windowMs).coerceAtLeast(1)

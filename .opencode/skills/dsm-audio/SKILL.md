@@ -25,7 +25,10 @@ back exactly like the fallback, and score it against the original.
    `Build.MANUFACTURER + MODEL`). Boost ≤ +6 dB, cut ≤ −20 dB, correction faded out under 170 Hz.
 4. **Compressor** (`AudioCompressor`, −30 dBFS, 4:1, 5/150 ms) — after the EQ so the harsh treble
    peak doesn't drive it.
-5. At mining: `AudioPcm.normalize` (−14 dBFS voiced RMS, soft limiter) in `TextLog.clip`.
+5. At mining: `AudioPcm.normalize` (−14 dBFS voiced RMS, soft limiter) in `TextLog.clip`, *then*
+   the optional `VoiceTrimmer` (its absolute floor 180 cut raw mic clips to their loudest syllables:
+   8.6 s → 3.8 s). The card editor suggests a range with `relativeThreshold = 0.15` (the mic hears
+   the game's BGM too; 0.05 kept it).
 
 Cost on the Pad 7 (`/proc/<pid>/task/<dsm-audio-mic>/stat`, Nightshade playing): mic thread
 1.87 % of one core with the chain, 0.57 % without. The chain only runs while the mic is in use (or

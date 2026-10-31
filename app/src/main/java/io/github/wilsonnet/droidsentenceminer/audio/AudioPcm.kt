@@ -108,13 +108,17 @@ object AudioPcm {
         return AudioSegment(copy, segment.sampleRate, channels)
     }
 
-    /** Channels of max amplitude per bucket, normalized to 0..1. Used to draw waveforms. */
+    /**
+     * Channels of max amplitude per bucket, normalized to 0..1. Used to draw waveforms. Scaled to
+     * the loudest bucket, but never to less than [WAVEFORM_FLOOR]: a silent clip (an unvoiced
+     * line) drew its hiss full height and looked like a loud one.
+     */
     fun peaks(segment: AudioSegment, buckets: Int): FloatArray {
         if (buckets <= 0) return FloatArray(0)
         val out = FloatArray(buckets)
         val frames = segment.frameCount
         if (frames == 0) return out
-        var maxAmp = 1
+        var maxAmp = WAVEFORM_FLOOR
         for (bucket in 0 until buckets) {
             val start = bucket * frames / buckets
             val end = max(start + 1, (bucket + 1) * frames / buckets)
@@ -132,6 +136,14 @@ object AudioPcm {
         for (i in out.indices) out[i] /= maxAmp
         return out
     }
+
+    /** −30 dBFS: quieter clips draw small. */
+    private const val WAVEFORM_FLOOR = 1_000
+
+    /** Nothing in [segment] reaches −40 dBFS: no voice was captured (an unvoiced line). */
+    fun isSilent(segment: AudioSegment): Boolean = segment.pcm.none { abs(it.toInt()) >= SILENT_PEAK }
+
+    private const val SILENT_PEAK = 328
 
     fun rms(pcm: ShortArray, from: Int = 0, to: Int = pcm.size): Double {
         if (to <= from) return 0.0

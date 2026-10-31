@@ -29,7 +29,10 @@ import io.github.wilsonnet.droidsentenceminer.AppContainer
 import io.github.wilsonnet.droidsentenceminer.capture.ScreenCaptureManager
 import io.github.wilsonnet.droidsentenceminer.capture.ScreenText
 import io.github.wilsonnet.droidsentenceminer.capture.ScreenTextLine
+import io.github.wilsonnet.droidsentenceminer.textlog.TextLineEntity
 import io.github.wilsonnet.droidsentenceminer.ui.components.AnchoredPopupPosition
+import io.github.wilsonnet.droidsentenceminer.ui.components.CardEditRequest
+import io.github.wilsonnet.droidsentenceminer.ui.components.CardEditor
 import io.github.wilsonnet.droidsentenceminer.ui.components.WordLookupCard
 import io.github.wilsonnet.droidsentenceminer.ui.components.popupWidth
 import io.github.wilsonnet.droidsentenceminer.ui.components.rememberPopupPlan
@@ -77,7 +80,12 @@ class ScreenDictionary(
         private set
     private val clearQuick = Runnable { if (quickActive && !popupOpen) clear() }
 
-    val popupOpen: Boolean get() = popup != null
+    /** The card editor's window, over the popup (see [openEditor]). */
+    private var editor: View? = null
+    private var editorOwner: OverlayLifecycleOwner? = null
+
+    /** A popup or the card editor is up: the layer stays as it is and auto OCR holds. */
+    val popupOpen: Boolean get() = popup != null || editor != null
 
     private val density = context.resources.displayMetrics.density
 
@@ -142,6 +150,7 @@ class ScreenDictionary(
     fun clear() {
         quickActive = false
         handler.removeCallbacks(clearQuick)
+        closeEditor()
         dismiss()
         layers.keys.toList().forEach { removeLayer(it) }
         lines = emptyList()
@@ -202,11 +211,8 @@ class ScreenDictionary(
         val anchor = Rect(glyphs.left * w, glyphs.top * h, glyphs.right * w, glyphs.bottom * h)
         val word = target.text.substring(range.first, last + 1)
         val allText = lines.joinToString("\n") { it.text }
-        openPopup(anchor, word, allText) { details ->
-            // The log line has the sentence, its screenshot and its audio.
-            val logLine = container.textLog.lineForSharedText(allText)
-            container.miner.mineLine(logLine, word, details)
-        }
+        // The log line has the sentence, its screenshot and its audio.
+        openPopup(anchor, word, allText) { container.textLog.lineForSharedText(allText) }
     }
 
     /**
@@ -227,19 +233,19 @@ class ScreenDictionary(
                 if (b.top >= a.bottom) a else Rect(min(a.left, b.left), min(a.top, b.top), max(a.right, b.right), max(a.bottom, b.bottom))
             }
             val word = tap.text.substring(range.first, last + 1)
-            openPopup(anchor, word, tap.text) { details ->
-                val logLine = container.textLog.get(tap.lineId) ?: container.textLog.lineForSharedText(tap.text)
-                container.miner.mineLine(logLine, word, details)
-            }
+            openPopup(anchor, word, tap.text) { container.textLog.get(tap.lineId) ?: container.textLog.lineForSharedText(tap.text) }
         }
     }
 
+    /** [findLine]: the logged line the card is mined from, looked up once (it may log [sentence]). */
     private fun openPopup(
         anchor: Rect,
         word: String,
         sentence: String,
-        onMine: suspend (io.github.wilsonnet.droidsentenceminer.dict.TermLookup.LookupDetails?) -> io.github.wilsonnet.droidsentenceminer.anki.AnkiResult<String>,
+        findLine: suspend () -> TextLineEntity,
     ) {
+        var found: TextLineEntity? = null
+        val line: suspend () -> TextLineEntity = { found ?: findLine().also { found = it } }
         val metrics = ScreenCaptureManager.screenMetrics(context)
         val w = metrics.widthPixels.toFloat()
         val h = metrics.heightPixels.toFloat()
@@ -280,15 +286,18 @@ class ScreenDictionary(
                         sentence = sentence,
                         image = null,
                         onDismiss = { dismiss() },
-                        onMine = onMine,
+                        onMine = { details, edits -> container.miner.mineLine(line(), word, details, edits = edits) },
                         maxHeight = with(local) { plan.maxHeight.toDp() },
                         handleBack = false,
                         width = popupWidthDp,
+                        loadAudio = { container.miner.lineAudio(line()) },
+                        openEditor = { openEditor(it) },
                     )
                 }
             }
             setOnTouchListener { _, event ->
-                if (event.action == MotionEvent.ACTION_OUTSIDE) dismiss(resumeLater = true)
+                // A touch in the card editor is outside the popup too; the popup stays under it.
+                if (event.action == MotionEvent.ACTION_OUTSIDE && editor == null) dismiss(resumeLater = true)
                 false
             }
             addOnLayoutChangeListener { v, _, _, _, _, _, _, _, _ ->
@@ -330,6 +339,64 @@ class ScreenDictionary(
         if (quickActive) handler.postDelayed(clearQuick, QUICK_LINGER_MS)
     }
 
+    /**
+     * The card editor over the game: a focusable window (the sentence field needs the keyboard),
+     * centered, dimming what is behind it and taking every touch until Cancel, Add or Back.
+     */
+    private fun openEditor(request: CardEditRequest) {
+        closeEditor()
+        val metrics = ScreenCaptureManager.screenMetrics(context)
+        val owner = OverlayLifecycleOwner().apply {
+            onCreate()
+            onStart()
+        }
+        val compose = ComposeView(context).apply {
+            setContent {
+                DsmTheme { CardEditor(request, onClose = { closeEditor() }) }
+            }
+        }
+        // Back closes it: an overlay window has no activity to take the key.
+        val view = object : android.widget.FrameLayout(context) {
+            override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+                if (event.keyCode == KeyEvent.KEYCODE_BACK) {
+                    if (event.action == KeyEvent.ACTION_UP) closeEditor()
+                    return true
+                }
+                return super.dispatchKeyEvent(event)
+            }
+        }.apply {
+            // On the window's root view: Compose looks the owners up from there.
+            setViewTreeLifecycleOwner(owner)
+            setViewTreeViewModelStoreOwner(owner)
+            setViewTreeSavedStateRegistryOwner(owner)
+            addView(compose)
+        }
+        val width = min(metrics.widthPixels - (32 * density).roundToInt(), (560 * density).roundToInt())
+        val params = WindowManager.LayoutParams(
+            width,
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            WindowManager.LayoutParams.FLAG_DIM_BEHIND or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            PixelFormat.TRANSLUCENT,
+        ).apply {
+            gravity = Gravity.CENTER
+            dimAmount = 0.45f
+            softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE or WindowManager.LayoutParams.SOFT_INPUT_STATE_HIDDEN
+        }
+        editor = view
+        editorOwner = owner
+        runCatching { windowManager.addView(view, params) }.onFailure { closeEditor() }
+    }
+
+    private fun closeEditor() {
+        val view = editor ?: return
+        editor = null
+        runCatching { windowManager.removeView(view) }
+        editorOwner?.onDestroy()
+        editorOwner = null
+        if (popup == null) resumeMedia()
+    }
+
     private companion object {
         const val VERIFY_DELAY_MS = 250L
         const val QUICK_LINGER_MS = 400L
@@ -348,7 +415,7 @@ class ScreenDictionary(
     }
 
     private fun resumeMedia() {
-        if (!pausedMedia) return
+        if (!pausedMedia || editor != null) return
         pausedMedia = false
         context.getSystemService(AudioManager::class.java)?.let { sendMediaKey(it, KeyEvent.KEYCODE_MEDIA_PLAY) }
     }

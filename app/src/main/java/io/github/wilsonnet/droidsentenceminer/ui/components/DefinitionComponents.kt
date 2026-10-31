@@ -16,11 +16,13 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -45,6 +47,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import io.github.wilsonnet.droidsentenceminer.AppContainer
 import io.github.wilsonnet.droidsentenceminer.anki.AnkiResult
+import io.github.wilsonnet.droidsentenceminer.anki.CardEdits
+import io.github.wilsonnet.droidsentenceminer.audio.AudioSegment
 import io.github.wilsonnet.droidsentenceminer.dict.TermLookup
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -60,11 +64,14 @@ fun WebViewBlock(
     onTextTap: ((String, String) -> Unit)? = null,
     /** Per-entry add buttons (`.dsm-add[data-index]`, see [CardMiner.buildPopupHtml]): tap → index. */
     onEntryMine: ((Int) -> Unit)? = null,
+    /** Per-entry edit buttons (`.dsm-edit[data-index]`): tap → index, opens the card editor. */
+    onEntryEdit: ((Int) -> Unit)? = null,
     /** Button state per entry index: new, mining, added, in-anki, failed. */
     entryStates: Map<Int, String> = emptyMap(),
 ) {
     val tapHandler = androidx.compose.runtime.rememberUpdatedState(onTextTap)
     val mineHandler = androidx.compose.runtime.rememberUpdatedState(onEntryMine)
+    val editHandler = androidx.compose.runtime.rememberUpdatedState(onEntryEdit)
     val scripted = onTextTap != null || onEntryMine != null
     Box(modifier = modifier.background(if (dark) ComposeColor(0xFF1E1E1E) else ComposeColor.White)) {
         AndroidView(
@@ -99,6 +106,11 @@ fun WebViewBlock(
                                 fun mine(index: Int) {
                                     post { mineHandler.value?.invoke(index) }
                                 }
+
+                                @android.webkit.JavascriptInterface
+                                fun edit(index: Int) {
+                                    post { editHandler.value?.invoke(index) }
+                                }
                             },
                             "dsm",
                         )
@@ -129,7 +141,7 @@ private class DefinitionWebView(context: android.content.Context) : WebView(cont
     }
 }
 
-/** Yomitan's per-entry add button: capture phase, so the tap never reaches the lookup scanner. */
+/** Yomitan's per-entry add button (+ edit): capture phase, so the tap never reaches the lookup scanner. */
 private const val ENTRY_SCRIPT = """<script>
 var dsmLabels = {'new': '+ Anki', 'mining': 'Adding…', 'added': '✓ Added', 'in-anki': '✓ In Anki', 'failed': 'Retry'};
 function dsmSetStates(states) {
@@ -141,10 +153,12 @@ function dsmSetStates(states) {
   });
 }
 document.addEventListener('click', function (e) {
-  var b = e.target.closest && e.target.closest('.dsm-add');
+  var b = e.target.closest && e.target.closest('.dsm-add, .dsm-edit');
   if (!b) return;
   e.stopPropagation(); e.preventDefault();
-  if (!b.disabled) dsm.mine(parseInt(b.dataset.index, 10));
+  if (b.disabled) return;
+  var i = parseInt(b.dataset.index, 10);
+  if (b.classList.contains('dsm-edit')) dsm.edit(i); else dsm.mine(i);
 }, true);
 </script>"""
 
@@ -263,17 +277,23 @@ private fun rememberWordLookup(word: String, dark: Boolean): WordLookupState {
     return state
 }
 
+/**
+ * Mines a popup's card: the source's line, sentence and audio, with the card editor's changes
+ * when there are any. Hosts without a line (Book, OCR test) leave it null and mine [sentence].
+ */
+typealias MineCallback = suspend (TermLookup.LookupDetails?, CardEdits?) -> AnkiResult<String>
+
 @Composable
 private fun mineAction(
     state: WordLookupState,
     word: String,
     sentence: String,
     image: Bitmap?,
-    onMine: (suspend (TermLookup.LookupDetails?) -> AnkiResult<String>)?,
-): (Int) -> Unit {
+    onMine: MineCallback?,
+): (Int, CardEdits?) -> Unit {
     val context = LocalContext.current
     val container = remember { AppContainer.from(context) }
-    return { index ->
+    return { index, edits ->
         // Only this entry's headword, reading and definitions go on the card (Yomitan's per-entry add).
         val details = state.details?.forEntry(index)
         val headword = details?.baseForm ?: word
@@ -281,7 +301,7 @@ private fun mineAction(
         state.status = null
         // App scope, not the popup's: closing the popup right after tapping must not drop the card.
         container.appScope.launch {
-            val result = onMine?.invoke(details) ?: container.miner.mine(word, sentence, image, details)
+            val result = onMine?.invoke(details, edits) ?: container.miner.mine(word, edits?.sentence ?: sentence, image, details)
             withContext(Dispatchers.Main) {
                 state.entryStates[index] = if (result is AnkiResult.Success) EntryState.ADDED else EntryState.FAILED
                 state.status = when (result) {
@@ -331,6 +351,7 @@ private fun LookupBody(
     maxHeight: androidx.compose.ui.unit.Dp,
     onTextTap: ((String, String) -> Unit)? = null,
     onEntryMine: ((Int) -> Unit)? = null,
+    onEntryEdit: ((Int) -> Unit)? = null,
 ) {
     if (state.loading) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -353,6 +374,7 @@ private fun LookupBody(
             onTextTap = onTextTap,
             // Buttons only exist in the page when there is more than one entry.
             onEntryMine = onEntryMine.takeIf { (state.details?.entries?.size ?: 0) > 1 },
+            onEntryEdit = onEntryEdit.takeIf { (state.details?.entries?.size ?: 0) > 1 },
             entryStates = state.entryStates.mapValues { it.value.js },
         )
     }
@@ -360,32 +382,89 @@ private fun LookupBody(
 
 private val ADDED_GREEN = androidx.compose.ui.graphics.Color(0xFF2E7D32)
 
+/**
+ * "+ Anki" and, joined to it, ✎ (the card editor: trim sentence and audio first). The edit half
+ * goes away once the word is in Anki or being added.
+ */
 @Composable
-private fun MineButton(state: WordLookupState, onClick: () -> Unit) {
+private fun MineButton(state: WordLookupState, onClick: () -> Unit, onEdit: (() -> Unit)?) {
     // Like Yomitan, a word that already has a note shows it instead of offering a duplicate.
     val inAnki = state.inAnki == true
     val addedColors = ButtonDefaults.filledTonalButtonColors(
         disabledContainerColor = ADDED_GREEN,
         disabledContentColor = androidx.compose.ui.graphics.Color.White,
     )
-    FilledTonalButton(
-        enabled = !inAnki && !state.mining && state.details?.terms?.isNotEmpty() == true,
-        onClick = onClick,
-        colors = if (state.added) addedColors else ButtonDefaults.filledTonalButtonColors(),
-    ) {
-        when {
-            state.mining -> CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
-            else -> Icon(if (inAnki) Icons.Default.Check else Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-        }
-        Spacer(Modifier.width(6.dp))
-        Text(
+    val enabled = !inAnki && !state.mining && state.details?.terms?.isNotEmpty() == true
+    val split = onEdit != null && enabled && !state.added
+    val pill = androidx.compose.foundation.shape.RoundedCornerShape(50)
+    Row {
+        FilledTonalButton(
+            enabled = enabled,
+            onClick = onClick,
+            colors = if (state.added) addedColors else ButtonDefaults.filledTonalButtonColors(),
+            shape = if (split) androidx.compose.foundation.shape.RoundedCornerShape(50, 15, 15, 50) else pill,
+            contentPadding = if (split) androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 12.dp) else ButtonDefaults.ContentPadding,
+        ) {
             when {
-                state.mining -> "Adding…"
-                state.added -> "Added"
-                inAnki -> "In Anki"
-                else -> "Anki"
-            },
+                state.mining -> CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                else -> Icon(if (inAnki) Icons.Default.Check else Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+            }
+            Spacer(Modifier.width(6.dp))
+            Text(
+                when {
+                    state.mining -> "Adding…"
+                    state.added -> "Added"
+                    inAnki -> "In Anki"
+                    else -> "Anki"
+                },
+            )
+        }
+        if (split) {
+            Spacer(Modifier.width(2.dp))
+            FilledTonalButton(
+                onClick = { onEdit?.invoke() },
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(15, 50, 50, 15),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 10.dp, end = 12.dp),
+                modifier = Modifier.width(44.dp),
+            ) {
+                Icon(Icons.Default.Edit, contentDescription = "Edit card before adding", modifier = Modifier.size(18.dp))
+            }
+        }
+    }
+}
+
+/**
+ * The editor for entry `index` of the popup's lookup: [openEditor] hosts it (overlay window), or
+ * this shows it in a dialog. The edited card is mined like a tap on "+ Anki", so the popup's
+ * buttons follow it.
+ */
+@Composable
+private fun editorAction(
+    state: WordLookupState,
+    word: String,
+    sentence: String,
+    loadAudio: (suspend () -> AudioSegment?)?,
+    mine: (Int, CardEdits?) -> Unit,
+    openEditor: ((CardEditRequest) -> Unit)?,
+): (Int) -> Unit {
+    var request by remember { mutableStateOf<CardEditRequest?>(null) }
+    request?.let { r ->
+        androidx.compose.ui.window.Dialog(
+            onDismissRequest = { request = null },
+            properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
+        ) {
+            CardEditor(r, onClose = { request = null }, Modifier.padding(16.dp).widthIn(max = 560.dp))
+        }
+    }
+    return { index ->
+        val headword = state.details?.entries?.getOrNull(index)?.terms?.firstOrNull()?.expression
+        val r = CardEditRequest(
+            word = word.takeIf { it in sentence } ?: headword ?: word,
+            sentence = sentence,
+            loadAudio = loadAudio,
+            submit = { edits -> mine(index, edits) },
         )
+        if (openEditor != null) openEditor(r) else request = r
     }
 }
 
@@ -400,7 +479,9 @@ fun WordLookupDialog(
     image: Bitmap?,
     onDismiss: () -> Unit,
     /** Overrides the default mining (e.g. to attach a text-log line's audio and screenshot). */
-    onMine: (suspend (TermLookup.LookupDetails?) -> AnkiResult<String>)? = null,
+    onMine: MineCallback? = null,
+    /** The sentence audio the card editor trims (the line's clip); null: the source has none. */
+    loadAudio: (suspend () -> AudioSegment?)? = null,
 ) {
     val dark = androidx.compose.foundation.isSystemInDarkTheme()
     val stack = rememberLookupStack(word, sentence)
@@ -408,6 +489,7 @@ fun WordLookupDialog(
     val state = rememberWordLookup(entry.word, dark)
     // A word reached from a definition gets that definition's sentence, and no line audio/screenshot.
     val mine = mineAction(state, entry.word, entry.sentence, image.takeIf { stack.size == 1 }, onMine.takeIf { stack.size == 1 })
+    val edit = editorAction(state, entry.word, entry.sentence, loadAudio.takeIf { stack.size == 1 }, mine, openEditor = null)
     val onTap = recursiveTap(stack)
     if (stack.size > 1) androidx.activity.compose.BackHandler { stack.removeAt(stack.lastIndex) }
 
@@ -417,14 +499,14 @@ fun WordLookupDialog(
         text = {
             // No verticalScroll here: the WebView scrolls itself, and an outer scroll fought it for drags.
             Column(Modifier.heightIn(max = 420.dp)) {
-                LookupBody(state, dark, maxHeight = 360.dp, onTextTap = onTap, onEntryMine = mine)
+                LookupBody(state, dark, maxHeight = 360.dp, onTextTap = onTap, onEntryMine = { mine(it, null) }, onEntryEdit = edit)
                 state.status?.let {
                     Spacer(Modifier.size(8.dp))
                     Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                 }
             }
         },
-        confirmButton = { MineButton(state) { mine(0) } },
+        confirmButton = { MineButton(state, onClick = { mine(0, null) }, onEdit = { edit(0) }) },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Close") }
         },
@@ -443,7 +525,8 @@ fun WordLookupPopup(
     image: Bitmap?,
     anchor: androidx.compose.ui.geometry.Rect,
     onDismiss: () -> Unit,
-    onMine: (suspend (TermLookup.LookupDetails?) -> AnkiResult<String>)? = null,
+    onMine: MineCallback? = null,
+    loadAudio: (suspend () -> AudioSegment?)? = null,
 ) {
     val density = androidx.compose.ui.platform.LocalDensity.current
     val config = androidx.compose.ui.platform.LocalConfiguration.current
@@ -464,6 +547,7 @@ fun WordLookupPopup(
             image = image,
             onDismiss = onDismiss,
             onMine = onMine,
+            loadAudio = loadAudio,
             maxHeight = with(density) { plan.maxHeight.toDp() },
             handleBack = true,
         )
@@ -514,16 +598,20 @@ fun WordLookupCard(
     sentence: String,
     image: Bitmap?,
     onDismiss: () -> Unit,
-    onMine: (suspend (TermLookup.LookupDetails?) -> AnkiResult<String>)?,
+    onMine: MineCallback?,
     maxHeight: androidx.compose.ui.unit.Dp,
     handleBack: Boolean,
     width: androidx.compose.ui.unit.Dp = popupWidth(),
+    loadAudio: (suspend () -> AudioSegment?)? = null,
+    /** Hosts the card editor itself (overlay windows can't show a Compose dialog); null: a dialog. */
+    openEditor: ((CardEditRequest) -> Unit)? = null,
 ) {
     val dark = androidx.compose.foundation.isSystemInDarkTheme()
     val stack = rememberLookupStack(word, sentence)
     val entry = stack.last()
     val state = rememberWordLookup(entry.word, dark)
     val mine = mineAction(state, entry.word, entry.sentence, image.takeIf { stack.size == 1 }, onMine.takeIf { stack.size == 1 })
+    val edit = editorAction(state, entry.word, entry.sentence, loadAudio.takeIf { stack.size == 1 }, mine, openEditor)
     val onTap = recursiveTap(stack)
 
     if (handleBack) {
@@ -548,7 +636,7 @@ fun WordLookupCard(
                     Modifier.weight(1f).padding(top = 6.dp),
                     onBack = if (stack.size > 1) ({ stack.removeAt(stack.lastIndex) }) else null,
                 )
-                MineButton(state) { mine(0) }
+                MineButton(state, onClick = { mine(0, null) }, onEdit = { edit(0) })
                 androidx.compose.material3.IconButton(onClick = onDismiss) {
                     Icon(Icons.Default.Close, contentDescription = "Close")
                 }
@@ -560,7 +648,7 @@ fun WordLookupCard(
             // The rest of the card, whatever the header took: a fixed guess for the header clipped the
             // bottom of the definition when the header was taller (deinflection line, error, back).
             Box(Modifier.weight(1f, fill = false).padding(end = 8.dp)) {
-                LookupBody(state, dark, maxHeight = maxHeight, onTextTap = onTap, onEntryMine = mine)
+                LookupBody(state, dark, maxHeight = maxHeight, onTextTap = onTap, onEntryMine = { mine(it, null) }, onEntryEdit = edit)
             }
         }
     }

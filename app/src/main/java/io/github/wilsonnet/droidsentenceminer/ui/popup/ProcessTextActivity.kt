@@ -129,7 +129,8 @@ class ProcessTextActivity : ComponentActivity() {
                 sentence = sentenceLine?.text ?: text,
                 image = null,
                 onDismiss = { selected = null },
-                onMine = sentenceLine?.let { l -> { details -> container.miner.mineLine(l, word, details) } },
+                onMine = sentenceLine?.let { l -> { details, edits -> container.miner.mineLine(l, word, details, edits = edits) } },
+                loadAudio = sentenceLine?.let { l -> { container.miner.lineAudio(l) } },
             )
         }
     }

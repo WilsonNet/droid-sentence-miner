@@ -20,7 +20,12 @@ class WordAudio(private val client: OkHttpClient = defaultClient) {
 
     data class Clip(val bytes: ByteArray, val extension: String, val source: String)
 
-    suspend fun fetch(term: String, reading: String, customUrl: String? = null): Clip? = withContext(Dispatchers.IO) {
+    /**
+     * The first valid clip from the sources in Yomitan's order. Gives up after [budgetMs] in total:
+     * a word with no audio anywhere tries every source, and a slow site held the card for 15+ s.
+     */
+    suspend fun fetch(term: String, reading: String, customUrl: String? = null, budgetMs: Long = BUDGET_MS): Clip? = withContext(Dispatchers.IO) {
+        val deadline = android.os.SystemClock.elapsedRealtime() + budgetMs
         val read = reading.ifBlank { term }
         val attempts = buildList<Pair<String, () -> List<String>>> {
             customUrl?.takeIf { it.isNotBlank() }?.let { template -> add("custom" to { listOf(WordAudioSources.customUrl(template, term, read)) }) }
@@ -29,8 +34,10 @@ class WordAudio(private val client: OkHttpClient = defaultClient) {
             add("jisho" to { jisho(term, read) })
         }
         for ((source, urls) in attempts) {
+            if (android.os.SystemClock.elapsedRealtime() > deadline) break
             val candidates = runCatching { urls() }.getOrDefault(emptyList())
             for (url in candidates) {
+                if (android.os.SystemClock.elapsedRealtime() > deadline) break
                 val bytes = runCatching { download(url) }.getOrNull() ?: continue
                 if (!WordAudioSources.isValid(source, bytes)) continue
                 return@withContext Clip(bytes, WordAudioSources.extension(url), source)
@@ -70,10 +77,15 @@ class WordAudio(private val client: OkHttpClient = defaultClient) {
     }
 
     companion object {
+        /** Total time a card waits for word audio; it is added without it after that. */
+        const val BUDGET_MS = 8_000L
+
         private val defaultClient: OkHttpClient by lazy {
             OkHttpClient.Builder()
-                .connectTimeout(6, TimeUnit.SECONDS)
-                .readTimeout(8, TimeUnit.SECONDS)
+                .connectTimeout(4, TimeUnit.SECONDS)
+                .readTimeout(5, TimeUnit.SECONDS)
+                // One request can't outlast the budget by much.
+                .callTimeout(5, TimeUnit.SECONDS)
                 .followRedirects(true)
                 .build()
         }

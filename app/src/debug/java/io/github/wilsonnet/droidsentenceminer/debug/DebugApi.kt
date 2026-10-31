@@ -1,5 +1,6 @@
 package io.github.wilsonnet.droidsentenceminer.debug
 
+import io.github.wilsonnet.droidsentenceminer.core.GlossaryMode
 import android.app.Application
 import android.content.Intent
 import android.graphics.Bitmap
@@ -282,9 +283,15 @@ object DebugApi {
                     params["provider"]?.let { prefs.setAnkiProvider(it) }
                     params["deck"]?.let { prefs.setAnkiDeck(it) }
                     params["model"]?.let { prefs.setAnkiModel(it) }
-                    params["firstdict"]?.let { prefs.setGlossaryFirstDictionary(it == "1" || it == "true") }
+                    params["firstdict"]?.let {
+                        prefs.setGlossaryMode(if (it == "1" || it == "true") GlossaryMode.FIRST else GlossaryMode.DEFAULT)
+                    }
+                    params["glossary"]?.let { id ->
+                        GlossaryMode.fromId(id)?.let { prefs.setGlossaryMode(it) }
+                    }
                     JSONObject().put("ok", true).put("provider", prefs.ankiProvider.first())
                         .put("deck", prefs.ankiDeck.first()).put("model", prefs.ankiModel.first())
+                        .put("glossary", prefs.glossaryMode.first().id)
                 }
             }
             "/word_audio" -> respondApi(socket) {

@@ -1,7 +1,14 @@
 package io.github.wilsonnet.droidsentenceminer.anki
 
+import io.github.wilsonnet.droidsentenceminer.audio.AudioSegment
 import io.github.wilsonnet.droidsentenceminer.dict.GlossaryHtml
 import io.github.wilsonnet.droidsentenceminer.dict.TermLookup
+
+/**
+ * The card editor's result: the sentence as the user trimmed it and the sentence audio as trimmed
+ * (null = no audio on the card). Replaces the line's text and clip when mining.
+ */
+data class CardEdits(val sentence: String, val audio: AudioSegment?)
 
 /** Data needed to create one Anki note. */
 data class AnkiCard(

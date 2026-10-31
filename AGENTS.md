@@ -303,6 +303,25 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   entry; `ENTRY_SCRIPT` (capture-phase click, so the tap scanner never sees it) calls `dsm.mine(i)`
   and `DefinitionWebView` pushes states back with `dsmSetStates` after `onPageFinished`. Mining
   entry i builds the card from `forEntry(i)` only.
+- **Card editor & glossary mode** (`CardEditor.kt`, `GlossaryMode` in `Prefs.kt`): ✎ beside every
+  *+ Anki* (Compose `MineButton` split button; HTML `.dsm-edit` → `dsm.edit(i)`) opens `CardEditor`;
+  its `CardEdits` (sentence, trimmed `AudioSegment` or null) go through the host's `MineCallback` →
+  `CardMiner.mineLine(edits=)`. In-app it is a Compose `Dialog`; over other apps
+  `ScreenDictionary.openEditor` adds a *focusable* overlay window (IME) — set the ViewTree owners on
+  the window's root view (a wrapper FrameLayout), not the inner ComposeView, or it crashes with
+  "ViewTreeLifecycleOwner not found"; the popup ignores ACTION_OUTSIDE while it is open.
+  `GlossaryMode` (pref `glossary_mode`; legacy `glossary_first_dictionary` read if unset) decides
+  `CardMiner.cardTerms`; `buildPopupHtml` marks those dictionaries `data-card="1"` + *on card*.
+  The editor's sentence drops `\n` (over a game, the popup's text is the screen rows joined by
+  wraps; the logged line has none) and its chips split on 。！？ only. Its audio handles start on
+  `VoiceTrimmer.trim(relativeThreshold = 0.15)`: the default 0.05 keeps the game's music the
+  microphone also hears (Nightshade: 11 s of BGM after a 4.5 s line); `AudioPcm.isSilent` (<−40 dBFS)
+  turns audio off (unvoiced lines). `TextLog.clip` normalizes *before* trimming — the trimmer's
+  absolute floor (180) sat above quiet mic syllables. `CardMiner.mineLine` starts the word-audio
+  fetch in parallel with the clip encode (1.6 s for 4.6 s of audio under Nightshade); `WordAudio`
+  has an 8 s total budget. Stage timings: `adb logcat -s DSM-Mine`.
+  Layout checked on the Pad 7 with `wm size 1080x2340` / `904x2316` / `1856x2160` + `wm density 420`
+  (Galaxy phone, Fold cover, Fold inner) — always `wm size reset; wm density reset` after.
 - **Lookup popup** (`WordLookupPopup`, `DefinitionComponents.kt`): non-focusable `Popup` placed by
   `AnchoredPopupPosition` from the word's window rect (`getPathForRange` + `positionInWindow`), so
   taps pass through to the text. Book tab pre-creates a WebView after the first frame (Chromium cold

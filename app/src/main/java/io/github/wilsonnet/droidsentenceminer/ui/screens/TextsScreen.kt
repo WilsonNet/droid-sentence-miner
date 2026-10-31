@@ -277,7 +277,8 @@ fun TextsScreen(modifier: Modifier = Modifier) {
             sentence = line.text,
             image = null,
             onDismiss = { lookup = null },
-            onMine = { details -> container.miner.mineLine(line, word, details, audio = editedAudio[line.id]) },
+            onMine = { details, edits -> container.miner.mineLine(line, word, details, audio = editedAudio[line.id], edits = edits) },
+            loadAudio = { editedAudio[line.id] ?: container.miner.lineAudio(line) },
         )
     }
 

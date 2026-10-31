@@ -74,6 +74,26 @@ Context Sentence, Word Audio, Audio, Picture, Sentence.
 
 Foreign note types get the sentence as plain text instead of the Yomitan glossary wrapper.
 
+## Edit before adding
+
+The ✎ joined to **+ Anki** (on the popup header and on each headword's button) opens the card
+editor before anything is added:
+
+- **Sentence** — edit the text (the mined word is bold), or tap one of the chips under it to keep
+  only that sentence of a multi-sentence line. *Reset* brings the original back.
+- **Sentence audio** — the line's clip as a waveform, with the handles already on the detected
+  voice (the rest is usually room noise or music you sat through while reading). Play it, move the
+  handles, or switch the audio off. A silent clip (an unvoiced line) starts switched off.
+- **Add to Anki** mines the edited card; the popup's button turns *Added* as usual.
+
+Over a game or video the editor is its own window and the keyboard opens there; Back closes it.
+
+## Which dictionaries go on the card
+
+Each dictionary in the popup is marked *on card* when its definitions go into the glossary. The
+**Settings → Cards → Glossary** choice decides it: all dictionaries without their names (default),
+all under their names, or only the first dictionary (the others are faded in the popup).
+
 ## Duplicate check
 
 Before adding, the popup checks the configured note type for a note whose first field matches the

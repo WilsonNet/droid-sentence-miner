@@ -46,7 +46,9 @@ class DsmPrefs(private val context: Context) {
         val audioMicEq = booleanPreferencesKey("audio_mic_eq")
         val audioMicEqProfile = stringPreferencesKey("audio_mic_eq_profile")
         val wordAudio = booleanPreferencesKey("word_audio")
+        /** Legacy on/off for [GlossaryMode.FIRST]; read only when [glossaryMode] was never set. */
         val glossaryFirstDictionary = booleanPreferencesKey("glossary_first_dictionary")
+        val glossaryMode = stringPreferencesKey("glossary_mode")
         val wordAudioCustomUrl = stringPreferencesKey("word_audio_custom_url")
         val audioBufferSeconds = intPreferencesKey("audio_buffer_seconds")
         val clipBeforeMs = intPreferencesKey("clip_before_ms")
@@ -129,8 +131,11 @@ class DsmPrefs(private val context: Context) {
         )
     }.distinctUntilChanged()
 
-    /** Like Yomitan's {glossary-first}: only the highest-priority dictionary on the card. */
-    val glossaryFirstDictionary: Flow<Boolean> = context.dataStore.data.map { it[Keys.glossaryFirstDictionary] ?: false }
+    /** Which dictionaries the card's glossary holds and whether it names them (Yomitan's glossary markers). */
+    val glossaryMode: Flow<GlossaryMode> = context.dataStore.data.map { prefs ->
+        GlossaryMode.fromId(prefs[Keys.glossaryMode])
+            ?: if (prefs[Keys.glossaryFirstDictionary] == true) GlossaryMode.FIRST else GlossaryMode.DEFAULT
+    }
 
     /** Yomitan-style custom audio URL with {term} and {reading}; tried before the built-in sources. */
     val wordAudioCustomUrl: Flow<String> = context.dataStore.data.map { it[Keys.wordAudioCustomUrl] ?: "" }
@@ -262,7 +267,10 @@ class DsmPrefs(private val context: Context) {
         if (profile == null) it.remove(Keys.audioMicEqProfile) else it[Keys.audioMicEqProfile] = profile.encode()
     }
     suspend fun setWordAudio(value: Boolean) = edit { it[Keys.wordAudio] = value }
-    suspend fun setGlossaryFirstDictionary(value: Boolean) = edit { it[Keys.glossaryFirstDictionary] = value }
+    suspend fun setGlossaryMode(value: GlossaryMode) = edit {
+        it[Keys.glossaryMode] = value.id
+        it.remove(Keys.glossaryFirstDictionary)
+    }
     suspend fun setWordAudioCustomUrl(value: String) = edit { it[Keys.wordAudioCustomUrl] = value.trim() }
     suspend fun setAudioBufferSeconds(value: Int) = edit { it[Keys.audioBufferSeconds] = value }
     suspend fun setClipBeforeMs(value: Int) = edit { it[Keys.clipBeforeMs] = value }
@@ -333,5 +341,24 @@ class DsmPrefs(private val context: Context) {
         const val DEFAULT_AUDIO_BUFFER_SECONDS = 300
         const val ENGINE_MEIKI = "meiki"
         const val ENGINE_MLKIT = "mlkit"
+    }
+}
+
+/** Yomitan's card glossary markers: which dictionaries go on the card, and whether each is named. */
+enum class GlossaryMode(val id: String) {
+    /** {glossary-no-dictionary}: every dictionary, without the dictionary names. */
+    NO_DICTIONARY("glossary-no-dictionary"),
+
+    /** {glossary}: every dictionary, each under its name. */
+    ALL("glossary"),
+
+    /** {glossary-first}: only the highest-priority dictionary. */
+    FIRST("glossary-first"),
+    ;
+
+    companion object {
+        val DEFAULT = NO_DICTIONARY
+
+        fun fromId(id: String?): GlossaryMode? = entries.firstOrNull { it.id == id }
     }
 }

@@ -1,5 +1,6 @@
 package io.github.wilsonnet.droidsentenceminer.ui.screens
 
+import io.github.wilsonnet.droidsentenceminer.core.GlossaryMode
 import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -83,7 +84,7 @@ fun SettingsScreen(modifier: Modifier = Modifier, onOpen: (String) -> Unit = {})
     val micCompressor by container.prefs.audioMicCompressor.collectAsState(initial = true)
     val micEq by container.prefs.audioMicEq.collectAsState(initial = true)
     val micEqProfile by container.prefs.audioMicEqProfile.collectAsState(initial = null)
-    val firstDict by container.prefs.glossaryFirstDictionary.collectAsState(initial = false)
+    val glossaryMode by container.prefs.glossaryMode.collectAsState(initial = GlossaryMode.DEFAULT)
     val wordAudioUrl by container.prefs.wordAudioCustomUrl.collectAsState(initial = "")
     var wordAudioUrlDraft by remember(wordAudioUrl) { mutableStateOf(wordAudioUrl) }
     val bufferSeconds by container.prefs.audioBufferSeconds.collectAsState(initial = 300)
@@ -236,12 +237,36 @@ fun SettingsScreen(modifier: Modifier = Modifier, onOpen: (String) -> Unit = {})
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Cards", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                SettingSwitch(
-                    title = "Glossary: first dictionary only",
-                    description = "Put only your highest-priority dictionary on the card (Yomitan's {glossary-first}), " +
-                        "e.g. a monolingual dictionary ordered first in Settings → Dictionaries.",
-                    checked = firstDict,
-                ) { value -> scope.launch { container.prefs.setGlossaryFirstDictionary(value) } }
+                Text("Glossary", style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    "What the card's definition holds. The lookup popup marks the dictionaries that go on the card.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                listOf(
+                    GlossaryMode.NO_DICTIONARY to ("All dictionaries, unnamed" to
+                        "Every dictionary's definitions, without the dictionary names (Yomitan's {glossary-no-dictionary})."),
+                    GlossaryMode.ALL to ("All dictionaries, named" to
+                        "Each dictionary's definitions under its name (Yomitan's {glossary})."),
+                    GlossaryMode.FIRST to ("First dictionary only" to
+                        "Only your highest-priority dictionary (Yomitan's {glossary-first}), e.g. a monolingual " +
+                        "dictionary ordered first in Settings → Dictionaries."),
+                ).forEach { (mode, text) ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        androidx.compose.material3.RadioButton(
+                            selected = glossaryMode == mode,
+                            onClick = { scope.launch { container.prefs.setGlossaryMode(mode) } },
+                        )
+                        Column(Modifier.weight(1f)) {
+                            Text(text.first, style = MaterialTheme.typography.bodyMedium)
+                            Text(
+                                text.second,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
             }
         }
 

@@ -95,6 +95,7 @@ class AnkiDroidBridge(private val context: Context) : AnkiBridge {
     override suspend fun addNote(card: AnkiCard, deck: String, model: String, fieldMap: Map<String, String>?): AnkiResult<String> = withContext(Dispatchers.IO) {
         if (!isAvailable()) return@withContext AnkiResult.NotAvailable
         try {
+            val t0 = android.os.SystemClock.elapsedRealtime()
             ensureDeck(deck)
             ensureModel(model)
 
@@ -103,6 +104,7 @@ class AnkiDroidBridge(private val context: Context) : AnkiBridge {
             val modelId = api.modelList.orEmpty().entries.firstOrNull { it.value == model }?.key
                 ?: return@withContext AnkiResult.Error("Note type '$model' not found")
 
+            val t1 = android.os.SystemClock.elapsedRealtime()
             val imageHtml = card.imageBytes?.let { bytes ->
                 addMedia(bytes, card.imageName ?: "dsm_image.png", "image")
             }
@@ -131,6 +133,8 @@ class AnkiDroidBridge(private val context: Context) : AnkiBridge {
                 CardFields.WORD_AUDIO to (wordAudioHtml ?: ""),
                 CardFields.PITCH_GRAPH to card.pitchGraphHtml,
             )
+            val t2 = android.os.SystemClock.elapsedRealtime()
+            android.util.Log.i("DSM-Mine", "AnkiDroid: deck/model ${t1 - t0} ms, media ${t2 - t1} ms")
             val fieldNames = api.getFieldList(modelId)?.toList() ?: CardFields.ORDER
             val fields = AnkiFieldMapper.mapToArray(fieldNames, values, fieldMap)
             val tags = card.tags.toSet()
@@ -139,8 +143,10 @@ class AnkiDroidBridge(private val context: Context) : AnkiBridge {
                 return@withContext AnkiResult.Error("Already in Anki")
             }
 
+            val t3 = android.os.SystemClock.elapsedRealtime()
             // Note: current AnkiDroid API takes (modelId, deckId) in this order.
             var noteId = api.addNote(modelId = modelId, deckId = deckId, fields = fields, tags = tags)
+            android.util.Log.i("DSM-Mine", "AnkiDroid: fields+duplicate check ${t3 - t2} ms, addNote ${android.os.SystemClock.elapsedRealtime() - t3} ms")
 
             // Some AnkiDroid versions cannot insert notes into a note type that was just
             // created through the API ("No such notetype" from the Rust backend). Retry

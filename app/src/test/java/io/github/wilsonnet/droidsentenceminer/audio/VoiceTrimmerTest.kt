@@ -23,6 +23,37 @@ class VoiceTrimmerTest {
     private fun concat(vararg parts: ShortArray) = AudioSegment(parts.reduce { a, b -> a + b }, rate, 1)
 
     @Test
+    fun quietMicrophoneVoiceKeepsItsWholeSpanOnceNormalized() {
+        // Microphone fallback level (Nightshade): soft syllables near the trimmer's absolute floor,
+        // loud ones well above, room noise all along. Trimming the raw clip kept only the loud
+        // part; TextLog.clip normalizes first.
+        val segment = concat(
+            noise(500, 40),
+            tone(1500, 200),
+            tone(1500, 1400),
+            tone(1500, 200),
+            noise(6000, 40, seed = 2),
+        )
+        val raw = VoiceTrimmer.trim(segment)
+        assertTrue("raw trim starts at the loud part", raw.startMs > 1500)
+        val normalized = VoiceTrimmer.trim(AudioPcm.normalize(segment))
+        assertTrue(normalized.trimmed)
+        assertTrue("start ${normalized.startMs}", normalized.startMs <= 500)
+        assertTrue("end ${normalized.endMs}", normalized.endMs in 5000..6000)
+    }
+
+    @Test
+    fun stricterThresholdStopsAtVoiceNotBackgroundMusic() {
+        // Microphone fallback: the game's music goes on after the voice, quiet and louder phrases
+        // with peaks ~1/7 of the voice's (Nightshade: voice 3000–4900 RMS, music 200–780).
+        val music = (0 until 8).map { noise(1000, if (it % 2 == 0) 300 else 1400, seed = it) }.toTypedArray()
+        val segment = concat(tone(3000, 8000), *music)
+        assertTrue(VoiceTrimmer.trim(segment).endMs > 10_000)
+        val strict = VoiceTrimmer.trim(segment, relativeThreshold = 0.15)
+        assertTrue("end ${strict.endMs}", strict.endMs in 3000..4000)
+    }
+
+    @Test
     fun trimsSilenceAroundSpeech() {
         val segment = concat(ShortArray(rate), tone(1500, 8000), ShortArray(rate * 2))
         val result = VoiceTrimmer.trim(segment)

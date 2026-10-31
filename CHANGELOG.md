@@ -6,6 +6,34 @@ versions are the `v*` tags that publish a signed APK on
 
 ## [Unreleased]
 
+### Added
+- **Edit a card before adding it.** Next to *+ Anki* in the lookup popup (and on each headword's
+  button) a ✎ opens the card editor: trim the sentence (type, or tap one of its sentences to keep
+  just that one — handy for long visual-novel lines) and the sentence audio (waveform, play, one two-handle slider), or drop the audio.
+  Works over games and videos too; the keyboard opens there for the sentence.
+- **The popup shows which dictionaries go on the card**: an *on card* mark on each dictionary that
+  will be in the glossary; with *First dictionary only* the others are faded.
+
+### Changed
+- **Cards no longer repeat the dictionary name over every definition.** The glossary setting is now
+  three-way, like Yomitan's markers: *All dictionaries, unnamed* (`{glossary-no-dictionary}`, the
+  new default), *All dictionaries, named* (`{glossary}`, the old behavior) and *First dictionary
+  only* (`{glossary-first}`; kept if you had it on).
+- The audio editor uses one range slider instead of two, with the play button and kept range under
+  the waveform.
+- The card editor starts with its audio handles on the voice (a line left on screen while you read
+  runs on as room noise or, through the microphone, as the game's music: 17.8 s clips came out as
+  ~4.5 s), and turns sentence audio off for a silent clip, such as an unvoiced heroine line.
+- Mining no longer waits for word audio after the sentence clip: both are fetched at once, and
+  word-audio sources get 8 s in total (a word with no audio anywhere held the card for 15+ s).
+
+### Fixed
+- *Trim silence* cut quiet microphone clips down to their loudest syllables (an 8.6 s line kept
+  3.8 s): clips are now normalized before they are trimmed.
+- A silent clip's waveform was drawn full height, like a loud one.
+- In the card editor, a line the game wraps over two rows was split into two "sentences" and
+  edited cards kept the wrap as a line break.
+
 ## [0.4.0] — 2026-10-29
 
 ### Added

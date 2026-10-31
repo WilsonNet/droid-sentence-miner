@@ -138,6 +138,13 @@ DSM auto OCR + mic fallback on it): see the `dsm-nightshade` skill.
   top row); the link field is at (1000, 2870) — `input text "<link>"` then `keyevent 66` opens it.
   After a folder opens the sheet expands: row checkboxes at x ≈ 1827, *Install N* button at the
   bottom (≈ 1066, 3037). Dictionary-row trash icons are at x ≈ 2004 (find the row by uiautomator).
+- **Other screen shapes on the Pad 7** (no emulator): `wm size 1080x2340` (Galaxy phone),
+  `904x2316` (Fold cover), `1856x2160` (Fold inner, near-square), each with `wm density 420`;
+  the running app relayouts in ~3 s. Find buttons with uiautomator (`content-desc="Edit card before
+  adding"` is the popup's ✎) instead of fixed coordinates, and **always** `wm size reset; wm density
+  reset` afterwards. Overlay popups are not in the uiautomator dump right after opening — use the
+  screenshot. One BACK too many with only an overlay popup open exits `MainActivity` (the popup is
+  not focusable).
 - **Lookup popup from the Texts tab (Pad 7 portrait)**: `curl "localhost:9099/add_line?text=<urlencoded>"`
   puts a line at the top; tap the line once to expand it, then tap the word (same point). The
   popup's WebView spans y ≈ 1120–2115 — swipe *inside* that band (`input swipe 1068 2000 1068 1300
