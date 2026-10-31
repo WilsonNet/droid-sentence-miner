@@ -62,7 +62,7 @@ All GET, all JSON (except `frame.png`). Regions are screen fractions unless note
 | `/dict_updates` | Check remote `indexUrl` (e.g. Jitendex `yomitan.json`) for newer dictionary revisions; returns available updates (`dictId`, `installedRevision`, `latestTitle`, `latestRevision`, `downloadUrl`) |
 | `/drive_list?url=` (or `?id=`) | List a public Google Drive folder: `title`, `entries[]` (`id`, `name`, `folder`, `zip`, `modified`); private/missing folders return `ok:false` with the reason |
 | `/install_drive?url=` (or `?id=`) | Download + import a public Drive file in the background; progress in `/state.dictInstall` (id `drive:<fileId>`) |
-| `/install_dict?id=jitendex` | Download + import a recommended dictionary in the background (`/state.dictInstall` shows progress; ids: jitendex, jmdict, kanjidic, kanjium, jmnedict) |
+| `/install_dict?id=jitendex` | Download + import a recommended dictionary in the background (`/state.dictInstall` shows progress; ids: jitendex, jmdict, kanjidic, kanjium, jmnedict, pixiv-light; zips with an `indexUrl` download its latest `downloadUrl`) |
 | `/anki_notes?word=&model=` | Find notes by first field via the AnkiDroid provider; returns every field name → value, plus tags. Defaults to the configured model |
 | `/anki_meta` | AnkiDroid decks and note types as id → name maps |
 | `/startoverlay`, `/stopoverlay` | Start/stop the floating overlay service |

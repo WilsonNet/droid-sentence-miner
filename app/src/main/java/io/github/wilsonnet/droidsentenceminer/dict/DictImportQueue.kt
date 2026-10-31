@@ -173,7 +173,7 @@ class DictImportQueue(
                     val zipFile = File(context.cacheDir, "recommended-${item.dictionary.id}.zip")
                     try {
                         report("Downloading $name…")
-                        downloader.download(item.dictionary.url, zipFile) { downloaded, total ->
+                        downloader.download(downloader.latestUrl(item.dictionary), zipFile) { downloaded, total ->
                             report(downloadText(name, downloaded, total))
                         }
                         importer.importRecommended(item.dictionary, zipFile) {

@@ -14,6 +14,8 @@ versions are the `v*` tags that publish a signed APK on
 - **Pick the dictionary for the card in the popup.** Each dictionary's name in the lookup popup is a
   button: the one going on the card shows *✓ On card*, the others *Use on card*. Tap one to put only
   its definitions on that word's card (per headword); tap it again to go back to the setting.
+- **Pixiv Light** (MarvNC's Pixiv encyclopedia summaries: anime, games, characters, slang) in the
+  one-tap dictionaries. Installs fetch the latest release, and it updates like Jitendex.
 
 ### Changed
 - **Cards no longer repeat the dictionary name over every definition.** The glossary setting is now

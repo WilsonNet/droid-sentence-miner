@@ -71,6 +71,16 @@ object RecommendedDictionaries {
             kind = RecommendedDictionary.Kind.KANJIUM_ACCENTS,
         ),
         RecommendedDictionary(
+            id = "pixiv-light",
+            name = "Pixiv Light",
+            description = "Japanese → Japanese encyclopedia: summaries of 700,000+ Pixiv encyclopedia (ピクシブ百科事典) " +
+                "articles — anime, games, characters, slang. Updated regularly by MarvNC.",
+            // Release zips carry their date; installs take the latest one's URL from indexUrl, this is the fallback.
+            url = "https://github.com/MarvNC/pixiv-yomitan/releases/download/2026-10-31/PixivLight_2026-10-31.zip",
+            approximateSizeMb = 54.0,
+            indexUrl = "https://github.com/MarvNC/pixiv-yomitan/releases/latest/download/pixiv_light_index.json",
+        ),
+        RecommendedDictionary(
             id = "jmnedict",
             name = "JMnedict",
             description = "Japanese names dictionary: people, places, companies, and work titles from EDRDG's JMnedict.",
@@ -196,6 +206,10 @@ class DictDownloader {
             throw YomitanImporter.ImportException("Download failed: ${e.message}", e)
         }
     }
+
+    /** Where to download [dictionary] from: its latest release's `downloadUrl` when it has one, else [RecommendedDictionary.url]. */
+    suspend fun latestUrl(dictionary: RecommendedDictionary): String =
+        dictionary.indexUrl?.let { fetchIndex(it)?.downloadUrl } ?: dictionary.url
 
     /** Fetches a remote Yomitan `index.json` (e.g. `https://jitendex.org/static/yomitan.json`). */
     suspend fun fetchIndex(url: String): DictionaryIndex? = withContext(Dispatchers.IO) {

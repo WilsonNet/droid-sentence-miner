@@ -138,7 +138,7 @@ Endpoints: `/state`, `/scan`, `/frame.png`, `/ocr` (`l,t,r,b` crops the file fir
 `/autoocr?on=1|0`, `/lines?limit=`, `/clip.wav?id=&trim=0|1`, `/line_shot.jpg?id=`, `/mine_line?id=&word=`,
 `/set_region?l=&t=&r=&b=&orientation=`, `/clear_lines`, `/add_line?text=&ago=&dur=`,
 `/quick?l=&t=&r=&b=` (bubble quick lookup of a box), `/install_ocr_models` (meikiocr download), `/ocr?engine=meiki|mlkit`, `/select_areas` (opens the area editor),
-`/install_dict?id=jitendex|jmnedict` (background install; progress in `/state.dictInstall`),
+`/install_dict?id=jitendex|jmnedict|pixiv-light` (background install; progress in `/state.dictInstall`),
 `/drive_list?url=` (public Drive folder listing), `/install_drive?url=` (public Drive file, same progress),
 `/anki_notes?word=` (field-level card verification via the AnkiDroid provider),
 `/anki_meta` (decks + note types), `/book?file=` (book-mode page OCR → paragraphs, shown in the Book tab), `/live?show=1&mode=` (live text window), `/mic_fallback?on=`, `/mic_fx`, `/mic_calibrate`, `/mic_measure.wav` (speaker→mic recordings, see `dsm-audio`), `/startoverlay`, `/stopoverlay`, `/request_projection`.
@@ -253,7 +253,7 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
 - **Dictionary update checks, drag-and-drop ordering & JMnedict** (`dict/RecommendedDictionaries.kt`,
   `dict/YomitanImporter.kt`, `dict/DictArchive.kt`, `ui/screens/DictionaryScreen.kt`): `DictDownloader.checkUpdates`
   reads `index.json` from each installed dictionary's zip (`DictArchive.index`, falling back to
-  `RecommendedDictionary.indexUrl` for Jitendex and JMnedict), fetches the remote `index.json`,
+  `RecommendedDictionary.indexUrl` for Jitendex, JMnedict and Pixiv Light), fetches the remote `index.json`,
   and compares `revision` (`isNewerRevision`). Because Jitendex and JMnedict embed the release date
   in `title` (`"Jitendex.org [2026-10-03]"`, `"JMnedict [2026-10-26]"`), `YomitanImporter.findExistingForImport`
   matches by `baseDictionaryTitle` (stripping trailing `[...]`) so updating replaces the old

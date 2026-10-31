@@ -731,9 +731,9 @@ object DebugApi {
         val id = params["id"] ?: "jitendex"
         val recommended = RecommendedDictionaries.ALL.firstOrNull { it.id == id }
             ?: return errorJson("unknown dictionary id '$id' (known: ${RecommendedDictionaries.ALL.map { it.id }})")
-        val url = params["url"] ?: recommended.url
         if (dictInstall?.done == false) return errorJson("an install is already running")
         val container = AppContainer.from(app)
+        val url = params["url"] ?: runBlocking { container.dictDownloader.latestUrl(recommended) }
         val install = DictInstall(id)
         dictInstall = install
         pool.execute {

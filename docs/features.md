@@ -84,7 +84,7 @@ Everything the app does, in detail. The short version is in the [README](../READ
   built in as the fallback/alternative engine.
 - **Yomitan dictionaries & drag-and-drop priority** — import any Yomitan/Yomichan format 3 `.zip`
   (Jitendex, JMdict, JMnedict, KANJIDIC, frequency dictionaries) or install recommended dictionaries
-  (Jitendex, JMdict, KANJIDIC, Kanjium pitch accents, JMnedict names) with one tap. Dictionaries can
+  (Jitendex, JMdict, KANJIDIC, Kanjium pitch accents, Pixiv Light encyclopedia, JMnedict names) with one tap. Dictionaries can
   be reordered via drag-and-drop with priority badges (`#1`, `#2`…) just like in Yomitan to control
   definition ranking and `{glossary-first}` mining. Proper-name dictionaries (JMnedict) automatically
   start at the bottom of the list so they never shadow standard vocabulary.
