@@ -403,9 +403,9 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   when another is ≥0.8 (a hardsub half-hidden under YouTube captions read as garbage, 0.27 vs 0.97).
 - **Netflix**: the video surface is DRM-black, but subtitles are drawn as normal views and OCR fine.
   Audio is silent (per-stream capture policy), so cards get no sentence clip. Not supported.
-- **Xiaomi Pad 7 / HyperOS 3** (adb `c2bd6564`): the first `adb install` is cancelled by
-  `com.miui.securitycenter` even with "Install via USB" on — install once from the file manager,
-  later `install -r` works. `appops set SYSTEM_ALERT_WINDOW allow` is reverted on next launch; the
+- **Xiaomi Pad 7 / HyperOS 3** (adb `c2bd6564`): the first `adb install` of a package shows a 10 s
+  `com.miui.securitycenter` "USB経由でインストール" prompt that defaults to refuse — run the install in
+  the background and tap インストール (landscape: 1384,1322); later `install -r` works. `appops set SYSTEM_ALERT_WINDOW allow` is reverted on next launch; the
   user must enable "他のアプリの上に重ねて表示" in Settings once. App-private files only: `/book`
   can't read files adb put in `Android/data` on Android 16 — copy with `run-as` into `files/`.
 - **Shared text selections** (`ProcessTextActivity` → `TextLog.lineForSharedText`): a word is

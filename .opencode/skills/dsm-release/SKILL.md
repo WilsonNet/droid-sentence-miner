@@ -31,10 +31,14 @@ its tag with `BuildConfig.VERSION_NAME` (`AppVersion`, semver) and offers the fi
 The APK must keep its name pattern `*.apk` and the release must not be a draft/prerelease (those
 are not `latest`). Debug builds never check.
 
-Testing an update end to end: install release N from GitHub (`gh release download vN -p '*.apk'`),
-publish N+1, open the app → Home banner → *Update* → installer. On HyperOS the first `adb install`
-of the release package is cancelled by the security center (see below); after that `install -r`
-works. Check the result with `adb shell dumpsys package io.github.wilsonnet.droidsentenceminer |
+Testing an update end to end (done for 0.5.0 → 0.5.1 on the Xiaomi Pad 7): install release N from
+GitHub (`gh release download vN -p '*.apk'`), publish N+1, open the app → Home banner → *Update to
+vN+1* (download with progress) → the first time Android's "install unknown apps" page for DSM opens
+(`appops set io.github.wilsonnet.droidsentenceminer REQUEST_INSTALL_PACKAGES allow` is the same
+switch) → back in the app *Install vN+1* → system dialog このアプリを更新しますか? → 更新. Uninstall
+the release app afterwards. HyperOS shows a 10 s "USB経由でインストール" prompt for an adb install of a
+new package; run `adb install` in the background and tap インストール (landscape Pad 7: 1384,1322) —
+otherwise it is cancelled (`INSTALL_FAILED_USER_RESTRICTED`). Check the result with `adb shell dumpsys package io.github.wilsonnet.droidsentenceminer |
 grep versionName`.
 
 ## Steps
