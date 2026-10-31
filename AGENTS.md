@@ -310,8 +310,11 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   `ScreenDictionary.openEditor` adds a *focusable* overlay window (IME) — set the ViewTree owners on
   the window's root view (a wrapper FrameLayout), not the inner ComposeView, or it crashes with
   "ViewTreeLifecycleOwner not found"; the popup ignores ACTION_OUTSIDE while it is open.
-  `GlossaryMode` (pref `glossary_mode`; legacy `glossary_first_dictionary` read if unset) decides
-  `CardMiner.cardTerms`; `buildPopupHtml` marks those dictionaries `data-card="1"` + *on card*.
+  `GlossaryMode` (pref `glossary_mode`, default FIRST; legacy `glossary_first_dictionary` read if
+  unset) decides `CardMiner.cardTerms`; `buildPopupHtml` marks those dictionaries `data-card="1"`.
+  With `cardPicker` (all popups but the old bottom panel) headers are `.dsm-pick` buttons
+  (`data-entry`/`data-dict`/`data-default`): `PICK_SCRIPT` → `dsm.pick` → `WordLookupState.cardPicks`
+  (pushed back with `dsmSetPicks`), and mining narrows `forEntry(i)` with `withDictionary(pick)`.
   The editor's sentence drops `\n` (over a game, the popup's text is the screen rows joined by
   wraps; the logged line has none) and its chips split on 。！？ only. Its audio handles start on
   `VoiceTrimmer.trim(relativeThreshold = 0.15, maxGapMs = 3000)`: the default 0.05 keeps the game's

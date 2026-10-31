@@ -67,7 +67,7 @@ All GET, all JSON (except `frame.png`). Regions are screen fractions unless note
 | `/anki_meta` | AnkiDroid decks and note types as id → name maps |
 | `/startoverlay`, `/stopoverlay` | Start/stop the floating overlay service |
 | `/autoocr?on=1` / `?on=0` | Start/stop auto OCR on the saved region (if `captureReady` is already true, starts in place without bringing `MainActivity` to the front; otherwise starts the service and asks for consent) |
-| `/set_anki?provider=&deck=&model=&glossary=` | Set the Anki backend, target deck, note type, glossary mode (`glossary-no-dictionary` default, `glossary`, `glossary-first`; legacy `firstdict=1`) |
+| `/set_anki?provider=&deck=&model=&glossary=` | Set the Anki backend, target deck, note type, glossary mode (`glossary-first` default, `glossary-no-dictionary`, `glossary`; legacy `firstdict=1`) |
 | `/word_audio?term=&reading=&custom=` | Fetch word audio like a card would; returns which source answered |
 | `/anki_sample?model=&limit=` | Read-only: newest notes of a note type with every field (see how the user fills it) |
 | `/anki_templates?model=` | Read-only: card templates (which fields the card shows) |

@@ -15,7 +15,7 @@ Step by step from a fresh install. The website has the same flow with screenshot
 
 1. **Dictionaries** — open *Settings → Dictionaries* and install **Jitendex** and **Kanjium pitch accents**
    with one tap each (or import any Yomitan `.zip` with *From files* or *Google Drive*, e.g. a
-   monolingual dictionary; drag it first if you want only it on cards). In *Settings → OCR*, tap *Download meikiocr models* (31 MB).
+   monolingual dictionary; drag it first if you want it on cards — the top dictionary is the one cards get, and the popup lets you pick another per card). In *Settings → OCR*, tap *Download meikiocr models* (31 MB).
 2. **Anki** — in *Settings → Anki* pick a backend:
    - *AnkiDroid*: install AnkiDroid, grant the API permission from that page, and enable
      *Settings → Advanced → AnkiDroid API* inside AnkiDroid.

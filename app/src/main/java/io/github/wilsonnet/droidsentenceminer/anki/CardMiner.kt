@@ -261,9 +261,16 @@ class CardMiner(
 
     /**
      * Builds the HTML body shown in the popup WebView. Each dictionary header says whether that
-     * dictionary goes on the card ([GlossaryMode.FIRST] keeps only an entry's first one).
+     * dictionary goes on the card ([GlossaryMode.FIRST] keeps only an entry's first one). With
+     * [cardPicker] the headers are buttons (`data-entry`, `data-dict`): a tap puts only that
+     * dictionary on the entry's card (see WebViewBlock's `onCardPick`).
      */
-    suspend fun buildPopupHtml(word: String, details: TermLookup.LookupDetails, darkMode: Boolean): String = withContext(Dispatchers.Default) {
+    suspend fun buildPopupHtml(
+        word: String,
+        details: TermLookup.LookupDetails,
+        darkMode: Boolean,
+        cardPicker: Boolean = true,
+    ): String = withContext(Dispatchers.Default) {
         val dicts = db.dictionaryDao().getEnabled().associateBy { it.id }
         val tagCategories = lookup.tagCategories(details.terms.map { it.dictId }.toSet())
         val mode = prefs.glossaryMode.first()
@@ -287,11 +294,11 @@ class CardMiner(
                 CardHtml.frequencyLine(details.forEntry(index))?.let {
                     sb.append("<div class=\"gloss-header\"><span class=\"gloss-frequency\">").append(GlossaryHtml.escape(it)).append("</span></div>")
                 }
-                appendTerms(sb, entry.terms, dicts, tagCategories, cardDicts(entry.terms, mode))
+                appendTerms(sb, entry.terms, dicts, tagCategories, cardDicts(entry.terms, mode), index, cardPicker)
                 sb.append("</div>")
             }
         } else {
-            appendTerms(sb, details.terms, dicts, tagCategories, cardDicts(details.terms, mode))
+            appendTerms(sb, details.terms, dicts, tagCategories, cardDicts(details.terms, mode), 0, cardPicker)
         }
         val frequencies = CardHtml.frequencyLine(details).takeIf { entries.size <= 1 }
         val freqHtml = if (frequencies != null) {
@@ -322,18 +329,27 @@ class CardMiner(
         dicts: Map<Long, io.github.wilsonnet.droidsentenceminer.dict.DictionaryEntity>,
         tagCategories: Map<Long, Map<String, String>>,
         onCard: Set<Long>,
+        entryIndex: Int,
+        cardPicker: Boolean,
     ) {
         var currentDictId = -1L
+        val pickable = cardPicker && terms.distinctBy { it.dictId }.size > 1
         for (term in terms) {
             if (term.dictId != currentDictId) {
                 currentDictId = term.dictId
-                if (term.dictId in onCard) {
-                    sb.append("<div class=\"gloss-dictionary\" data-card=\"1\">")
+                val card = if (term.dictId in onCard) "1" else "0"
+                if (pickable) {
+                    // data-default: the setting's choice, restored when the pick is taken back.
+                    sb.append("<div class=\"gloss-dictionary dsm-pick\" role=\"button\" data-card=\"").append(card)
+                        .append("\" data-default=\"").append(card)
+                        .append("\" data-entry=\"").append(entryIndex)
+                        .append("\" data-dict=\"").append(term.dictId).append("\">")
                     sb.append(GlossaryHtml.escape(term.dictionaryTitle))
-                    sb.append("<span class=\"dsm-on-card\">on card</span></div>")
+                    sb.append("<span class=\"dsm-on-card\">✓ On card</span><span class=\"dsm-use\">Use on card</span></div>")
                 } else {
-                    sb.append("<div class=\"gloss-dictionary\" data-card=\"0\">")
+                    sb.append("<div class=\"gloss-dictionary\" data-card=\"").append(card).append("\">")
                     sb.append(GlossaryHtml.escape(term.dictionaryTitle))
+                    if (card == "1" && onCard.size < terms.distinctBy { it.dictId }.size) sb.append("<span class=\"dsm-on-card\">✓ On card</span>")
                     sb.append("</div>")
                 }
             }
@@ -403,8 +419,11 @@ class CardMiner(
 .dsm-pitch svg { margin-right: 6px; }
 .gloss-dictionary { display: flex; align-items: center; gap: 8px; }
 .gloss-dictionary[data-card="0"] { opacity: 0.6; }
-.dsm-on-card { font-size: 0.75em; font-weight: 600; padding: 1px 8px; border-radius: 10px;
-  background: rgba(128,128,128,0.18); color: var(--accent); }
+.dsm-on-card, .dsm-use { font-size: 0.75em; font-weight: 600; padding: 1px 8px; border-radius: 10px; white-space: nowrap; }
+.dsm-on-card { background: rgba(128,128,128,0.18); color: var(--accent); }
+.dsm-use { border: 1px solid rgba(128,128,128,0.5); }
+.dsm-pick { cursor: pointer; }
+.dsm-pick[data-card="1"] .dsm-use, .dsm-pick[data-card="0"] .dsm-on-card { display: none; }
 """
     }
 

@@ -11,14 +11,15 @@ versions are the `v*` tags that publish a signed APK on
   button) a ✎ opens the card editor: trim the sentence (type, or tap one of its sentences to keep
   just that one — handy for long visual-novel lines) and the sentence audio (waveform, play, one two-handle slider), or drop the audio.
   Works over games and videos too; the keyboard opens there for the sentence.
-- **The popup shows which dictionaries go on the card**: an *on card* mark on each dictionary that
-  will be in the glossary; with *First dictionary only* the others are faded.
+- **Pick the dictionary for the card in the popup.** Each dictionary's name in the lookup popup is a
+  button: the one going on the card shows *✓ On card*, the others *Use on card*. Tap one to put only
+  its definitions on that word's card (per headword); tap it again to go back to the setting.
 
 ### Changed
 - **Cards no longer repeat the dictionary name over every definition.** The glossary setting is now
-  three-way, like Yomitan's markers: *All dictionaries, unnamed* (`{glossary-no-dictionary}`, the
-  new default), *All dictionaries, named* (`{glossary}`, the old behavior) and *First dictionary
-  only* (`{glossary-first}`; kept if you had it on).
+  three-way, like Yomitan's markers: *First dictionary only* (`{glossary-first}`, the new default:
+  the dictionary at the top of *Settings → Dictionaries*), *All dictionaries, unnamed*
+  (`{glossary-no-dictionary}`) and *All dictionaries, named* (`{glossary}`, the old behavior).
 - The audio editor uses one range slider instead of two, with the play button and kept range under
   the waveform.
 - The card editor starts with its audio handles on the voice (a line left on screen while you read

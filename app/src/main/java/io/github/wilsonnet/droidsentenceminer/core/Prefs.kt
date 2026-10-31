@@ -352,12 +352,12 @@ enum class GlossaryMode(val id: String) {
     /** {glossary}: every dictionary, each under its name. */
     ALL("glossary"),
 
-    /** {glossary-first}: only the highest-priority dictionary. */
+    /** {glossary-first}: only the highest-priority dictionary (another one can be picked per card in the popup). */
     FIRST("glossary-first"),
     ;
 
     companion object {
-        val DEFAULT = NO_DICTIONARY
+        val DEFAULT = FIRST
 
         fun fromId(id: String?): GlossaryMode? = entries.firstOrNull { it.id == id }
     }

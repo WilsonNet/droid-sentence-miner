@@ -68,11 +68,16 @@ fun WebViewBlock(
     onEntryEdit: ((Int) -> Unit)? = null,
     /** Button state per entry index: new, mining, added, in-anki, failed. */
     entryStates: Map<Int, String> = emptyMap(),
+    /** Tap on a dictionary header (`.dsm-pick`): (entry index, dictionary id) to put on that entry's card. */
+    onCardPick: ((Int, Long) -> Unit)? = null,
+    /** The dictionary picked for each entry's card; entries without one keep the setting's choice. */
+    cardPicks: Map<Int, Long> = emptyMap(),
 ) {
     val tapHandler = androidx.compose.runtime.rememberUpdatedState(onTextTap)
     val mineHandler = androidx.compose.runtime.rememberUpdatedState(onEntryMine)
     val editHandler = androidx.compose.runtime.rememberUpdatedState(onEntryEdit)
-    val scripted = onTextTap != null || onEntryMine != null
+    val pickHandler = androidx.compose.runtime.rememberUpdatedState(onCardPick)
+    val scripted = onTextTap != null || onEntryMine != null || onCardPick != null
     Box(modifier = modifier.background(if (dark) ComposeColor(0xFF1E1E1E) else ComposeColor.White)) {
         AndroidView(
             modifier = Modifier.fillMaxWidth(),
@@ -111,6 +116,12 @@ fun WebViewBlock(
                                 fun edit(index: Int) {
                                     post { editHandler.value?.invoke(index) }
                                 }
+
+                                @android.webkit.JavascriptInterface
+                                fun pick(index: Int, dictId: String) {
+                                    val id = dictId.toLongOrNull() ?: return
+                                    post { pickHandler.value?.invoke(index, id) }
+                                }
                             },
                             "dsm",
                         )
@@ -121,10 +132,12 @@ fun WebViewBlock(
                 if (view.tag != html) {
                     view.tag = html
                     view.loaded = false
-                    val page = html + (if (onTextTap != null) TAP_SCRIPT else "") + (if (onEntryMine != null) ENTRY_SCRIPT else "")
+                    val page = html + (if (onTextTap != null) TAP_SCRIPT else "") + (if (onEntryMine != null) ENTRY_SCRIPT else "") +
+                        (if (onCardPick != null) PICK_SCRIPT else "")
                     view.loadDataWithBaseURL(io.github.wilsonnet.droidsentenceminer.dict.DictMedia.PAGE_BASE_URL, page, "text/html", "UTF-8", null)
                 }
                 view.states = entryStates.entries.joinToString(",", "{", "}") { (i, st) -> "\"$i\":\"$st\"" }
+                view.picks = cardPicks.entries.joinToString(",", "{", "}") { (i, id) -> "\"$i\":\"$id\"" }
                 view.applyStates()
             },
         )
@@ -135,11 +148,32 @@ fun WebViewBlock(
 private class DefinitionWebView(context: android.content.Context) : WebView(context) {
     var loaded = false
     var states = "{}"
+    var picks = "{}"
 
     fun applyStates() {
-        if (loaded) evaluateJavascript("window.dsmSetStates && dsmSetStates($states)", null)
+        if (loaded) evaluateJavascript("window.dsmSetStates && dsmSetStates($states); window.dsmSetPicks && dsmSetPicks($picks)", null)
     }
 }
+
+/**
+ * Dictionary headers as card pickers: a tap asks for that dictionary on the entry's card, and
+ * [dsmSetPicks] marks the picked one (or the setting's choice, `data-default`, when none is).
+ * Capture phase, so the header's title is not looked up.
+ */
+private const val PICK_SCRIPT = """<script>
+function dsmSetPicks(picks) {
+  document.querySelectorAll('.dsm-pick').forEach(function (h) {
+    var p = picks[h.dataset.entry];
+    h.dataset.card = p === undefined ? h.dataset.default : (p === h.dataset.dict ? '1' : '0');
+  });
+}
+document.addEventListener('click', function (e) {
+  var h = e.target.closest && e.target.closest('.dsm-pick');
+  if (!h) return;
+  e.stopPropagation(); e.preventDefault();
+  dsm.pick(parseInt(h.dataset.entry, 10), h.dataset.dict);
+}, true);
+</script>"""
 
 /** Yomitan's per-entry add button (+ edit): capture phase, so the tap never reaches the lookup scanner. */
 private const val ENTRY_SCRIPT = """<script>
@@ -238,6 +272,17 @@ private class WordLookupState {
     /** Per entry of [TermLookup.LookupDetails.entries]; missing until the duplicate check ran. */
     val entryStates = androidx.compose.runtime.mutableStateMapOf<Int, EntryState>()
 
+    /** Per entry: the dictionary tapped in the popup to go on its card instead of the setting's choice. */
+    val cardPicks = androidx.compose.runtime.mutableStateMapOf<Int, Long>()
+
+    /** Tapping the picked dictionary again takes the pick back. */
+    fun pick(entry: Int, dictId: Long) {
+        if (cardPicks[entry] == dictId) cardPicks.remove(entry) else cardPicks[entry] = dictId
+    }
+
+    /** What entry [index]'s card is built from: its headword, narrowed to the picked dictionary. */
+    fun cardDetails(index: Int): TermLookup.LookupDetails? = details?.forEntry(index)?.withDictionary(cardPicks[index])
+
     // The header button stands for the first entry.
     val mining: Boolean get() = entryStates[0] == EntryState.MINING
     val added: Boolean get() = entryStates[0] == EntryState.ADDED
@@ -295,7 +340,7 @@ private fun mineAction(
     val container = remember { AppContainer.from(context) }
     return { index, edits ->
         // Only this entry's headword, reading and definitions go on the card (Yomitan's per-entry add).
-        val details = state.details?.forEntry(index)
+        val details = state.cardDetails(index)
         val headword = details?.baseForm ?: word
         state.entryStates[index] = EntryState.MINING
         state.status = null
@@ -376,6 +421,8 @@ private fun LookupBody(
             onEntryMine = onEntryMine.takeIf { (state.details?.entries?.size ?: 0) > 1 },
             onEntryEdit = onEntryEdit.takeIf { (state.details?.entries?.size ?: 0) > 1 },
             entryStates = state.entryStates.mapValues { it.value.js },
+            onCardPick = state::pick,
+            cardPicks = state.cardPicks.toMap(),
         )
     }
 }

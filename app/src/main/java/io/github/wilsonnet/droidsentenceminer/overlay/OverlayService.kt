@@ -1136,7 +1136,7 @@ class OverlayService : Service() {
         panelState.loadingDetails = true
         scope.launch {
             val details = container.lookup.lookup(word)
-            val html = container.miner.buildPopupHtml(word, details, isDarkMode())
+            val html = container.miner.buildPopupHtml(word, details, isDarkMode(), cardPicker = false)
             panelState.selectedDetails = details
             panelState.definitionsHtml = html
             panelState.loadingDetails = false

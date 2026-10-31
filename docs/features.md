@@ -62,8 +62,10 @@ Everything the app does, in detail. The short version is in the [README](../READ
   silent clips of unvoiced lines start off). *Add to Anki* mines it like the
   plain button, so the popup's state follows. Over other apps it is its own focusable overlay
   window (the keyboard works there); in the app a dialog.
-- **What goes on the card** — every dictionary header in the popup is marked *on card* when its
-  definitions go into the glossary; with *First dictionary only* the others are faded.
+- **Pick what goes on the card** — every dictionary header in the popup is a button: *✓ On card*
+  on the dictionary whose definitions go into the glossary (by default the top one), *Use on card*
+  (faded) on the others. Tapping one puts only that dictionary on that headword's card; tapping it
+  again returns to the setting.
 - **Texts page** (GSM's texthooker) — every recognized line, newest first. Tap a line, tap a word,
   and mine it: the card gets that line's sentence, its screenshot and its voice clip.
 - **Replay buffer sentence audio** — the last 5 minutes (configurable 1–10) of game audio are kept
@@ -117,9 +119,9 @@ Everything the app does, in detail. The short version is in the [README](../READ
   uses for Japanese, in the same order: JapanesePod101 (placeholder clip rejected by hash),
   JapanesePod101 dictionary search, Jisho; plus an optional custom URL (`{term}`/`{reading}`,
   e.g. a local audio server) tried first.
-- **Glossary like Yomitan's markers** — *Settings → Cards → Glossary*: all dictionaries without
-  their names (`{glossary-no-dictionary}`, default), all under their names (`{glossary}`), or only
-  the first dictionary (`{glossary-first}`).
+- **Glossary like Yomitan's markers** — *Settings → Cards → Glossary*: only the first dictionary
+  (`{glossary-first}`, default), all dictionaries without their names (`{glossary-no-dictionary}`),
+  or all under their names (`{glossary}`). The popup can override it per card.
 - **Pitch accent graph** — shown in the lookup popup under each headword, and on the card: the same SVG Yomitan's `{pitch-accent-graphs}` writes (byte-identical to
   the user's existing Yomitan cards), filled into a pitch/graph field such as Anime Cards' *Graph*.
   Uses any installed Yomitan pitch dictionary, or the free Kanjium pitch accents (124k words,

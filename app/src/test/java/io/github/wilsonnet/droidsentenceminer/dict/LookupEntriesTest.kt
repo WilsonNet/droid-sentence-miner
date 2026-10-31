@@ -46,4 +46,15 @@ class LookupEntriesTest {
         val one = details.copy(terms = details.terms.filter { it.expression == "取り" })
         assertSame(one, one.forEntry(0))
     }
+
+    @Test
+    fun `a dictionary picked for the card narrows the entry to it`() {
+        val picked = details.forEntry(1).withDictionary(2)
+        assertEquals(listOf("removal"), picked.terms.map { it.glossaryJson })
+        assertEquals("取り", picked.baseForm)
+        // No pick, or a dictionary without this headword: unchanged.
+        val entry = details.forEntry(1)
+        assertSame(entry, entry.withDictionary(null))
+        assertSame(entry, entry.withDictionary(9))
+    }
 }

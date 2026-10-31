@@ -39,7 +39,7 @@ class CardEditorTest {
 
     @Test
     fun glossaryModeIdsAreYomitanMarkers() {
-        assertEquals(GlossaryMode.NO_DICTIONARY, GlossaryMode.DEFAULT)
+        assertEquals(GlossaryMode.FIRST, GlossaryMode.DEFAULT)
         assertEquals(GlossaryMode.FIRST, GlossaryMode.fromId("glossary-first"))
         assertEquals(null, GlossaryMode.fromId("nope"))
     }

@@ -53,6 +53,13 @@ class TermLookup(
             if (entries.size == 1) return this
             return copy(terms = entry.terms, frequencies = frequencies.filter { it.expression == entry.expression })
         }
+
+        /** Only [dictId]'s definitions: the dictionary picked in the popup for the card (unchanged if it has none). */
+        fun withDictionary(dictId: Long?): LookupDetails {
+            dictId ?: return this
+            val picked = terms.filter { it.dictId == dictId }
+            return if (picked.isEmpty()) this else copy(terms = picked)
+        }
     }
 
     data class Entry(val expression: String, val reading: String, val terms: List<TermResult>)

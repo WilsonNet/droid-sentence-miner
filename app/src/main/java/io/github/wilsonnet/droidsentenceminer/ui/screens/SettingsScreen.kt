@@ -239,7 +239,7 @@ fun SettingsScreen(modifier: Modifier = Modifier, onOpen: (String) -> Unit = {})
                 Text("Cards", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 Text("Glossary", style = MaterialTheme.typography.bodyLarge)
                 Text(
-                    "What the card's definition holds. The lookup popup marks the dictionaries that go on the card.",
+                    "What the card's definition holds by default. In the lookup popup, tap a dictionary's name to put only that dictionary on the card instead.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
