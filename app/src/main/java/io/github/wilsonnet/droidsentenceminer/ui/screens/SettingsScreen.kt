@@ -245,13 +245,13 @@ fun SettingsScreen(modifier: Modifier = Modifier, onOpen: (String) -> Unit = {})
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 listOf(
+                    GlossaryMode.FIRST to ("First dictionary only (default)" to
+                        "Only your highest-priority dictionary (Yomitan's {glossary-first}): the one at the top of " +
+                        "Settings → Dictionaries."),
                     GlossaryMode.NO_DICTIONARY to ("All dictionaries, unnamed" to
                         "Every dictionary's definitions, without the dictionary names (Yomitan's {glossary-no-dictionary})."),
                     GlossaryMode.ALL to ("All dictionaries, named" to
                         "Each dictionary's definitions under its name (Yomitan's {glossary})."),
-                    GlossaryMode.FIRST to ("First dictionary only" to
-                        "Only your highest-priority dictionary (Yomitan's {glossary-first}), e.g. a monolingual " +
-                        "dictionary ordered first in Settings → Dictionaries."),
                 ).forEach { (mode, text) ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         androidx.compose.material3.RadioButton(

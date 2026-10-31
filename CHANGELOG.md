@@ -6,6 +6,11 @@ versions are the `v*` tags that publish a signed APK on
 
 ## [Unreleased]
 
+## [0.5.1] — 2026-10-31
+
+### Changed
+- *Settings → Cards → Glossary* lists the default, *First dictionary only*, first.
+
 ## [0.5.0] — 2026-10-31
 
 ### Added
@@ -134,7 +139,8 @@ First release.
 - Microphone fallback for apps that block audio capture; typewriter-text handling for visual novels.
 - Tablet/landscape layout with a navigation rail.
 
-[Unreleased]: https://github.com/WilsonNet/droid-sentence-miner/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/WilsonNet/droid-sentence-miner/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/WilsonNet/droid-sentence-miner/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/WilsonNet/droid-sentence-miner/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/WilsonNet/droid-sentence-miner/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/WilsonNet/droid-sentence-miner/compare/v0.2.0...v0.3.0
