@@ -88,14 +88,14 @@ adb shell input tap 1600 1265                                # 再開
 curl -s localhost:9099/state | python3 -m json.tool | grep -A5 audioBuffer   # "source": "mic"
 ```
 
-If no consent dialog appears (`/autoocr?on=1` from the background is blocked on HyperOS 3 —
-`uiautomator` still shows `Steam一時停止中`), bring DSM forward (`am start …MainActivity`), call
-`/autoocr?on=1` again, tap 次へ, then the **DroidDeck thumbnail** (first in the recent-tasks row;
-portrait DSM: `(564, 948)`) — sharing it switches back to the game; tap 再開.
+With the tablet lying upright the consent dialog used to close in 0.7 s (it rotated the display
+to portrait; fixed: `ProjectionPermissionActivity` is `screenOrientation="locked"`). If it ever
+fails again, bring DSM forward (`am start …MainActivity`), call `/autoocr?on=1`, tap 次へ, then the
+**DroidDeck thumbnail** (portrait DSM: `(564, 948)`) and 再開.
 
 **Card editor test** (✎ next to + Anki): a line left open while you read gives a 15–30 s clip (voice
 in the first ~4 s, then room noise + BGM through the mic); the editor's handles should start on
-the voice (measured: 0.1–4.6 s of 17.8 s). 槐 (the heroine) is **unvoiced**: her clips peak ~120
+the voice (measured: 0.1–4.6 s of 17.8 s; 0.8–2.9 s of a 27.5 s 「はい」 with a noise 9 s later). 槐 (the heroine) is **unvoiced**: her clips peak ~120
 (silent), the editor turns audio off. Find a voiced line by pulling `/clip.wav?id=&trim=0` and
 checking the peak (> 3000). After a reinstall capture is gone — re-consent from the DSM
 foreground; `adb install` can fail once with `INSTALL_FAILED_VERIFICATION_FAILURE`, retry.

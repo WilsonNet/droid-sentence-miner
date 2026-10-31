@@ -28,6 +28,12 @@ versions are the `v*` tags that publish a signed APK on
   word-audio sources get 8 s in total (a word with no audio anywhere held the card for 15+ s).
 
 ### Fixed
+- Starting auto OCR over a landscape game with the tablet held upright: the screen-sharing consent
+  closed by itself within a second (the dialog rotated the screen), so capture never started.
+- Every mined card left its sentence clip file in the app's cache; they are deleted now (and old
+  ones on the next card).
+- The card editor dims the game behind it, and its audio suggestion no longer stretches to a sound
+  long after the line.
 - *Trim silence* cut quiet microphone clips down to their loudest syllables (an 8.6 s line kept
   3.8 s): clips are now normalized before they are trimmed.
 - A silent clip's waveform was drawn full height, like a loud one.

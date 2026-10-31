@@ -54,6 +54,24 @@ class VoiceTrimmerTest {
     }
 
     @Test
+    fun maxGapStopsBeforeALateSoundButKeepsPausesInsideTheLine() {
+        // Two phrases 1.5 s apart, then a clatter 8 s later (Nightshade clip, room noise between).
+        val segment = concat(
+            noise(500, 100),
+            tone(1000, 6000),
+            noise(1500, 100, seed = 1),
+            tone(1000, 6000),
+            noise(8000, 100, seed = 2),
+            tone(400, 6000),
+            noise(1000, 100, seed = 3),
+        )
+        assertTrue(VoiceTrimmer.trim(segment, relativeThreshold = 0.15).endMs > 12_000)
+        val gapped = VoiceTrimmer.trim(segment, relativeThreshold = 0.15, maxGapMs = 3_000)
+        assertTrue("start ${gapped.startMs}", gapped.startMs <= 500)
+        assertTrue("end ${gapped.endMs}", gapped.endMs in 4000..5000)
+    }
+
+    @Test
     fun trimsSilenceAroundSpeech() {
         val segment = concat(ShortArray(rate), tone(1500, 8000), ShortArray(rate * 2))
         val result = VoiceTrimmer.trim(segment)

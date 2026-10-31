@@ -52,7 +52,9 @@
 
         <activity
             android:name=".overlay.ProjectionPermissionActivity"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboardHidden"
             android:excludeFromRecents="true"
+            android:screenOrientation="locked"
             android:exported="false"
             android:taskAffinity=""
             android:theme="@style/Theme.Transparent" />

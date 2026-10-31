@@ -314,8 +314,11 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   `CardMiner.cardTerms`; `buildPopupHtml` marks those dictionaries `data-card="1"` + *on card*.
   The editor's sentence drops `\n` (over a game, the popup's text is the screen rows joined by
   wraps; the logged line has none) and its chips split on 。！？ only. Its audio handles start on
-  `VoiceTrimmer.trim(relativeThreshold = 0.15)`: the default 0.05 keeps the game's music the
-  microphone also hears (Nightshade: 11 s of BGM after a 4.5 s line); `AudioPcm.isSilent` (<−40 dBFS)
+  `VoiceTrimmer.trim(relativeThreshold = 0.15, maxGapMs = 3000)`: the default 0.05 keeps the game's
+  music the microphone also hears (Nightshade: 11 s of BGM after a 4.5 s line), and `maxGapMs` ends
+  the voice at the last run chained from the first through ≤3 s pauses (in-line pauses were ≤1.6 s,
+  a noise 8.8 s later stretched the range); the editor window draws its own scrim (HyperOS ignores
+  `FLAG_DIM_BEHIND` on overlay windows); `AudioPcm.isSilent` (<−40 dBFS)
   turns audio off (unvoiced lines). `TextLog.clip` normalizes *before* trimming — the trimmer's
   absolute floor (180) sat above quiet mic syllables. `CardMiner.mineLine` starts the word-audio
   fetch in parallel with the clip encode (1.6 s for 4.6 s of audio under Nightshade); `WordAudio`
@@ -489,6 +492,12 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   `android:taskAffinity=""` so starting it with `FLAG_ACTIVITY_NEW_TASK` from `OverlayService` does not
   pull `MainActivity` to the foreground (which caused an alt-tab over the user's game). It must NOT be
   `noHistory` or it dies while the system consent UI is up; close with `finishAndRemoveTask()`.
+- **Consent over a landscape game, tablet held upright** (`ProjectionPermissionActivity`): the
+  translucent consent task let the display rotate to the sensor's portrait, and SystemUI's
+  consent dialog closed itself on the rotation within 0.7 s (logcat: SystemUI `onDisplayChange
+  fromRotation:1 toRotation:0`, then our `finishActivity`) — auto OCR silently never started.
+  `screenOrientation="locked"` keeps the current rotation (`behind` did not: the activity is alone
+  in its task), config changes are handled, and a recreated activity doesn't request again.
 - **Cleartext HTTP is blocked by default** on targetSdk 28+; `res/xml/network_security_config.xml`
   permits it for AnkiConnect.
 - **Never mine test cards into a personal AnkiDroid collection** unless using a dedicated test deck or

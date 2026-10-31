@@ -80,7 +80,7 @@ fun CardEditor(request: CardEditRequest, onClose: () -> Unit, modifier: Modifier
         val loaded = runCatching { request.loadAudio?.invoke() }.getOrNull()
         // Handles start on the voice: a line left on screen while you read runs on as room noise or,
         // through the microphone fallback, as the game's music, which the default threshold keeps.
-        val voice = loaded?.let { withContext(Dispatchers.Default) { VoiceTrimmer.trim(it, relativeThreshold = VOICE_THRESHOLD) } }
+        val voice = loaded?.let { withContext(Dispatchers.Default) { VoiceTrimmer.trim(it, relativeThreshold = VOICE_THRESHOLD, maxGapMs = VOICE_MAX_GAP_MS) } }
         audio = loaded
         silent = loaded != null && AudioPcm.isSilent(loaded)
         if (silent) includeAudio = false
@@ -234,6 +234,9 @@ private fun balanceQuotes(part: String): String {
  * after the voice on both.
  */
 private const val VOICE_THRESHOLD = 0.15
+
+/** Pauses inside a Nightshade line were ≤ 1.6 s; a noise 8.8 s after one stretched the range to it. */
+private const val VOICE_MAX_GAP_MS = 3_000
 
 private fun String.ellipsize(max: Int) = if (length <= max) this else take(max - 1) + "…"
 

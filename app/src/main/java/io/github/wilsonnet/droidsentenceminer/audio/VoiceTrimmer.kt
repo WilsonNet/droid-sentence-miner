@@ -26,6 +26,12 @@ object VoiceTrimmer {
         absoluteFloor: Double = 180.0,
         /** Share of the noise → peak gap a window must clear. */
         relativeThreshold: Double = 0.05,
+        /**
+         * Null: speech ends at the last loud run in the clip. Otherwise it ends at the last run
+         * reached from the first one through silences of at most this long, so a sound well after
+         * the line (a door, a cough, the next scene's music) doesn't stretch it.
+         */
+        maxGapMs: Int? = null,
     ): Result {
         val mono = AudioPcm.downmixToMono(segment)
         val windowFrames = (mono.sampleRate * windowMs / 1000).coerceAtLeast(1)
@@ -51,13 +57,37 @@ object VoiceTrimmer {
         val smoothed = smooth(energies, (smoothMs / windowMs).coerceAtLeast(1))
         val minRun = (minSpeechMs / windowMs).coerceAtLeast(1)
         val first = firstRun(smoothed, threshold, minRun, forward = true) ?: return untouched
-        val last = firstRun(smoothed, threshold, minRun, forward = false) ?: return untouched
+        val last = if (maxGapMs == null) {
+            firstRun(smoothed, threshold, minRun, forward = false) ?: return untouched
+        } else {
+            lastConnectedWindow(smoothed, threshold, minRun, first, (maxGapMs / windowMs).coerceAtLeast(1))
+        }
 
         val startMs = (first.toLong() * windowMs - padStartMs).coerceAtLeast(0)
         val endMs = ((last + 1).toLong() * windowMs + padEndMs).coerceAtMost(segment.durationMs)
         if (endMs - startMs < 250) return untouched
         val sliced = AudioPcm.trim(segment, startMs, endMs) ?: return untouched
         return Result(AudioPcm.fadeEdges(sliced), startMs, endMs, trimmed = startMs > 0 || endMs < segment.durationMs)
+    }
+
+    /** Last loud window of the runs (≥ [minRun]) chained from [start] with gaps ≤ [maxGap] windows. */
+    private fun lastConnectedWindow(energies: DoubleArray, threshold: Double, minRun: Int, start: Int, maxGap: Int): Int {
+        var end = start
+        var i = start
+        while (i < energies.size) {
+            if (energies[i] < threshold) {
+                i++
+                continue
+            }
+            var j = i
+            while (j < energies.size && energies[j] >= threshold) j++
+            if (j - i >= minRun) {
+                if (i - end > maxGap && end > start) break
+                end = j - 1
+            }
+            i = j
+        }
+        return end
     }
 
     /** Centered moving average. */

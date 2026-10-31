@@ -11,6 +11,10 @@ import android.os.Bundle
  * Runs in its own task ([android:taskAffinity=""]) so it does not pull [MainActivity]
  * to the foreground over the user's game/app.
  * The result is forwarded to [OverlayService], which owns the projection.
+ *
+ * Orientation `locked` (the current rotation) + handled config changes: over a landscape-locked game on a tablet held
+ * upright, this translucent task let the display rotate to portrait, the activity was recreated and
+ * the system consent dialog closed at once (cancelled) — auto OCR never started.
  */
 class ProjectionPermissionActivity : Activity() {
 
@@ -22,6 +26,8 @@ class ProjectionPermissionActivity : Activity() {
             overridePendingTransition(0, 0)
         }
         super.onCreate(savedInstanceState)
+        // Recreated while the consent dialog is up: it is still waiting for that result.
+        if (savedInstanceState != null) return
 
         val manager = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
         @Suppress("DEPRECATION")

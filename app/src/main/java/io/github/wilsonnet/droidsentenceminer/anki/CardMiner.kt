@@ -227,9 +227,23 @@ class CardMiner(
             prefs.audioEnabled.first() -> textLog.clip(line)?.segment
             else -> null
         }
+        if (!staleClipsSwept) {
+            staleClipsSwept = true
+            withContext(Dispatchers.IO) {
+                context.cacheDir.listFiles { f -> f.name.startsWith("line-") && (f.name.endsWith(".m4a") || f.name.endsWith(".wav")) }
+                    ?.forEach { it.delete() }
+            }
+        }
         val encoded = segment?.let {
             withContext(Dispatchers.IO) {
-                M4aEncoder.encode(it, java.io.File(context.cacheDir, "line-${line.id}-${System.currentTimeMillis()}.m4a"))
+                val file = java.io.File(context.cacheDir, "line-${line.id}-${System.currentTimeMillis()}.m4a")
+                try {
+                    M4aEncoder.encode(it, file)
+                } finally {
+                    // The card carries the bytes; the files were left behind, one per mined card.
+                    file.delete()
+                    java.io.File(file.parentFile, file.nameWithoutExtension + ".wav").delete()
+                }
             }
         }
         val t1 = android.os.SystemClock.elapsedRealtime()
@@ -240,6 +254,9 @@ class CardMiner(
         if (result is AnkiResult.Success) withContext(Dispatchers.IO) { textLog.dao.markMined(line.id) }
         result
     }
+
+    /** Clip files earlier versions left in the cache are deleted on the first card mined. */
+    @Volatile private var staleClipsSwept = false
 
     /** The line's sentence audio as [mineLine] would attach it, for the card editor to trim. */
     suspend fun lineAudio(line: TextLineEntity): AudioSegment? =

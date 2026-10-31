@@ -340,8 +340,8 @@ class ScreenDictionary(
     }
 
     /**
-     * The card editor over the game: a focusable window (the sentence field needs the keyboard),
-     * centered, dimming what is behind it and taking every touch until Cancel, Add or Back.
+     * The card editor over the game: a focusable full-screen window (the sentence field needs the
+     * keyboard) with the card centered on a scrim, taking every touch until Cancel, Add or Back.
      */
     private fun openEditor(request: CardEditRequest) {
         closeEditor()
@@ -369,18 +369,21 @@ class ScreenDictionary(
             setViewTreeLifecycleOwner(owner)
             setViewTreeViewModelStoreOwner(owner)
             setViewTreeSavedStateRegistryOwner(owner)
-            addView(compose)
+            // Our own scrim: HyperOS ignores FLAG_DIM_BEHIND on overlay windows, so the editor
+            // floated over the game undimmed. It also takes the taps around the card.
+            setBackgroundColor(0x73000000)
+            isClickable = true
+            val width = min(metrics.widthPixels - (32 * density).roundToInt(), (560 * density).roundToInt())
+            addView(compose, android.widget.FrameLayout.LayoutParams(width, android.widget.FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.CENTER))
         }
-        val width = min(metrics.widthPixels - (32 * density).roundToInt(), (560 * density).roundToInt())
         val params = WindowManager.LayoutParams(
-            width,
-            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-            WindowManager.LayoutParams.FLAG_DIM_BEHIND or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT,
         ).apply {
-            gravity = Gravity.CENTER
-            dimAmount = 0.45f
+            gravity = Gravity.TOP or Gravity.START
             softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE or WindowManager.LayoutParams.SOFT_INPUT_STATE_HIDDEN
         }
         editor = view
