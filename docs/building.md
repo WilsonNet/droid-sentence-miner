@@ -19,8 +19,10 @@ android sdk install platform-tools platforms/android-36 build-tools/35.0.0 emula
                     system-images/android-35/google_apis_playstore/x86_64
 echo "sdk.dir=$ANDROID_HOME" > local.properties
 
-# 3. Build & test
-./gradlew testDebugUnitTest          # 221 JVM unit tests
+# 3. Lint, build & test (the same gate as PR CI, .github/workflows/ci.yml)
+./gradlew detekt detektDebug detektDebugUnitTest   # detekt: every rule + ktlint + Compose rules
+./gradlew lintDebug                  # Android Lint: every check, warnings are errors
+./gradlew testDebugUnitTest          # 231 JVM unit tests, incl. ArchitectureTest
 ./gradlew connectedDebugAndroidTest  # 4 on-device tests (VAD + AAC encoding)
 ./gradlew assembleDebug              # app/build/outputs/apk/debug/app-debug.apk
 
@@ -29,6 +31,27 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
 Debug builds are labelled "Droid Sentence Miner (Dev)", have a localhost debug API for driving the app over adb (see [`.opencode/skills/dsm-debug-api`](../.opencode/skills/dsm-debug-api/SKILL.md)) and are signed with the committed `app/debug.keystore`, so they upgrade each other in place. Release builds come from the [release workflow](../.github/workflows/release.yml) on a `v*` tag.
+
+## Linting and module rules
+
+Strict by default, so the codebase stays consistent as more people contribute:
+
+- **detekt 2** with `allRules = true` (`config/detekt/detekt.yml`): all detekt rules, the ktlint
+  wrapper (`ktlint_official` style, 140 columns, `.editorconfig`) and the Compose rules, warnings
+  fail the build. `detekt` checks syntax; `detektDebug`/`detektDebugUnitTest` add type resolution.
+- **Android Lint** with `checkAllWarnings` + `warningsAsErrors` (`app/build.gradle.kts`).
+- **ArchitectureTest** (Konsist, runs with the unit tests): generic code never imports a language
+  package, language packages don't import each other, every `LanguageModule` lives in
+  `lang/<code>/` and is registered, no hard-coded kana/kanji checks outside `lang/ja`, ONNX
+  Runtime/ML Kit only in `ocr/`, the AnkiDroid API only in `anki/`, main code never imports the
+  debug API, no asset over 1 MB. Each failure message names the files and the fix.
+
+Findings that predate the linter are recorded in `app/detekt-baseline*.xml` and
+`app/lint-baseline.xml`. New code must be clean, and touching an old file can resurface its
+findings (baseline entries are tied to the code): fix them in the same change. Regenerate a
+baseline (`./gradlew detektBaseline detektBaselineDebug detektBaselineDebugUnitTest`, or delete
+`lint-baseline.xml` and run `lintDebug` twice) only after fixing old findings, never to hide new
+ones.
 
 ## Language packs
 

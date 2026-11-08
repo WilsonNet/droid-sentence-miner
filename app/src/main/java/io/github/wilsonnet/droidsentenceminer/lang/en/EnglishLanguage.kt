@@ -1,9 +1,9 @@
 package io.github.wilsonnet.droidsentenceminer.lang.en
 
+import io.github.wilsonnet.droidsentenceminer.lang.Candidate
 import io.github.wilsonnet.droidsentenceminer.lang.LanguageModule
 import io.github.wilsonnet.droidsentenceminer.lang.LanguagePack
-
-import io.github.wilsonnet.droidsentenceminer.lang.Candidate
+import io.github.wilsonnet.droidsentenceminer.lang.WordAudioSource
 import java.text.Normalizer
 
 /**
@@ -23,6 +23,8 @@ object EnglishLanguage : LanguageModule {
     override val usesSpaces = true
     override val supportsMeikiOcr = false
     override val maxTermLength = 48
+    override val linguaLibrePrefix = "LL-Q1860 (eng)"
+    override val wordAudioSources = listOf(WordAudioSource.WIKTIONARY, WordAudioSource.LINGUA_LIBRE)
 
     /**
      * PaddleOCR PP-OCRv5 mobile detector + PP-OCRv6 small recognizer (Apache-2.0). On English

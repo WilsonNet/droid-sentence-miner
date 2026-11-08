@@ -21,6 +21,7 @@ when a user studies that language. Architecture table: `docs/architecture.md` â†
   Need a new behavior? Add a method with a default to `LanguageModule`, override it per language.
 - A language package only imports `lang.*` (its own) and generic utilities â€” never another
   language's package.
+- `ArchitectureTest` (unit tests) and detekt's `ForbiddenImport` enforce these rules in PR CI.
 - Downloadable data goes in a language pack (or a recommended dictionary), never in `assets/`.
 - Japanese behavior must not change when you touch shared code: run `JapaneseDeinflectorTest`,
   `OcrPostProcessorTest`, `PageLayoutTest` and a device lookup (`/lookup_bench`) in Japanese.
@@ -44,7 +45,10 @@ when a user studies that language. Architecture table: `docs/architecture.md` â†
    `curl -s https://huggingface.co/api/models/PaddlePaddle/<repo> | jq .sha`), build, then set
    `override val pack = LanguagePack(...)` with the printed SHA-256 and size.
 5. Benchmark before claiming accuracy: `dsm-ocr-eval` â†’ *Latin-script / English OCR*.
-6. Unit tests in `app/src/test/.../lang/` (see `EnglishLanguageTest`), docs pass (`dsm-docs`).
+6. Word audio: set `wordAudioSources` (and `linguaLibrePrefix` = `LL-<Wikidata Q-id> (<ISO 639-3>)`
+   for Lingua Libre). Only listed sources are queried; add a `WordAudioSource` + a branch in
+   `WordAudio.urls` for a new provider.
+7. Unit tests in `app/src/test/.../lang/` (see `EnglishLanguageTest`), docs pass (`dsm-docs`).
 
 ## Publishing a language pack
 

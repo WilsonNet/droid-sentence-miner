@@ -7,7 +7,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class WordAudioSourcesTest {
-
     @Test
     fun jpod101UrlUsesKanjiAndKana() {
         assertEquals(
@@ -71,5 +70,20 @@ class WordAudioSourcesTest {
             WordAudioSources.parseCommonsUrls(info, listOf("File:En-us-running.ogg", "File:En-uk-running.ogg")),
         )
         assertEquals("ogg", WordAudioSources.extension("https://u.org/a/En-us-running.ogg"))
+    }
+
+    @Test
+    fun linguaLibreTitlesMatchTheWholeWord() {
+        val titles =
+            listOf(
+                "File:LL-Q1860 (eng)-Vealhurl-gratification.wav",
+                "File:LL-Q1860 (eng)-Vealhurl-gratifications.wav",
+                "File:LL-Q150 (fra)-X-gratification.wav",
+            )
+        val json = titles.joinToString(prefix = """{"query":{"search":[""", postfix = "]}}") { """{"title":"$it"}""" }
+        assertEquals(
+            listOf(titles.first()),
+            WordAudioSources.parseLinguaLibreTitles(json = json, prefix = "LL-Q1860 (eng)", term = "gratification"),
+        )
     }
 }

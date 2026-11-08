@@ -1,10 +1,10 @@
 package io.github.wilsonnet.droidsentenceminer.lang.ja
 
+import io.github.wilsonnet.droidsentenceminer.dict.TermLookup
+import io.github.wilsonnet.droidsentenceminer.lang.Candidate
 import io.github.wilsonnet.droidsentenceminer.lang.LanguageModule
 import io.github.wilsonnet.droidsentenceminer.lang.LanguagePack
-
-import io.github.wilsonnet.droidsentenceminer.lang.Candidate
-import io.github.wilsonnet.droidsentenceminer.dict.TermLookup
+import io.github.wilsonnet.droidsentenceminer.lang.WordAudioSource
 import java.text.Normalizer
 
 /** Japanese: no spaces, every substring is a candidate, Yomitan's deinflection rules. */
@@ -15,7 +15,8 @@ object JapaneseLanguage : LanguageModule {
     override val sample = "日本語を読む"
     override val usesSpaces = false
     override val supportsMeikiOcr = true
-    override val japaneseWordAudio = true
+    override val wordAudioSources =
+        listOf(WordAudioSource.JAPANESE_POD_101, WordAudioSource.JAPANESE_POD_101_SEARCH, WordAudioSource.JISHO)
     override val maxTermLength = 16
 
     override fun isTargetChar(c: Char): Boolean = JapaneseTextScore.isJapanese(c)

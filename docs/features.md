@@ -11,7 +11,8 @@ Everything the app does, in detail. The short version is in the [README](../READ
   (*look up*, *ice cream*, *give up on*), suffix deinflection with parts of speech (plural, past,
   -ing, comparative/superlative, -ly, possessive; phrasal verbs inflect their first word), case
   folding, IPA under the headword and as the card's *Reading* (Wiktionary IPA dictionary), word
-  audio from Wiktionary recordings on Wikimedia Commons, and an optional 23 MB OCR pack
+  audio from Wiktionary recordings on Wikimedia Commons, then Lingua Libre's (each language only
+  queries its own word-audio sources), and an optional 23 MB OCR pack
   (PaddleOCR) that reads English game and subtitle text with a third of ML Kit's word errors.
   Until the pack is installed English is read by the bundled ML Kit model.
 

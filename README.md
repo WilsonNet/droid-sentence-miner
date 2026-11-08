@@ -86,7 +86,9 @@ Everything builds from the command line — no Android Studio needed:
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Debug builds include a localhost HTTP API for driving and checking the app over adb, so most
+`./gradlew detekt detektDebug lintDebug testDebugUnitTest` is the PR gate: every detekt/ktlint
+rule, every Android Lint check, and architecture tests that keep language modules separate
+([details](docs/building.md#linting-and-module-rules)). Debug builds include a localhost HTTP API for driving and checking the app over adb, so most
 changes can be validated with `curl` on a real device. Before opening a PR, read
 [AGENTS.md](AGENTS.md): it lists the pitfalls already paid for, and every change updates the docs
 in the same commit ([checklist](.opencode/skills/dsm-docs/SKILL.md)). The website lives in

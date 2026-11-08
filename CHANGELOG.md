@@ -14,7 +14,8 @@ versions are the `v*` tags that publish a signed APK on
 - **English support** (requested in #1): lookups of whole words and phrases (*look up*,
   *ice cream*, up to five words), inflections (*running → run*, *happiest → happy*, *wolves →
   wolf*, *looked up → look up*), case folding, IPA pronunciation in the popup and as the card's
-  reading, and word audio from Wiktionary recordings on Wikimedia Commons.
+  reading, and word audio from Wiktionary and Lingua Libre recordings on Wikimedia Commons (each
+  language only queries its own sources: Japanese cards still use JapanesePod101 and Jisho).
 - **English dictionaries in one tap**: Wiktionary English (wty-en-en, 1.6 M entries), Wiktionary
   English IPA, and small English → Portuguese / Spanish / German / French / Italian / Russian /
   Chinese / Japanese / Korean glossaries (all Wiktionary via kaikki/wty, updatable).

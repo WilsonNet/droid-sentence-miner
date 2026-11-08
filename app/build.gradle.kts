@@ -4,6 +4,18 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.detekt)
+}
+
+// Static analysis: every detekt rule (incl. ktlint formatting and Compose rules), warnings fail
+// the build. Findings that predate the linter live in detekt-baseline.xml; new code must be clean.
+// Regenerate only after fixing old findings: ./gradlew detektBaseline (see docs/building.md).
+detekt {
+    buildUponDefaultConfig = true
+    allRules = true
+    config.setFrom(rootProject.file("config/detekt/detekt.yml"))
+    baseline = file("detekt-baseline.xml")
+    parallel = true
 }
 
 kotlin {
@@ -89,6 +101,17 @@ android {
     testOptions {
         unitTests.isReturnDefaultValues = true
     }
+
+    // Android Lint at its strictest: every check (also the ones off by default), warnings are
+    // errors. Existing findings are in lint-baseline.xml; ./gradlew lintDebug fails on new ones.
+    lint {
+        checkAllWarnings = true
+        warningsAsErrors = true
+        abortOnError = true
+        checkDependencies = true
+        checkTestSources = true
+        baseline = file("lint-baseline.xml")
+    }
 }
 
 dependencies {
@@ -120,7 +143,11 @@ dependencies {
     implementation(libs.onnxruntime.android)
     implementation(libs.ankidroid.api)
 
+    detektPlugins(libs.detekt.ktlint.wrapper)
+    detektPlugins(libs.compose.rules.detekt)
+
     testImplementation(libs.junit)
+    testImplementation(libs.konsist)
     testImplementation(libs.kotlinx.coroutines.test)
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.espresso.core)

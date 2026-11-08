@@ -1,0 +1,67 @@
+# Detekt runs with allRules = true (app/build.gradle.kts): every rule is on, including the ktlint
+# wrapper and Compose rules. This file only adapts rules to Android/Compose conventions and adds
+# the module-structure guards. Don't switch rules off to silence a finding in new code: fix it,
+# or suppress that one line with @Suppress("RuleName") and a reason.
+
+config:
+  validation: true
+  warningsAsErrors: true
+
+naming:
+  FunctionNaming:
+    # @Composable functions are PascalCase by convention; tests use `backtick sentences`.
+    ignoreAnnotated: ['Composable']
+    excludes: ['**/test/**', '**/androidTest/**']
+  FunctionNameMaxLength:
+    excludes: ['**/test/**', '**/androidTest/**']
+  TopLevelPropertyNaming:
+    constantPattern: '[A-Z][_A-Z0-9]*'
+
+complexity:
+  LongMethod:
+    ignoreAnnotated: ['Composable']
+  LongParameterList:
+    ignoreDefaultParameters: true
+    ignoreAnnotated: ['Composable']
+
+style:
+  MaxLineLength:
+    maxLineLength: 140
+  UnusedPrivateFunction:
+    ignoreAnnotated: ['Preview']
+  # Module structure: language-specific code lives in lang/<code>/ and is reached through
+  # Languages.current (see .opencode/skills/dsm-language). Generic packages must not import a
+  # language package directly. Cross-language imports and more boundaries: ArchitectureTest.
+  ForbiddenImport:
+    active: true
+    forbiddenImports:
+      - value: 'io.github.wilsonnet.droidsentenceminer.lang.ja.*'
+        reason: 'Use Languages.current (LanguageModule) instead of the Japanese module directly.'
+      - value: 'io.github.wilsonnet.droidsentenceminer.lang.en.*'
+        reason: 'Use Languages.current (LanguageModule) instead of the English module directly.'
+      - value: 'io.github.wilsonnet.droidsentenceminer.debug.*'
+        reason: 'Debug-only code is booted by reflection from DsmApp; main code must not depend on it.'
+    excludes: ['**/lang/**', '**/test/**', '**/debug/**']
+
+ktlint:
+  MaximumLineLength:
+    maxLineLength: 140
+  ArgumentListWrapping:
+    maxLineLength: 140
+  ParameterListWrapping:
+    maxLineLength: 140
+  ChainMethodContinuation:
+    maxLineLength: 140
+  BinaryExpressionWrapping:
+    maxLineLength: 140
+  Wrapping:
+    maxLineLength: 140
+  FunctionName:
+    ignoreWhenAnnotatedWith: ['Composable']
+    excludes: ['**/test/**', '**/androidTest/**']
+
+Compose:
+  ComposeModifierMissing:
+    active: true
+  ComposeCompositionLocalAllowlist:
+    active: true

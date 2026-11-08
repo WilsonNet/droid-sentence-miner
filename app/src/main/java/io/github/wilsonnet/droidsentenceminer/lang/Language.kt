@@ -37,8 +37,14 @@ interface LanguageModule {
      */
     val pack: LanguagePack? get() = null
 
-    /** Whether word audio from JapanesePod101/Jisho applies. */
-    val japaneseWordAudio: Boolean get() = false
+    /**
+     * Lingua Libre's file prefix for this language on Wikimedia Commons (`LL-<Wikidata id> (<ISO 639-3>)`,
+     * e.g. `LL-Q1860 (eng)`): a word-audio source after Wiktionary. Null to skip it.
+     */
+    val linguaLibrePrefix: String? get() = null
+
+    /** This language's word-audio sources, tried in order; no other source is ever queried. */
+    val wordAudioSources: List<WordAudioSource> get() = emptyList()
 
     /** Longest surface, in characters, tried at one position while scanning. */
     val maxTermLength: Int

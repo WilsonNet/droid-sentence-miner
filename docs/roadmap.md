@@ -11,6 +11,9 @@ Ideas and known gaps, roughly in priority order. Shipped work moves to [CHANGELO
 - English: book mode is untested on English print; no English frequency dictionary is offered;
   irregular forms rely on Wiktionary's form-of entries; the English OCR pack is only used for
   English (PaddleOCR on Japanese untested).
+- Move the meikiocr graph cuts (`assets/meiki`, 3.6 MB, Japanese-only) into a Japanese language
+  pack so English-only installs don't carry them (they're tied to the downloaded originals'
+  SHA-256 anyway).
 - Auto OCR keeps background text inside the area (a slide behind YouTube captions): a caption
   box / contrast filter for spaced languages would help.
 - Text areas per app (a game's dialogue box and a video's subtitle band need different boxes;

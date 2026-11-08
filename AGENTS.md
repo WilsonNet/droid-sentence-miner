@@ -80,8 +80,8 @@ AnkiDroid API v2.24.1 (JitPack). APK ships arm64-v8a, armeabi-v7a and x86_64 onl
 ## Common commands
 
 ```bash
-# Build + unit tests
-$GRADLE testDebugUnitTest assembleDebug --console=plain
+# Lint + build + unit tests (= PR CI gate, .github/workflows/ci.yml)
+$GRADLE detekt detektDebug detektDebugUnitTest lintDebug testDebugUnitTest assembleDebug --console=plain
 
 # NEVER launch an Android emulator! It kills the host machine. Always test on the physical device
 # (Xiaomi Pad 7 `c2bd6564` or Galaxy phone). If the tablet is locked (`mInputRestricted=true` in
@@ -165,6 +165,19 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   created with `--latest=false` (the in-app updater reads `releases/latest`); sha256 in
   `EnglishLanguage.pack`. Test without a release by `run-as cp` of the unzipped pack into
   `files/lang/en`.
+- **Linters are strict on purpose** (`config/detekt/detekt.yml` allRules + ktlint_official +
+  Compose rules; Android Lint `checkAllWarnings`/`warningsAsErrors`; Konsist `ArchitectureTest`).
+  Old findings live in `app/detekt-baseline*.xml` / `app/lint-baseline.xml`; touching an old file
+  resurfaces its findings — fix them, don't regenerate the baseline over new code. Two ktlint
+  rules disagree on expression bodies (`FunctionSignature` vs `MultilineExpressionWrapping`):
+  use a block body. Raising `maxLineLength` on signature rules reflows the whole codebase — don't.
+  Binary downloads (ktlint CLI) are blocked in this environment: format by hand.
+- **Word audio is per language** (`LanguageModule.wordAudioSources`, `lang/WordAudioSource.kt`):
+  Japanese = JapanesePod101 → its search → Jisho; English = Wiktionary (Commons `En-us-*.ogg`) →
+  Lingua Libre (Commons `LL-Q1860 (eng)-<speaker>-<word>.wav`, via `linguaLibrePrefix`). A
+  language never queries another's sources. dictionaryapi.dev was evaluated: its media server
+  answered 502 and its files mirror Commons. Failures log under `DSM-WordAudio` with the
+  exception (Android drops stack traces for `UnknownHostException`).
 - **Wikimedia needs a User-Agent**: `upload.wikimedia.org` and the Commons API answer 403 to
   okhttp's default agent — `WordAudio` sends `COMMONS_UA` (English word audio).
 

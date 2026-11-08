@@ -87,8 +87,7 @@ object OcrPostProcessor {
         return lines.filterNot { line ->
             val height = line.box.height
             val isSmall = height < median * 0.62f
-            val isKanaOnly = line.text.all { Languages.current.isRubyChar(it) } &&
-                line.text.none { TermLookupIsKanji(it) }
+            val isKanaOnly = line.text.all { Languages.current.isRubyChar(it) }
             val overlapsTaller = lines.any { other ->
                 other !== line && other.box.height > height * 1.4f &&
                     horizontalOverlap(line.box, other.box) > 0.3f
@@ -96,9 +95,6 @@ object OcrPostProcessor {
             isSmall && isKanaOnly && overlapsTaller && line.text.length <= 10
         }
     }
-
-    private fun TermLookupIsKanji(c: Char): Boolean =
-        Character.UnicodeScript.of(c.code) == Character.UnicodeScript.HAN
 
     private fun horizontalOverlap(a: BoundingBox, b: BoundingBox): Float {
         val overlap = (min(a.right, b.right) - max(a.left, b.left)).toFloat()

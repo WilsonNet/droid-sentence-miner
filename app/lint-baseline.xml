@@ -1,0 +1,1694 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<issues format="6" by="lint 8.13.2" type="baseline" client="gradle" dependencies="true" name="AGP (8.13.2)" variant="all" version="8.13.2">
+
+    <issue
+        id="ExifInterface"
+        message="Avoid using `android.media.ExifInterface`; use `androidx.exifinterface.media.ExifInterface` instead"
+        errorLine1="import android.media.ExifInterface"
+        errorLine2="       ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/book/BookPage.kt"
+            line="8"
+            column="8"/>
+    </issue>
+
+    <issue
+        id="ExifInterface"
+        message="Avoid using `android.media.ExifInterface`; use `androidx.exifinterface.media.ExifInterface` instead"
+        errorLine1="                        when (ExifInterface(it).getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)) {"
+        errorLine2="                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/book/BookPage.kt"
+            line="85"
+            column="31"/>
+    </issue>
+
+    <issue
+        id="OldTargetApi"
+        message="Not targeting the latest versions of Android; compatibility modes apply. Consider testing and updating this version. Consult the `android.os.Build.VERSION_CODES` javadoc for details."
+        errorLine1="        targetSdk = 35"
+        errorLine2="        ~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="35"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UnusedAttribute"
+        message="Attribute `canTakeScreenshot` is only used in API level 30 and higher (current min is 26)"
+        errorLine1="    android:canTakeScreenshot=&quot;true&quot;"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/xml/screenshot_accessibility.xml"
+            line="8"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="MemberExtensionConflict"
+        message="`isActive` is defined both as a member in class `kotlinx.coroutines.Job` and an extension in package `kotlinx.coroutines`. The defined behavior for this is to use the member, but since the extension is explicitly imported into this file, there&apos;s a chance that this was not expected. (One common way this happens is for members to be added to a class after code was already written to use an extension)."
+        errorLine1="    val isRunning: Boolean get() = job?.isActive == true"
+        errorLine2="                                        ~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/capture/AutoOcrController.kt"
+            line="71"
+            column="41"/>
+    </issue>
+
+    <issue
+        id="RedundantLabel"
+        message="Redundant label can be removed"
+        errorLine1="            android:label=&quot;@string/app_name&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/AndroidManifest.xml"
+            line="60"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="RedundantLabel"
+        message="Redundant label can be removed"
+        errorLine1="            android:label=&quot;@string/app_name&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/AndroidManifest.xml"
+            line="84"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="AndroidGradlePluginVersion"
+        message="A newer version of Gradle than 8.14.3 is available: 8.14.6"
+        errorLine1="distributionUrl=https\://services.gradle.org/distributions/gradle-8.14.3-bin.zip"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="../gradle/wrapper/gradle-wrapper.properties"
+            line="3"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="AndroidGradlePluginVersion"
+        message="A newer version of com.android.application than 8.13.2 is available: 9.5.1"
+        errorLine1="agp = &quot;8.13.2&quot;"
+        errorLine2="      ~~~~~~~~">
+        <location
+            file="../gradle/libs.versions.toml"
+            line="2"
+            column="7"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.compose:compose-bom than 2024.12.01 is available: 2026.09.00"
+        errorLine1="composeBom = &quot;2024.12.01&quot;"
+        errorLine2="             ~~~~~~~~~~~~">
+        <location
+            file="../gradle/libs.versions.toml"
+            line="5"
+            column="14"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.activity:activity-compose than 1.9.3 is available: 1.13.0"
+        errorLine1="activityCompose = &quot;1.9.3&quot;"
+        errorLine2="                  ~~~~~~~">
+        <location
+            file="../gradle/libs.versions.toml"
+            line="6"
+            column="19"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.core:core-ktx than 1.15.0 is available: 1.19.1"
+        errorLine1="coreKtx = &quot;1.15.0&quot;"
+        errorLine2="          ~~~~~~~~">
+        <location
+            file="../gradle/libs.versions.toml"
+            line="7"
+            column="11"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.lifecycle:lifecycle-runtime-compose than 2.8.7 is available: 2.11.0"
+        errorLine1="lifecycle = &quot;2.8.7&quot;"
+        errorLine2="            ~~~~~~~">
+        <location
+            file="../gradle/libs.versions.toml"
+            line="8"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.lifecycle:lifecycle-runtime-ktx than 2.8.7 is available: 2.11.0"
+        errorLine1="lifecycle = &quot;2.8.7&quot;"
+        errorLine2="            ~~~~~~~">
+        <location
+            file="../gradle/libs.versions.toml"
+            line="8"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.lifecycle:lifecycle-viewmodel-compose than 2.8.7 is available: 2.11.0"
+        errorLine1="lifecycle = &quot;2.8.7&quot;"
+        errorLine2="            ~~~~~~~">
+        <location
+            file="../gradle/libs.versions.toml"
+            line="8"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.navigation:navigation-compose than 2.8.5 is available: 2.10.2"
+        errorLine1="navigation = &quot;2.8.5&quot;"
+        errorLine2="             ~~~~~~~">
+        <location
+            file="../gradle/libs.versions.toml"
+            line="9"
+            column="14"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.datastore:datastore-preferences than 1.1.1 is available: 1.3.0"
+        errorLine1="datastore = &quot;1.1.1&quot;"
+        errorLine2="            ~~~~~~~">
+        <location
+            file="../gradle/libs.versions.toml"
+            line="13"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.test.ext:junit than 1.2.1 is available: 1.3.0"
+        errorLine1="androidxTestExt = &quot;1.2.1&quot;"
+        errorLine2="                  ~~~~~~~">
+        <location
+            file="../gradle/libs.versions.toml"
+            line="19"
+            column="19"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.test.espresso:espresso-core than 3.6.1 is available: 3.7.0"
+        errorLine1="espresso = &quot;3.6.1&quot;"
+        errorLine2="           ~~~~~~~">
+        <location
+            file="../gradle/libs.versions.toml"
+            line="20"
+            column="12"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.documentfile:documentfile than 1.0.1 is available: 1.1.0"
+        errorLine1="documentfile = &quot;1.0.1&quot;"
+        errorLine2="               ~~~~~~~">
+        <location
+            file="../gradle/libs.versions.toml"
+            line="21"
+            column="16"/>
+    </issue>
+
+    <issue
+        id="NewerVersionAvailable"
+        message="A newer version of org.jetbrains.kotlin.android than 2.3.21 is available: 2.4.21"
+        errorLine1="kotlin = &quot;2.3.21&quot;"
+        errorLine2="         ~~~~~~~~">
+        <location
+            file="../gradle/libs.versions.toml"
+            line="3"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="NewerVersionAvailable"
+        message="A newer version of org.jetbrains.kotlin.plugin.compose than 2.3.21 is available: 2.4.21"
+        errorLine1="kotlin = &quot;2.3.21&quot;"
+        errorLine2="         ~~~~~~~~">
+        <location
+            file="../gradle/libs.versions.toml"
+            line="3"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="NewerVersionAvailable"
+        message="A newer version of org.jetbrains.kotlin.plugin.serialization than 2.3.21 is available: 2.4.21"
+        errorLine1="kotlin = &quot;2.3.21&quot;"
+        errorLine2="         ~~~~~~~~">
+        <location
+            file="../gradle/libs.versions.toml"
+            line="3"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="NewerVersionAvailable"
+        message="A newer version of org.jetbrains.kotlinx:kotlinx-serialization-json than 1.7.3 is available: 1.12.0"
+        errorLine1="serialization = &quot;1.7.3&quot;"
+        errorLine2="                ~~~~~~~">
+        <location
+            file="../gradle/libs.versions.toml"
+            line="11"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="NewerVersionAvailable"
+        message="A newer version of com.squareup.okhttp3:okhttp than 4.12.0 is available: 5.5.1"
+        errorLine1="okhttp = &quot;4.12.0&quot;"
+        errorLine2="         ~~~~~~~~">
+        <location
+            file="../gradle/libs.versions.toml"
+            line="12"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="NewerVersionAvailable"
+        message="A newer version of org.jetbrains.kotlinx:kotlinx-coroutines-android than 1.9.0 is available: 1.11.0"
+        errorLine1="coroutines = &quot;1.9.0&quot;"
+        errorLine2="             ~~~~~~~">
+        <location
+            file="../gradle/libs.versions.toml"
+            line="14"
+            column="14"/>
+    </issue>
+
+    <issue
+        id="NewerVersionAvailable"
+        message="A newer version of org.jetbrains.kotlinx:kotlinx-coroutines-test than 1.9.0 is available: 1.11.0"
+        errorLine1="coroutines = &quot;1.9.0&quot;"
+        errorLine2="             ~~~~~~~">
+        <location
+            file="../gradle/libs.versions.toml"
+            line="14"
+            column="14"/>
+    </issue>
+
+    <issue
+        id="NewerVersionAvailable"
+        message="A newer version of com.microsoft.onnxruntime:onnxruntime-android than 1.31.0 is available: 1.31.1"
+        errorLine1="onnxruntime = &quot;1.31.0&quot;"
+        errorLine2="              ~~~~~~~~">
+        <location
+            file="../gradle/libs.versions.toml"
+            line="16"
+            column="15"/>
+    </issue>
+
+    <issue
+        id="ComposableLambdaParameterNaming"
+        message="Composable lambda parameter should be named `content`"
+        errorLine1="private fun SectionLabel(text: String, trailing: @Composable () -> Unit = {}) {"
+        errorLine2="                                       ~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/ui/components/CardEditor.kt"
+            line="197"
+            column="40"/>
+    </issue>
+
+    <issue
+        id="ModifierParameter"
+        message="Modifier parameter should be named modifier"
+        errorLine1="    dragModifier: Modifier,"
+        errorLine2="    ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/ui/screens/DictionaryScreen.kt"
+            line="441"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="DiscouragedApi"
+        message="Fixed screen orientations will be ignored in most cases, starting from Android 16. Android is moving toward a model where apps are expected to adapt to various orientations, display sizes, and aspect ratios."
+        errorLine1="            android:screenOrientation=&quot;locked&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/AndroidManifest.xml"
+            line="74"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="InsecureBaseConfiguration"
+        message="Insecure Base Configuration"
+        errorLine1="    &lt;base-config cleartextTrafficPermitted=&quot;true&quot;>"
+        errorLine2="                                            ~~~~">
+        <location
+            file="src/main/res/xml/network_security_config.xml"
+            line="9"
+            column="45"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is always >= 26"
+        errorLine1="        if (Build.VERSION.SDK_INT >= 26 &amp;&amp; !context.packageManager.canRequestPackageInstalls()) {"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/update/AppUpdater.kt"
+            line="161"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is always >= 26"
+        errorLine1="        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/overlay/OverlayService.kt"
+            line="1224"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="This folder configuration (`v26`) is unnecessary; `minSdkVersion` is 26. Merge all the resources in this folder into `mipmap-anydpi`.">
+        <location
+            file="src/main/res/mipmap-anydpi-v26"/>
+    </issue>
+
+    <issue
+        id="LogConditional"
+        message="The log call Log.i(...) should be conditional: surround with `if (Log.isLoggable(...))` or `if (BuildConfig.DEBUG) { ... }`"
+        errorLine1="            android.util.Log.i(&quot;DSM-Mine&quot;, &quot;AnkiDroid: deck/model ${t1 - t0} ms, media ${t2 - t1} ms&quot;)"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/anki/AnkiDroidBridge.kt"
+            line="137"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="LogConditional"
+        message="The log call Log.i(...) should be conditional: surround with `if (Log.isLoggable(...))` or `if (BuildConfig.DEBUG) { ... }`"
+        errorLine1="            android.util.Log.i(&quot;DSM-Mine&quot;, &quot;AnkiDroid: fields+duplicate check ${t3 - t2} ms, addNote ${android.os.SystemClock.elapsedRealtime() - t3} ms&quot;)"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/anki/AnkiDroidBridge.kt"
+            line="149"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="LogConditional"
+        message="The log call Log.i(...) should be conditional: surround with `if (Log.isLoggable(...))` or `if (BuildConfig.DEBUG) { ... }`"
+        errorLine1="        android.util.Log.i(TAG, &quot;「$expression」: waited ${android.os.SystemClock.elapsedRealtime() - tAudio} ms for word audio (${wordAudio?.source})&quot;)"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/anki/CardMiner.kt"
+            line="114"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="LogConditional"
+        message="The log call Log.i(...) should be conditional: surround with `if (Log.isLoggable(...))` or `if (BuildConfig.DEBUG) { ... }`"
+        errorLine1="            android.util.Log.i(TAG, &quot;「$expression」: word audio fetch ${android.os.SystemClock.elapsedRealtime() - t0} ms (${it?.source})&quot;)"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/anki/CardMiner.kt"
+            line="155"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="LogConditional"
+        message="The log call Log.i(...) should be conditional: surround with `if (Log.isLoggable(...))` or `if (BuildConfig.DEBUG) { ... }`"
+        errorLine1="        android.util.Log.i(TAG, &quot;「$word」: build card ${t1 - t0} ms, add to Anki ${android.os.SystemClock.elapsedRealtime() - t1} ms → $result&quot;)"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/anki/CardMiner.kt"
+            line="184"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="LogConditional"
+        message="The log call Log.i(...) should be conditional: surround with `if (Log.isLoggable(...))` or `if (BuildConfig.DEBUG) { ... }`"
+        errorLine1="        android.util.Log.i(TAG, &quot;line ${line.id}: clip+encode ${t1 - t0} ms (${segment?.durationMs ?: 0} ms audio), screenshot ${t2 - t1} ms&quot;)"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/anki/CardMiner.kt"
+            line="251"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="LogConditional"
+        message="The log call Log.i(...) should be conditional: surround with `if (Log.isLoggable(...))` or `if (BuildConfig.DEBUG) { ... }`"
+        errorLine1="            Log.i(TAG, &quot;deleting stale download ${it.name} (${it.length() / (1024 * 1024)} MB)&quot;)"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/dict/DictImportQueue.kt"
+            line="142"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="LogConditional"
+        message="The log call Log.i(...) should be conditional: surround with `if (Log.isLoggable(...))` or `if (BuildConfig.DEBUG) { ... }`"
+        errorLine1="            Log.i(TAG, &quot;deleting orphan ${it.name} (${it.length() / (1024 * 1024)} MB)&quot;)"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/dict/DictImportQueue.kt"
+            line="147"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="LogConditional"
+        message="The log call Log.i(...) should be conditional: surround with `if (Log.isLoggable(...))` or `if (BuildConfig.DEBUG) { ... }`"
+        errorLine1="            Log.i(TAG, &quot;installed ${entity.title}: ${entity.termCount} terms&quot;)"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/dict/DictImportQueue.kt"
+            line="199"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="LogConditional"
+        message="The log call Log.i(...) should be conditional: surround with `if (Log.isLoggable(...))` or `if (BuildConfig.DEBUG) { ... }`"
+        errorLine1="        android.util.Log.i(LIVE_TAG, &quot;config change: ${m.widthPixels}x${m.heightPixels}, live window ${liveView != null}&quot;)"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/overlay/OverlayService.kt"
+            line="255"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="AutoboxingStateCreation"
+        message="Prefer `mutableFloatStateOf` instead of `mutableStateOf`"
+        errorLine1="    var positionMs by remember { mutableStateOf(0f) }"
+        errorLine2="                                 ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/ui/components/AudioEditorDialog.kt"
+            line="105"
+            column="34"/>
+    </issue>
+
+    <issue
+        id="AutoboxingStateCreation"
+        message="Prefer `mutableFloatStateOf` instead of `mutableStateOf`"
+        errorLine1="    var local by remember(position) { mutableStateOf(position) }"
+        errorLine2="                                      ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/ui/screens/SettingsScreen.kt"
+            line="489"
+            column="39"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.layout.activity_projection_permission` appears to be unused"
+        errorLine1="&lt;FrameLayout xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;"
+        errorLine2="^">
+        <location
+            file="src/main/res/layout/activity_projection_permission.xml"
+            line="2"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.ov_action_hide` appears to be unused"
+        errorLine1="    &lt;string name=&quot;ov_action_hide&quot;>Hide bubble&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="14"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.ov_scanning` appears to be unused"
+        errorLine1="    &lt;string name=&quot;ov_scanning&quot;>Scanning…&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="16"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.ov_add_anki` appears to be unused"
+        errorLine1="    &lt;string name=&quot;ov_add_anki&quot;>Add to Anki&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="18"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.ov_loaded` appears to be unused"
+        errorLine1="    &lt;string name=&quot;ov_loaded&quot;>Added to Anki&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="19"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.process_text_label` appears to be unused"
+        errorLine1="    &lt;string name=&quot;process_text_label&quot;>Droid Sentence Miner lookup&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="20"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="SyntheticAccessor"
+        message="Access to `private` method `tagToMask` of class `JapaneseDeinflectorKt` requires synthetic accessor"
+        errorLine1="            mask = mask or tagToMask(rule.trim())"
+        errorLine2="                           ~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/lang/ja/JapaneseDeinflector.kt"
+            line="111"
+            column="28"/>
+    </issue>
+
+    <issue
+        id="SyntheticAccessor"
+        message="Access to `private` method `AppRoot` of class `MainActivityKt` requires synthetic accessor"
+        errorLine1="                AppRoot()"
+        errorLine2="                ~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/MainActivity.kt"
+            line="57"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="SyntheticAccessor"
+        message="Access to `private` method `toBitmapSafe` of class `ScreenCaptureManagerKt` requires synthetic accessor"
+        errorLine1="                    val bmp = img.toBitmapSafe()"
+        errorLine2="                              ~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/capture/ScreenCaptureManager.kt"
+            line="255"
+            column="31"/>
+    </issue>
+
+    <issue
+        id="SyntheticAccessor"
+        message="Access to `private` method `toBitmapSafe` of class `ScreenCaptureManagerKt` requires synthetic accessor"
+        errorLine1="                val bmp = img.toBitmapSafe()"
+        errorLine2="                          ~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/capture/ScreenCaptureManager.kt"
+            line="272"
+            column="27"/>
+    </issue>
+
+    <issue
+        id="SyntheticAccessor"
+        message="Access to `private` method `toBitmapSafe` of class `ScreenCaptureManagerKt` requires synthetic accessor"
+        errorLine1="            val bitmap = image.toBitmapSafe()"
+        errorLine2="                         ~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/capture/ScreenCaptureManager.kt"
+            line="300"
+            column="26"/>
+    </issue>
+
+    <issue
+        id="SyntheticAccessor"
+        message="Access to `private` method `cropRegion` of class `ScreenCaptureManagerKt` requires synthetic accessor"
+        errorLine1="            val crops = if (changed) regions.map { image.cropRegion(it) } else emptyList()"
+        errorLine2="                                                   ~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/capture/ScreenCaptureManager.kt"
+            line="324"
+            column="52"/>
+    </issue>
+
+    <issue
+        id="SyntheticAccessor"
+        message="Access to `private` method `toBitmapSafe` of class `ScreenCaptureManagerKt` requires synthetic accessor"
+        errorLine1="                val bmp = img.toBitmapSafe()"
+        errorLine2="                          ~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/capture/ScreenCaptureManager.kt"
+            line="338"
+            column="27"/>
+    </issue>
+
+    <issue
+        id="SyntheticAccessor"
+        message="Access to `private` method `closeEditor` of class `ScreenDictionary` requires synthetic accessor"
+        errorLine1="                    if (event.action == KeyEvent.ACTION_UP) closeEditor()"
+        errorLine2="                                                            ~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/overlay/ScreenDictionary.kt"
+            line="362"
+            column="61"/>
+    </issue>
+
+    <issue
+        id="SyntheticAccessor"
+        message="Access to `private` method `getDefaultClient` of class `Companion` requires synthetic accessor"
+        errorLine1="class WordAudio(private val client: OkHttpClient = defaultClient) {"
+        errorLine2="                                                   ~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/anki/WordAudio.kt"
+            line="24"
+            column="52"/>
+    </issue>
+
+    <issue
+        id="SyntheticAccessor"
+        message="Access to `private` method `getDefaultClient` of class `Companion` requires synthetic accessor"
+        errorLine1="class WordAudio(private val client: OkHttpClient = defaultClient) {"
+        errorLine2="                                                   ~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/anki/WordAudio.kt"
+            line="24"
+            column="52"/>
+    </issue>
+
+    <issue
+        id="SyntheticAccessor"
+        message="Access to `private` method `str` of class `YomitanImporterKt` requires synthetic accessor"
+        errorLine1="            val expression = arr.str(0)"
+        errorLine2="                             ~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/dict/YomitanImporter.kt"
+            line="259"
+            column="30"/>
+    </issue>
+
+    <issue
+        id="SyntheticAccessor"
+        message="Access to `private` method `str` of class `YomitanImporterKt` requires synthetic accessor"
+        errorLine1="                reading = arr.str(1),"
+        errorLine2="                          ~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/dict/YomitanImporter.kt"
+            line="264"
+            column="27"/>
+    </issue>
+
+    <issue
+        id="SyntheticAccessor"
+        message="Access to `private` method `str` of class `YomitanImporterKt` requires synthetic accessor"
+        errorLine1="                definitionTags = arr.str(2),"
+        errorLine2="                                 ~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/dict/YomitanImporter.kt"
+            line="265"
+            column="34"/>
+    </issue>
+
+    <issue
+        id="SyntheticAccessor"
+        message="Access to `private` method `str` of class `YomitanImporterKt` requires synthetic accessor"
+        errorLine1="                rules = arr.str(3),"
+        errorLine2="                        ~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/dict/YomitanImporter.kt"
+            line="266"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="SyntheticAccessor"
+        message="Access to `private` method `int` of class `YomitanImporterKt` requires synthetic accessor"
+        errorLine1="                score = arr.int(4) ?: 0,"
+        errorLine2="                        ~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/dict/YomitanImporter.kt"
+            line="267"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="SyntheticAccessor"
+        message="Access to `private` method `long` of class `YomitanImporterKt` requires synthetic accessor"
+        errorLine1="                sequence = arr.long(6) ?: 0L,"
+        errorLine2="                           ~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/dict/YomitanImporter.kt"
+            line="269"
+            column="28"/>
+    </issue>
+
+    <issue
+        id="SyntheticAccessor"
+        message="Access to `private` method `str` of class `YomitanImporterKt` requires synthetic accessor"
+        errorLine1="                termTags = arr.str(7),"
+        errorLine2="                           ~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/dict/YomitanImporter.kt"
+            line="270"
+            column="28"/>
+    </issue>
+
+    <issue
+        id="SyntheticAccessor"
+        message="Access to `private` method `str` of class `YomitanImporterKt` requires synthetic accessor"
+        errorLine1="            val character = arr.str(0)"
+        errorLine2="                            ~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/dict/YomitanImporter.kt"
+            line="278"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="SyntheticAccessor"
+        message="Access to `private` method `str` of class `YomitanImporterKt` requires synthetic accessor"
+        errorLine1="                onyomi = arr.str(1),"
+        errorLine2="                         ~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/dict/YomitanImporter.kt"
+            line="283"
+            column="26"/>
+    </issue>
+
+    <issue
+        id="SyntheticAccessor"
+        message="Access to `private` method `str` of class `YomitanImporterKt` requires synthetic accessor"
+        errorLine1="                kunyomi = arr.str(2),"
+        errorLine2="                          ~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/dict/YomitanImporter.kt"
+            line="284"
+            column="27"/>
+    </issue>
+
+    <issue
+        id="SyntheticAccessor"
+        message="Access to `private` method `str` of class `YomitanImporterKt` requires synthetic accessor"
+        errorLine1="                tags = arr.str(3),"
+        errorLine2="                       ~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/dict/YomitanImporter.kt"
+            line="285"
+            column="24"/>
+    </issue>
+
+    <issue
+        id="SyntheticAccessor"
+        message="Access to `private` method `str` of class `YomitanImporterKt` requires synthetic accessor"
+        errorLine1="                name = arr.str(0),"
+        errorLine2="                       ~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/dict/YomitanImporter.kt"
+            line="297"
+            column="24"/>
+    </issue>
+
+    <issue
+        id="SyntheticAccessor"
+        message="Access to `private` method `str` of class `YomitanImporterKt` requires synthetic accessor"
+        errorLine1="                category = arr.str(1),"
+        errorLine2="                           ~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/dict/YomitanImporter.kt"
+            line="298"
+            column="28"/>
+    </issue>
+
+    <issue
+        id="SyntheticAccessor"
+        message="Access to `private` method `int` of class `YomitanImporterKt` requires synthetic accessor"
+        errorLine1="                order = arr.int(2) ?: 0,"
+        errorLine2="                        ~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/dict/YomitanImporter.kt"
+            line="299"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="SyntheticAccessor"
+        message="Access to `private` method `str` of class `YomitanImporterKt` requires synthetic accessor"
+        errorLine1="                notes = arr.str(3),"
+        errorLine2="                        ~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/dict/YomitanImporter.kt"
+            line="300"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="SyntheticAccessor"
+        message="Access to `private` method `int` of class `YomitanImporterKt` requires synthetic accessor"
+        errorLine1="                score = arr.int(4) ?: 0,"
+        errorLine2="                        ~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/dict/YomitanImporter.kt"
+            line="301"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="SyntheticAccessor"
+        message="Access to `private` method `str` of class `YomitanImporterKt` requires synthetic accessor"
+        errorLine1="            val expression = arr.str(0)"
+        errorLine2="                             ~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/dict/YomitanImporter.kt"
+            line="308"
+            column="30"/>
+    </issue>
+
+    <issue
+        id="SyntheticAccessor"
+        message="Access to `private` method `str` of class `YomitanImporterKt` requires synthetic accessor"
+        errorLine1="                mode = arr.str(1),"
+        errorLine2="                       ~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/dict/YomitanImporter.kt"
+            line="313"
+            column="24"/>
+    </issue>
+
+    <issue
+        id="SyntheticAccessor"
+        message="Access to `private` method `str` of class `YomitanImporterKt` requires synthetic accessor"
+        errorLine1="            val character = arr.str(0)"
+        errorLine2="                            ~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/dict/YomitanImporter.kt"
+            line="321"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="SyntheticAccessor"
+        message="Access to `private` method `str` of class `YomitanImporterKt` requires synthetic accessor"
+        errorLine1="                mode = arr.str(1),"
+        errorLine2="                       ~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/dict/YomitanImporter.kt"
+            line="326"
+            column="24"/>
+    </issue>
+
+    <issue
+        id="TypographyQuotes"
+        message="Replace apostrophe (&apos;) with typographic apostrophe (’, &amp;#8217;) ?"
+        errorLine1="    &lt;string name=&quot;accessibility_description&quot;>Lets the bubble\&apos;s quick lookup and one-off scans take a screenshot of the screen without asking for screen sharing every time. It only captures the screen when you box a word with the bubble; it reads no app content and nothing leaves your phone. Auto OCR and sentence audio still use screen sharing.&lt;/string>"
+        errorLine2="                                                             ~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="9"
+            column="62"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toUri` instead?"
+        errorLine1="                                    Intent(Intent.ACTION_VIEW, Uri.parse(&quot;market://details?id=com.ichi2.anki&quot;))"
+        errorLine2="                                                               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/ui/screens/AnkiScreen.kt"
+            line="216"
+            column="64"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toUri` instead?"
+        errorLine1="            val intent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse(&quot;package:${context.packageName}&quot;))"
+        errorLine2="                                                                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/update/AppUpdater.kt"
+            line="162"
+            column="77"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="    private val dimPaint = Paint().apply { color = Color.parseColor(&quot;#80000000&quot;) }"
+        errorLine2="                                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/overlay/AreaSelectorView.kt"
+            line="38"
+            column="52"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="    private val dimPaint = Paint().apply { color = Color.parseColor(&quot;#80000000&quot;) }"
+        errorLine2="                                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/overlay/AreaSelectorView.kt"
+            line="38"
+            column="52"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="        color = Color.parseColor(&quot;#4CD9B4&quot;)"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/overlay/AreaSelectorView.kt"
+            line="40"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="        color = Color.parseColor(&quot;#4CD9B4&quot;)"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/overlay/AreaSelectorView.kt"
+            line="40"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="    private val selectedPaint = Paint(borderPaint).apply { strokeWidth = dp(3f); color = Color.parseColor(&quot;#FFD54F&quot;) }"
+        errorLine2="                                                                                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/overlay/AreaSelectorView.kt"
+            line="44"
+            column="90"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="    private val selectedPaint = Paint(borderPaint).apply { strokeWidth = dp(3f); color = Color.parseColor(&quot;#FFD54F&quot;) }"
+        errorLine2="                                                                                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/overlay/AreaSelectorView.kt"
+            line="44"
+            column="90"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="    private val handlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor(&quot;#FFD54F&quot;) }"
+        errorLine2="                                                                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/overlay/AreaSelectorView.kt"
+            line="45"
+            column="76"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="    private val handlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor(&quot;#FFD54F&quot;) }"
+        errorLine2="                                                                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/overlay/AreaSelectorView.kt"
+            line="45"
+            column="76"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="    private val deletePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor(&quot;#E53935&quot;) }"
+        errorLine2="                                                                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/overlay/AreaSelectorView.kt"
+            line="46"
+            column="76"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="    private val deletePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor(&quot;#E53935&quot;) }"
+        errorLine2="                                                                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/overlay/AreaSelectorView.kt"
+            line="46"
+            column="76"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="            setBackgroundColor(Color.parseColor(&quot;#E6101C18&quot;))"
+        errorLine2="                               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/overlay/AreaSelectorView.kt"
+            line="74"
+            column="32"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="        setTextColor(Color.parseColor(&quot;#9FB8AE&quot;))"
+        errorLine2="                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/overlay/AreaSelectorView.kt"
+            line="113"
+            column="22"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="        setTextColor(if (primary) Color.parseColor(&quot;#0B201A&quot;) else Color.WHITE)"
+        errorLine2="                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/overlay/AreaSelectorView.kt"
+            line="144"
+            column="35"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="        setBackgroundColor(if (primary) Color.parseColor(&quot;#4CD9B4&quot;) else Color.parseColor(&quot;#33FFFFFF&quot;))"
+        errorLine2="                                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/overlay/AreaSelectorView.kt"
+            line="145"
+            column="41"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="        setBackgroundColor(if (primary) Color.parseColor(&quot;#4CD9B4&quot;) else Color.parseColor(&quot;#33FFFFFF&quot;))"
+        errorLine2="                                                                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/overlay/AreaSelectorView.kt"
+            line="145"
+            column="74"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `Canvas.withSave` instead?"
+        errorLine1="        canvas.save()"
+        errorLine2="        ~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/overlay/AreaSelectorView.kt"
+            line="166"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `Bitmap.scale` instead?"
+        errorLine1="            return Bitmap.createScaledBitmap(crop, (crop.width * scale).roundToInt(), (crop.height * scale).roundToInt(), true)"
+        errorLine2="                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/book/BookPage.kt"
+            line="105"
+            column="20"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="        color = Color.parseColor(&quot;#1B5E4A&quot;)"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/overlay/BubbleView.kt"
+            line="29"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="        color = Color.parseColor(&quot;#1B5E4A&quot;)"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/overlay/BubbleView.kt"
+            line="29"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="        color = Color.parseColor(&quot;#E8F5F0&quot;)"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/overlay/BubbleView.kt"
+            line="32"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="        color = Color.parseColor(&quot;#E8F5F0&quot;)"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/overlay/BubbleView.kt"
+            line="32"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="        color = Color.parseColor(&quot;#40000000&quot;)"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/overlay/BubbleView.kt"
+            line="43"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="        color = Color.parseColor(&quot;#40000000&quot;)"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/overlay/BubbleView.kt"
+            line="43"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="    private val dimPaint = Paint().apply { color = Color.parseColor(&quot;#99000000&quot;) }"
+        errorLine2="                                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/overlay/CaptureOverlayView.kt"
+            line="36"
+            column="52"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="    private val dimPaint = Paint().apply { color = Color.parseColor(&quot;#99000000&quot;) }"
+        errorLine2="                                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/overlay/CaptureOverlayView.kt"
+            line="36"
+            column="52"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="        color = Color.parseColor(&quot;#4CD9B4&quot;)"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/overlay/CaptureOverlayView.kt"
+            line="38"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="        color = Color.parseColor(&quot;#4CD9B4&quot;)"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/overlay/CaptureOverlayView.kt"
+            line="38"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="        color = Color.parseColor(&quot;#4CD9B4&quot;)"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/overlay/CaptureOverlayView.kt"
+            line="43"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="        color = Color.parseColor(&quot;#4CD9B4&quot;)"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/overlay/CaptureOverlayView.kt"
+            line="43"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="            setBackgroundColor(Color.parseColor(&quot;#B31B5E4A&quot;))"
+        errorLine2="                               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/overlay/CaptureOverlayView.kt"
+            line="68"
+            column="32"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="            setBackgroundColor(Color.parseColor(&quot;#B3101C18&quot;))"
+        errorLine2="                               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/overlay/CaptureOverlayView.kt"
+            line="83"
+            column="32"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="            setTextColor(if (primary) Color.parseColor(&quot;#0B201A&quot;) else Color.WHITE)"
+        errorLine2="                                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/overlay/CaptureOverlayView.kt"
+            line="114"
+            column="39"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="            setBackgroundColor(if (primary) Color.parseColor(&quot;#4CD9B4&quot;) else Color.parseColor(&quot;#33FFFFFF&quot;))"
+        errorLine2="                                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/overlay/CaptureOverlayView.kt"
+            line="115"
+            column="45"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="            setBackgroundColor(if (primary) Color.parseColor(&quot;#4CD9B4&quot;) else Color.parseColor(&quot;#33FFFFFF&quot;))"
+        errorLine2="                                                                             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/overlay/CaptureOverlayView.kt"
+            line="115"
+            column="78"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `Bitmap.scale` instead?"
+        errorLine1="            val scaled = if (w != bitmap.width || h != bitmap.height) Bitmap.createScaledBitmap(bitmap, w, h, true) else bitmap"
+        errorLine2="                                                                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/anki/CardMiner.kt"
+            line="119"
+            column="71"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toUri` instead?"
+        errorLine1="                val uri = android.net.Uri.parse(&quot;content://com.ichi2.anki.flashcards/models/$id/templates&quot;)"
+        errorLine2="                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/debug/java/io/github/wilsonnet/droidsentenceminer/debug/DebugApi.kt"
+            line="271"
+            column="27"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `Bitmap.scale` instead?"
+        errorLine1="            Bitmap.createScaledBitmap(decoded, (decoded.width * scale).toInt().coerceAtLeast(1), (decoded.height * scale).toInt().coerceAtLeast(1), true)"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/dict/DictMedia.kt"
+            line="197"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toUri` instead?"
+        errorLine1="        Intent(Intent.ACTION_VIEW, Uri.parse(&quot;market://details?id=$DRIVE_PACKAGE&quot;))"
+        errorLine2="                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/ui/screens/DriveImportSheet.kt"
+            line="426"
+            column="36"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toUri` instead?"
+        errorLine1="            Intent(Intent.ACTION_VIEW, Uri.parse(&quot;https://play.google.com/store/apps/details?id=$DRIVE_PACKAGE&quot;))"
+        errorLine2="                                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/ui/screens/DriveImportSheet.kt"
+            line="433"
+            column="40"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toUri` instead?"
+        errorLine1="        Uri.parse(&quot;package:${context.packageName}&quot;),"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/ui/screens/HomeScreen.kt"
+            line="458"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `Bitmap.scale` instead?"
+        errorLine1="        return Bitmap.createScaledBitmap(bitmap, outW, outH, true)"
+        errorLine2="               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/ocr/ImagePreprocessor.kt"
+            line="36"
+            column="16"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX function `createBitmap` instead?"
+        errorLine1="        val out = Bitmap.createBitmap(bitmap.width, bitmap.height, Bitmap.Config.ARGB_8888)"
+        errorLine2="                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/ocr/ImagePreprocessor.kt"
+            line="41"
+            column="19"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `Bitmap.scale` instead?"
+        errorLine1="        val scaled = Bitmap.createScaledBitmap(bitmap, lb.width, lb.height, true)"
+        errorLine2="                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/ocr/MeikiOcr.kt"
+            line="105"
+            column="22"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX function `createBitmap` instead?"
+        errorLine1="    private val recCanvas = Bitmap.createBitmap(MeikiDecoder.REC_WIDTH, MeikiDecoder.REC_HEIGHT, Bitmap.Config.ARGB_8888)"
+        errorLine2="                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/ocr/MeikiOcr.kt"
+            line="262"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX function `createBitmap` instead?"
+        errorLine1="        val canvas = Bitmap.createBitmap(max(crop.width, QUICK_MIN_OCR_W), max(crop.height, QUICK_MIN_OCR_H), Bitmap.Config.ARGB_8888)"
+        errorLine2="                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/overlay/OverlayService.kt"
+            line="494"
+            column="22"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `Bitmap.get` instead?"
+        errorLine1="            drawColor(crop.getPixel(0, 0) or 0xFF000000.toInt())"
+        errorLine2="                      ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/overlay/OverlayService.kt"
+            line="496"
+            column="23"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `Bitmap.scale` instead?"
+        errorLine1="        val scaled = Bitmap.createScaledBitmap(bitmap, w, h, true)"
+        errorLine2="                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/ocr/PaddleOcr.kt"
+            line="74"
+            column="22"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX function `createBitmap` instead?"
+        errorLine1="        val line = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)"
+        errorLine2="                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/ocr/PaddleOcr.kt"
+            line="112"
+            column="20"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="    private val dimPaint = Paint().apply { color = Color.parseColor(&quot;#33000000&quot;) }"
+        errorLine2="                                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/overlay/QuickSelectView.kt"
+            line="28"
+            column="52"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="    private val dimPaint = Paint().apply { color = Color.parseColor(&quot;#33000000&quot;) }"
+        errorLine2="                                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/overlay/QuickSelectView.kt"
+            line="28"
+            column="52"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="    private val boxPaint = Paint().apply { color = Color.parseColor(&quot;#264CD9B4&quot;) }"
+        errorLine2="                                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/overlay/QuickSelectView.kt"
+            line="29"
+            column="52"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="    private val boxPaint = Paint().apply { color = Color.parseColor(&quot;#264CD9B4&quot;) }"
+        errorLine2="                                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/overlay/QuickSelectView.kt"
+            line="29"
+            column="52"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="        color = Color.parseColor(&quot;#4CD9B4&quot;)"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/overlay/QuickSelectView.kt"
+            line="31"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="        color = Color.parseColor(&quot;#4CD9B4&quot;)"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/overlay/QuickSelectView.kt"
+            line="31"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="    private val hintBackground = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor(&quot;#B31B5E4A&quot;) }"
+        errorLine2="                                                                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/overlay/QuickSelectView.kt"
+            line="35"
+            column="79"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="    private val hintBackground = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor(&quot;#B31B5E4A&quot;) }"
+        errorLine2="                                                                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/overlay/QuickSelectView.kt"
+            line="35"
+            column="79"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX function `createBitmap` instead?"
+        errorLine1="    val band = Bitmap.createBitmap(paddedWidth, cropH, Bitmap.Config.ARGB_8888)"
+        errorLine2="               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/capture/ScreenCaptureManager.kt"
+            line="444"
+            column="16"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX function `createBitmap` instead?"
+        errorLine1="    val padded = Bitmap.createBitmap(paddedWidth, height, Bitmap.Config.ARGB_8888)"
+        errorLine2="                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/capture/ScreenCaptureManager.kt"
+            line="462"
+            column="18"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `Bitmap.scale` instead?"
+        errorLine1="            Bitmap.createScaledBitmap(frame, (frame.width * scale).roundToInt(), (frame.height * scale).roundToInt(), true)"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/textlog/TextLog.kt"
+            line="140"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="ClickableViewAccessibility"
+        message="Custom view `AreaSelectorView` overrides `onTouchEvent` but not `performClick`"
+        errorLine1="    override fun onTouchEvent(event: MotionEvent): Boolean {"
+        errorLine2="                 ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/overlay/AreaSelectorView.kt"
+            line="183"
+            column="18"/>
+    </issue>
+
+    <issue
+        id="ClickableViewAccessibility"
+        message="Custom view `BubbleView` overrides `onTouchEvent` but not `performClick`"
+        errorLine1="    override fun onTouchEvent(event: MotionEvent): Boolean {"
+        errorLine2="                 ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/overlay/BubbleView.kt"
+            line="89"
+            column="18"/>
+    </issue>
+
+    <issue
+        id="ClickableViewAccessibility"
+        message="Custom view `CaptureOverlayView` overrides `onTouchEvent` but not `performClick`"
+        errorLine1="    override fun onTouchEvent(event: MotionEvent): Boolean {"
+        errorLine2="                 ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/overlay/CaptureOverlayView.kt"
+            line="147"
+            column="18"/>
+    </issue>
+
+    <issue
+        id="ClickableViewAccessibility"
+        message="`onTouch` lambda should call `View#performClick` when a click is detected"
+        errorLine1="            setOnTouchListener { _, event ->"
+        errorLine2="                               ^">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/overlay/ScreenDictionary.kt"
+            line="298"
+            column="32"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="Do not concatenate text displayed with `setText`. Use resource string with placeholders."
+        errorLine1="            text = &quot;Draw boxes over the game&apos;s text ($orientationLabel). Drag a box to move it, corners to resize, &quot; +"
+        errorLine2="                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/overlay/AreaSelectorView.kt"
+            line="78"
+            column="20"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="Do not concatenate text displayed with `setText`. Use resource string with placeholders."
+        errorLine1="            text = &quot;Draw boxes over the game&apos;s text ($orientationLabel). Drag a box to move it, corners to resize, &quot; +"
+        errorLine2="                   ^">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/overlay/AreaSelectorView.kt"
+            line="78"
+            column="20"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="String literal in `setText` can not be translated. Use Android resources instead."
+        errorLine1="            text = &quot;Draw boxes over the game&apos;s text ($orientationLabel). Drag a box to move it, corners to resize, &quot; +"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/overlay/AreaSelectorView.kt"
+            line="78"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="String literal in `setText` can not be translated. Use Android resources instead."
+        errorLine1="            text = &quot;Draw boxes over the game&apos;s text ($orientationLabel). Drag a box to move it, corners to resize, &quot; +"
+        errorLine2="                                                                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/overlay/AreaSelectorView.kt"
+            line="78"
+            column="71"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="String literal in `setText` can not be translated. Use Android resources instead."
+        errorLine1="                &quot;× to delete. Drag ⠿ to move this bar.&quot;"
+        errorLine2="                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/io/github/wilsonnet/droidsentenceminer/overlay/AreaSelectorView.kt"
+            line="79"
+            column="18"/>
+    </issue>
+
+</issues>

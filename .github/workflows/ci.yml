@@ -1,0 +1,94 @@
+name: CI
+
+# Every pull request (and push to main) must pass the same gate contributors run locally:
+#   ./gradlew detekt detektDebug detektDebugUnitTest lintDebug testDebugUnitTest assembleDebug
+# detekt runs every rule (ktlint formatting, Compose rules, module-boundary imports) and Android Lint
+# every check, warnings as errors; findings older than the linter are in app/*baseline*.xml.
+# ArchitectureTest (part of testDebugUnitTest) enforces the language-module structure.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android:
+    name: Lint, test and build (app)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v5  # v6 adds proprietary caching terms
+
+      - name: detekt (all rules, type resolution)
+        run: ./gradlew detekt detektDebug detektDebugUnitTest --continue --console=plain
+
+      - name: Android Lint (all checks, warnings as errors)
+        if: success() || failure()
+        run: ./gradlew lintDebug --console=plain
+
+      - name: Unit + architecture tests
+        if: success() || failure()
+        run: ./gradlew testDebugUnitTest --console=plain
+
+      - name: Build debug APK
+        run: ./gradlew assembleDebug --console=plain
+
+      - name: Upload detekt findings to code scanning
+        # Pushes to main only: a fork's PR token can't write security events.
+        if: always() && github.event_name == 'push'
+        uses: github/codeql-action/upload-sarif@v4
+        continue-on-error: true
+        with:
+          sarif_file: app/build/reports/detekt/
+          category: detekt
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: lint-and-test-reports
+          path: |
+            app/build/reports/
+            app/build/test-results/
+          retention-days: 14
+
+  site:
+    name: Site check and build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: site
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 12.15.0
+          run_install: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: site/pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+      - name: Type-check and lint (astro check + biome, warnings as errors)
+        run: pnpm run check
+      - run: pnpm run build

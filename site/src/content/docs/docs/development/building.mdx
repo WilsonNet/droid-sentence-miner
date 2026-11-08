@@ -31,6 +31,22 @@ echo "sdk.dir=$ANDROID_HOME" > local.properties
 On macOS install `openjdk@21` and use the same SDK layout. The repository's `AGENTS.md` has the
 exact Homebrew path.
 
+
+## Lint and checks
+
+Pull requests run the same gate as `.github/workflows/ci.yml`:
+
+```bash
+./gradlew detekt detektDebug detektDebugUnitTest   # every detekt rule + ktlint + Compose rules
+./gradlew lintDebug                                # every Android Lint check, warnings are errors
+./gradlew testDebugUnitTest                        # unit tests + ArchitectureTest
+```
+
+`ArchitectureTest` keeps the language modules separate (generic code talks to the current
+language through `LanguageModule`, never to `lang/ja` or `lang/en` directly). Findings older than
+the linter are baselined; new code must be clean. Details in
+[docs/building.md](https://github.com/WilsonNet/droid-sentence-miner/blob/main/docs/building.md#linting-and-module-rules).
+
 ## Build and test
 
 ```bash

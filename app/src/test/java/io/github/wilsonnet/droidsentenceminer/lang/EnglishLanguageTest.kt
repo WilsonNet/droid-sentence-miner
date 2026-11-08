@@ -102,4 +102,14 @@ class EnglishLanguageTest {
         assertEquals(EnglishLanguage, Languages.byCode("en"))
         assertEquals(JapaneseLanguage, Languages.byCode("xx"))
     }
+
+    @Test
+    fun `each language queries only its own word audio sources`() {
+        val japanese = JapaneseLanguage.wordAudioSources.toSet()
+        val english = EnglishLanguage.wordAudioSources.toSet()
+        assertTrue(japanese.isNotEmpty() && english.isNotEmpty())
+        assertTrue("no shared sources: $japanese vs $english", japanese.intersect(english).isEmpty())
+        assertFalse(WordAudioSource.WIKTIONARY in japanese)
+        assertFalse(WordAudioSource.JAPANESE_POD_101 in english)
+    }
 }
