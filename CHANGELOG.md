@@ -6,6 +6,8 @@ versions are the `v*` tags that publish a signed APK on
 
 ## [Unreleased]
 
+## [0.6.0] — 2026-11-08
+
 ### Added
 - **Study language: Japanese or English.** A first-run screen asks what you are learning
   (Japanese stays the main focus and is preselected); switch any time in *Settings → Language*.
@@ -160,7 +162,8 @@ First release.
 - Microphone fallback for apps that block audio capture; typewriter-text handling for visual novels.
 - Tablet/landscape layout with a navigation rail.
 
-[Unreleased]: https://github.com/WilsonNet/droid-sentence-miner/compare/v0.5.1...HEAD
+[Unreleased]: https://github.com/WilsonNet/droid-sentence-miner/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/WilsonNet/droid-sentence-miner/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/WilsonNet/droid-sentence-miner/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/WilsonNet/droid-sentence-miner/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/WilsonNet/droid-sentence-miner/compare/v0.3.0...v0.4.0
