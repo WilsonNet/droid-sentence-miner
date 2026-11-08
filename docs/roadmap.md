@@ -5,6 +5,9 @@
 Ideas and known gaps, roughly in priority order. Shipped work moves to [CHANGELOG.md](../CHANGELOG.md)
 (the `dsm-docs` skill checks this list against the code at the end of every task).
 
+- LLM help with your own API key (DeepSeek or any OpenAI-compatible API): explain the sentence
+  or the word in context in the popup, optionally into a card field; off by default, key kept on
+  device ([#2](https://github.com/WilsonNet/droid-sentence-miner/issues/2)).
 - More study languages: a module is `lang/<code>/` + registry entry + recommended dictionaries
   (wty has Wiktionary dictionaries for dozens of languages, PP-OCRv6 reads 50). Spanish,
   Chinese and Korean are the obvious next ones; Chinese/Korean need their own segmentation.
