@@ -3,7 +3,7 @@ package io.github.wilsonnet.droidsentenceminer.capture
 import android.graphics.Bitmap
 import android.util.Log
 import io.github.wilsonnet.droidsentenceminer.core.DsmPrefs
-import io.github.wilsonnet.droidsentenceminer.ocr.JapaneseTextScore
+import io.github.wilsonnet.droidsentenceminer.lang.Languages
 import io.github.wilsonnet.droidsentenceminer.ocr.MlKitJapaneseOcr
 import io.github.wilsonnet.droidsentenceminer.ocr.OcrEngine
 import io.github.wilsonnet.droidsentenceminer.ocr.OcrPostProcessor
@@ -203,7 +203,7 @@ class AutoOcrController(
             TextSimilarity.clean(crops.map { dialogueText(engine, it, dropNoise) }.joinToString("\n"))
         }.getOrElse { return fast }
         if (text.isBlank()) return fast
-        return if (JapaneseTextScore.score(text) >= JapaneseTextScore.score(fast)) text else fast
+        return if (Languages.current.textScore(text) >= Languages.current.textScore(fast)) text else fast
     }
 
     private suspend fun dialogueText(engine: OcrEngine, crop: Bitmap, dropNoise: Boolean): String {
@@ -249,10 +249,7 @@ class AutoOcrController(
         textLog.endLine(id, atMs)
     }
 
-    private fun looksJapanese(text: String): Boolean {
-        val japanese = text.count { JapaneseTextScore.isJapanese(it) }
-        return japanese >= 2 && JapaneseTextScore.score(text) >= 3.0
-    }
+    private fun looksJapanese(text: String): Boolean = Languages.current.looksLikeText(text)
 
     companion object {
         private const val TAG = "DSM-AutoOcr"

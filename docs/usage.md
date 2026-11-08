@@ -13,6 +13,10 @@ Step by step from a fresh install. The website has the same flow with screenshot
 
 ## Setup and daily use
 
+0. **Language** — the first launch asks what you are learning: Japanese (default) or English.
+   Change it later in *Settings → Language*, where English also offers its OCR pack (23 MB).
+   English: install *Wiktionary English* (and *Wiktionary English IPA*) under *Settings →
+   Dictionaries*; the steps below are the same.
 1. **Dictionaries** — open *Settings → Dictionaries* and install **Jitendex** and **Kanjium pitch accents**
    with one tap each (or import any Yomitan `.zip` with *From files* or *Google Drive*, e.g. a
    monolingual dictionary; drag it first if you want it on cards — the top dictionary is the one cards get, and the popup lets you pick another per card). In *Settings → OCR*, tap *Download meikiocr models* (31 MB).

@@ -43,7 +43,9 @@ All GET, all JSON (except `frame.png`). Regions are screen fractions unless note
 
 | Endpoint | What it does |
 | --- | --- |
-| `/state` | Service/capture status, saved region, last scan, panel state, OCR prefs; `screenText` = the screen dictionary's text layer (lines, glyph counts, bounds as fractions) and `popupOpen` |
+| `/language` | Study language and the available ones; `?set=ja\|en` switches (waits until applied), `?setup=1` reshows the first-run language screen (no data touched) |
+| `/lang_pack` | The study language's downloadable pack: name, version, `installedVersion`, loaded engine, last PaddleOCR timings; `?install=1` downloads it (blocking), `?remove=1` deletes it |
+| `/state` | `language`, `languageSetupNeeded`, plus service/capture status, saved region, last scan, panel state, OCR prefs; `screenText` = the screen dictionary's text layer (lines, glyph counts, bounds as fractions) and `popupOpen` |
 | `/request_projection` | Ask for MediaProjection consent (shows system dialog on device) |
 | `/scan?l=&t=&r=&b=` | Full pipeline: grab frame → crop → OCR → dictionary lookup. Omit the region to reuse the saved one |
 | `/frame.png?l=&t=&r=&b=` | PNG of what MediaProjection actually sees (omit region for the raw full frame) |

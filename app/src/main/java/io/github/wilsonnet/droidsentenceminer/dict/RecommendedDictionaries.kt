@@ -18,7 +18,17 @@ data class RecommendedDictionary(
     val kind: Kind = Kind.YOMITAN_ZIP,
     /** Remote Yomitan `index.json` URL for checking whether a newer revision is available. */
     val indexUrl: String? = null,
+    /** Study language ([io.github.wilsonnet.droidsentenceminer.lang.LanguageModule.code]) the dictionary is for. */
+    val language: String = "ja",
+    /** Shown first with a "Recommended" label for its language. */
+    val recommended: Boolean = false,
+    /** The installed dictionary's exact title, when [name] isn't part of it (wty titles are ids). */
+    val installedTitle: String? = null,
 ) {
+    /** Whether an installed dictionary titled [title] is this one. */
+    fun matches(title: String): Boolean = installedTitle?.equals(YomitanImporter.baseDictionaryTitle(title), ignoreCase = true)
+        ?: title.contains(name, ignoreCase = true)
+
     enum class Kind {
         YOMITAN_ZIP,
 
@@ -46,6 +56,7 @@ object RecommendedDictionaries {
             url = "https://github.com/stephenmk/stephenmk.github.io/releases/latest/download/jitendex-yomitan.zip",
             approximateSizeMb = 37.0,
             indexUrl = "https://jitendex.org/static/yomitan.json",
+            recommended = true,
         ),
         RecommendedDictionary(
             id = "jmdict",
@@ -88,7 +99,125 @@ object RecommendedDictionaries {
             approximateSizeMb = 10.9,
             indexUrl = "https://github.com/yomidevs/jmdict-yomitan/releases/latest/download/JMnedict.json",
         ),
+        // English: Wiktionary via wty (yomidevs/wiktionary-to-yomitan), CC BY-SA, rebuilt from kaikki.org dumps.
+        RecommendedDictionary(
+            id = "wty-en-en",
+            name = "Wiktionary English",
+            description = "English → English, from Wiktionary (wty-en-en): words, idioms and phrasal verbs with " +
+                "examples and inflected forms. The most complete free English dictionary for Yomitan. Recommended.",
+            url = "https://huggingface.co/datasets/daxida/wty-release/resolve/main/latest/dict/en/en/wty-en-en.zip?download=true",
+            approximateSizeMb = 110.0,
+            indexUrl = "https://huggingface.co/datasets/daxida/wty-release/resolve/main/latest/index/wty-en-en-index.json?download=true",
+            language = "en",
+            recommended = true,
+            installedTitle = "wty-en-en",
+        ),
+        RecommendedDictionary(
+            id = "wty-en-en-ipa",
+            name = "Wiktionary English IPA",
+            description = "Pronunciation (IPA, UK and US) for English words, shown in the popup and on the card.",
+            url = "https://huggingface.co/datasets/daxida/wty-release/resolve/main/latest/dict/en/en/wty-en-en-ipa.zip?download=true",
+            approximateSizeMb = 2.8,
+            indexUrl = "https://huggingface.co/datasets/daxida/wty-release/resolve/main/latest/index/wty-en-en-ipa-index.json?download=true",
+            language = "en",
+            recommended = true,
+            installedTitle = "wty-en-en-ipa",
+        ),
+        RecommendedDictionary(
+            id = "wty-en-pt",
+            name = "Wiktionary English → Portuguese",
+            description = "English words glossed in Portuguese, from the Portuguese Wiktionary (wty-en-pt). Small; pair it with Wiktionary English.",
+            url = "https://huggingface.co/datasets/daxida/wty-release/resolve/main/latest/dict/en/pt/wty-en-pt.zip?download=true",
+            approximateSizeMb = 1.0,
+            indexUrl = "https://huggingface.co/datasets/daxida/wty-release/resolve/main/latest/index/wty-en-pt-index.json?download=true",
+            language = "en",
+            installedTitle = "wty-en-pt",
+        ),
+        RecommendedDictionary(
+            id = "wty-en-es",
+            name = "Wiktionary English → Spanish",
+            description = "English words glossed in Spanish, from the Spanish Wiktionary (wty-en-es). Small; pair it with Wiktionary English.",
+            url = "https://huggingface.co/datasets/daxida/wty-release/resolve/main/latest/dict/en/es/wty-en-es.zip?download=true",
+            approximateSizeMb = 1.6,
+            indexUrl = "https://huggingface.co/datasets/daxida/wty-release/resolve/main/latest/index/wty-en-es-index.json?download=true",
+            language = "en",
+            installedTitle = "wty-en-es",
+        ),
+        RecommendedDictionary(
+            id = "wty-en-de",
+            name = "Wiktionary English → German",
+            description = "English words glossed in German, from the German Wiktionary (wty-en-de). Small; pair it with Wiktionary English.",
+            url = "https://huggingface.co/datasets/daxida/wty-release/resolve/main/latest/dict/en/de/wty-en-de.zip?download=true",
+            approximateSizeMb = 1.9,
+            indexUrl = "https://huggingface.co/datasets/daxida/wty-release/resolve/main/latest/index/wty-en-de-index.json?download=true",
+            language = "en",
+            installedTitle = "wty-en-de",
+        ),
+        RecommendedDictionary(
+            id = "wty-en-fr",
+            name = "Wiktionary English → French",
+            description = "English words glossed in French, from the French Wiktionary (wty-en-fr). Small; pair it with Wiktionary English.",
+            url = "https://huggingface.co/datasets/daxida/wty-release/resolve/main/latest/dict/en/fr/wty-en-fr.zip?download=true",
+            approximateSizeMb = 6.8,
+            indexUrl = "https://huggingface.co/datasets/daxida/wty-release/resolve/main/latest/index/wty-en-fr-index.json?download=true",
+            language = "en",
+            installedTitle = "wty-en-fr",
+        ),
+        RecommendedDictionary(
+            id = "wty-en-it",
+            name = "Wiktionary English → Italian",
+            description = "English words glossed in Italian, from the Italian Wiktionary (wty-en-it). Small; pair it with Wiktionary English.",
+            url = "https://huggingface.co/datasets/daxida/wty-release/resolve/main/latest/dict/en/it/wty-en-it.zip?download=true",
+            approximateSizeMb = 1.0,
+            indexUrl = "https://huggingface.co/datasets/daxida/wty-release/resolve/main/latest/index/wty-en-it-index.json?download=true",
+            language = "en",
+            installedTitle = "wty-en-it",
+        ),
+        RecommendedDictionary(
+            id = "wty-en-ru",
+            name = "Wiktionary English → Russian",
+            description = "English words glossed in Russian, from the Russian Wiktionary (wty-en-ru). Small; pair it with Wiktionary English.",
+            url = "https://huggingface.co/datasets/daxida/wty-release/resolve/main/latest/dict/en/ru/wty-en-ru.zip?download=true",
+            approximateSizeMb = 4.1,
+            indexUrl = "https://huggingface.co/datasets/daxida/wty-release/resolve/main/latest/index/wty-en-ru-index.json?download=true",
+            language = "en",
+            installedTitle = "wty-en-ru",
+        ),
+        RecommendedDictionary(
+            id = "wty-en-zh",
+            name = "Wiktionary English → Chinese",
+            description = "English words glossed in Chinese, from the Chinese Wiktionary (wty-en-zh). Small; pair it with Wiktionary English.",
+            url = "https://huggingface.co/datasets/daxida/wty-release/resolve/main/latest/dict/en/zh/wty-en-zh.zip?download=true",
+            approximateSizeMb = 5.0,
+            indexUrl = "https://huggingface.co/datasets/daxida/wty-release/resolve/main/latest/index/wty-en-zh-index.json?download=true",
+            language = "en",
+            installedTitle = "wty-en-zh",
+        ),
+        RecommendedDictionary(
+            id = "wty-en-ja",
+            name = "Wiktionary English → Japanese",
+            description = "English words glossed in Japanese, from the Japanese Wiktionary (wty-en-ja). Small; pair it with Wiktionary English.",
+            url = "https://huggingface.co/datasets/daxida/wty-release/resolve/main/latest/dict/en/ja/wty-en-ja.zip?download=true",
+            approximateSizeMb = 3.7,
+            indexUrl = "https://huggingface.co/datasets/daxida/wty-release/resolve/main/latest/index/wty-en-ja-index.json?download=true",
+            language = "en",
+            installedTitle = "wty-en-ja",
+        ),
+        RecommendedDictionary(
+            id = "wty-en-ko",
+            name = "Wiktionary English → Korean",
+            description = "English words glossed in Korean, from the Korean Wiktionary (wty-en-ko). Small; pair it with Wiktionary English.",
+            url = "https://huggingface.co/datasets/daxida/wty-release/resolve/main/latest/dict/en/ko/wty-en-ko.zip?download=true",
+            approximateSizeMb = 1.2,
+            indexUrl = "https://huggingface.co/datasets/daxida/wty-release/resolve/main/latest/index/wty-en-ko-index.json?download=true",
+            language = "en",
+            installedTitle = "wty-en-ko",
+        ),
     )
+
+    /** The dictionaries offered for study language [code], recommended ones first. */
+    fun forLanguage(code: String): List<RecommendedDictionary> =
+        ALL.filter { it.language == code }.sortedByDescending { it.recommended }
 
     const val PITCH_ID = "kanjium"
     const val KANJIUM_TITLE = "Kanjium Pitch Accents"
@@ -231,9 +360,7 @@ class DictDownloader {
         val result = LinkedHashMap<Long, DictionaryUpdate>()
         for (dict in dictionaries) {
             val localIndex = DictArchive.index(dict)
-            val matchedRec = RecommendedDictionaries.ALL.firstOrNull {
-                it.indexUrl != null && dict.title.contains(it.name, ignoreCase = true)
-            }
+            val matchedRec = RecommendedDictionaries.ALL.firstOrNull { it.indexUrl != null && it.matches(dict.title) }
             val indexUrl = localIndex?.indexUrl ?: matchedRec?.indexUrl ?: continue
             val remote = fetchIndex(indexUrl) ?: continue
             val downloadUrl = remote.downloadUrl ?: localIndex?.downloadUrl ?: matchedRec?.url ?: continue

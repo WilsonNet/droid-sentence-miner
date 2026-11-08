@@ -123,7 +123,23 @@ DSM auto OCR + mic fallback on it): see the `dsm-nightshade` skill.
   ```
 - **Fullscreen hardsub region** (`MH6JpXmv4zI`): `l=0.06, t=0.68, r=0.94, b=0.92` (`2816 × 513`).
 
+- **English test video**: TED `arj7oStGLkU` (manual English captions, CC button already on):
+  `am start -a android.intent.action.VIEW -d "https://www.youtube.com/watch?v=arj7oStGLkU\&t=60" -p com.google.android.youtube`.
+  Fullscreen captions sit at y ≈ 0.70–0.88; area `l=0.03 t=0.70 r=0.97 b=0.93` (a taller area
+  picks up the slide behind the speaker). Bring YouTube back after `/startoverlay` with
+  `monkey -p com.google.android.youtube -c android.intent.category.LAUNCHER 1` (keeps the video
+  and fullscreen; a new VIEW intent reloads it).
+- **Force landscape while testing**: `settings put system accelerometer_rotation 0; settings put
+  system user_rotation 1`; restore with `accelerometer_rotation 1; user_rotation 0`. HyperOS may
+  reset it when an app's own orientation request wins — re-check `wm`/screenshots.
+- **After `adb install -r` the app isn't running**: `/startoverlay` etc. get an empty reply;
+  `am start -n …/.MainActivity` first.
+
 ## 6. Droid Sentence Miner App UI
+
+- **First-run language screen** (`LanguageSetupScreen`, portrait 2136×3200): Japanese row
+  (1068, 676), English row (1068, 914), *Continue* (1068, 1174). Reshow with `/language?setup=1`.
+- **Settings → Language** is the first card of Settings (rail `Settings` at (110, 1880) portrait).
 
 - **Navigation**: `Home` · `Book` · `Texts` · `Settings`.
   - Width `< 600 dp` (phones, or tablet in `wm size 1080x2400`): bottom navigation bar at `y ≈ 2292`

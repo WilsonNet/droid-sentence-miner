@@ -22,7 +22,7 @@ class DictionaryPriorityTest {
 
     @Test
     fun `recommended dictionaries contains jmnedict at the bottom`() {
-        val last = RecommendedDictionaries.ALL.last()
+        val last = RecommendedDictionaries.forLanguage("ja").last()
         assertEquals("jmnedict", last.id)
         assertEquals("JMnedict", last.name)
         assertTrue(last.url.endsWith("JMnedict.zip"))

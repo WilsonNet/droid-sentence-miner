@@ -20,7 +20,7 @@ android sdk install platform-tools platforms/android-36 build-tools/35.0.0 emula
 echo "sdk.dir=$ANDROID_HOME" > local.properties
 
 # 3. Build & test
-./gradlew testDebugUnitTest          # 191 JVM unit tests
+./gradlew testDebugUnitTest          # 221 JVM unit tests
 ./gradlew connectedDebugAndroidTest  # 4 on-device tests (VAD + AAC encoding)
 ./gradlew assembleDebug              # app/build/outputs/apk/debug/app-debug.apk
 
@@ -29,6 +29,17 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
 Debug builds are labelled "Droid Sentence Miner (Dev)", have a localhost debug API for driving the app over adb (see [`.opencode/skills/dsm-debug-api`](../.opencode/skills/dsm-debug-api/SKILL.md)) and are signed with the committed `app/debug.keystore`, so they upgrade each other in place. Release builds come from the [release workflow](../.github/workflows/release.yml) on a `v*` tag.
+
+## Language packs
+
+Per-language OCR models are not in the APK: `tools/lang-packs/build_pack.py <lang> <out>` builds
+`dsm-lang-<lang>-<version>.zip` from pinned Hugging Face revisions and prints the SHA-256 to put in
+the language module's `pack`. Publish it as a release that is **not** the latest (the in-app
+updater reads `releases/latest`):
+
+```bash
+gh release create lang-en-1 out/dsm-lang-en-1.zip --latest=false --title "Language pack: English OCR v1"
+```
 
 ## Website and docs
 

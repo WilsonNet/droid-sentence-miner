@@ -1,6 +1,9 @@
 package io.github.wilsonnet.droidsentenceminer.dict
 
 import androidx.room.InvalidationTracker
+import io.github.wilsonnet.droidsentenceminer.lang.Candidate
+import io.github.wilsonnet.droidsentenceminer.lang.LanguageModule
+import io.github.wilsonnet.droidsentenceminer.lang.Languages
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.concurrent.ConcurrentHashMap
@@ -85,7 +88,7 @@ class TermLookup(
         val reasons: List<String>,
     )
 
-    private data class ScanKey(val text: String, val maxLength: Int)
+    private data class ScanKey(val text: String, val maxLength: Int, val language: String)
 
     // A tap scans its whole line (wordAt), the tap re-read scans it again, and neighbouring taps
     // hit the same subtitle: keep the last lines. Cleared on any dictionary write; a result
@@ -129,9 +132,9 @@ class TermLookup(
      * carry no glossary, sequence or term tags (empty / 0): callers only need the ranges and headwords; use
      * [lookup] for definitions. Cached per text until a dictionary table changes.
      */
-    suspend fun scan(text: String, maxLength: Int = MAX_TERM_LENGTH): List<ScannedWord> = withContext(Dispatchers.Default) {
+    suspend fun scan(text: String, maxLength: Int = Languages.current.maxTermLength): List<ScannedWord> = withContext(Dispatchers.Default) {
         if (text.isBlank()) return@withContext emptyList()
-        val key = ScanKey(text, maxLength)
+        val key = ScanKey(text, maxLength, Languages.current.code)
         scanCache[key]?.let { return@withContext it }
         val generation = cacheGeneration
         val words = scanUncached(text, maxLength)
@@ -141,19 +144,17 @@ class TermLookup(
 
     private suspend fun scanUncached(text: String, maxLength: Int): List<ScannedWord> {
         val started = System.nanoTime()
+        val language = Languages.current
         val dicts = dictionariesByPriority()
         if (dicts.isEmpty()) return emptyList()
 
         // form -> uses of that form across the text
         val formSources = HashMap<String, MutableList<FormSource>>(1024)
         for (position in text.indices) {
-            if (!isLookupable(text[position])) continue
-            val max = minOf(maxLength, text.length - position)
-            for (length in 1..max) {
-                val end = position + length
-                if (!isLookupable(text[end - 1])) continue
-                val surface = text.substring(position, end)
-                val candidates = JapaneseDeinflector.deinflect(surface)
+            if (!language.isLookupable(text[position])) continue
+            for (length in language.candidateLengths(text, position, maxLength)) {
+                val surface = text.substring(position, position + length)
+                val candidates = language.deinflect(surface)
                 for (candidate in candidates) {
                     if (candidate.term.isEmpty()) continue
                     formSources.getOrPut(candidate.term) { mutableListOf() }
@@ -180,16 +181,16 @@ class TermLookup(
             val rows = headsByForm[form] ?: continue
             for (row in rows) {
                 val dict = dicts[row.dictId] ?: continue
-                val expected = InflectionType.parseRules(row.rules)
+                val expected = language.ruleMask(row.rules)
                 for (source in sources) {
-                    if (!InflectionType.termMatches(source.conditions, expected)) continue
+                    if (!language.termMatches(source.conditions, expected)) continue
                     val term = row.toResult(dict, body = null, matchedForm = form, reasons = source.reasons)
                     val positionMap = hitsByPosition.getOrPut(source.position) { HashMap() }
                     positionMap.getOrPut(source.length) { mutableListOf() }.add(term)
                 }
             }
         }
-        val words = if (hitsByPosition.isEmpty()) emptyList() else longestMatches(text, maxLength, hitsByPosition)
+        val words = if (hitsByPosition.isEmpty()) emptyList() else longestMatches(text, maxLength, hitsByPosition, language)
         val done = System.nanoTime()
         lastScanStats = ScanStats(
             forms = formSources.size,
@@ -206,6 +207,7 @@ class TermLookup(
         text: String,
         maxLength: Int,
         hitsByPosition: Map<Int, Map<Int, List<TermResult>>>,
+        language: LanguageModule,
     ): List<ScannedWord> {
         val words = mutableListOf<ScannedWord>()
         var position = 0
@@ -227,7 +229,7 @@ class TermLookup(
             }
             val terms = lengthMap!![chosenLength]!!
             val surface = text.substring(position, position + chosenLength)
-            if (isNoiseMatch(surface, terms)) {
+            if (!language.usesSpaces && isNoiseMatch(surface, terms)) {
                 position++
                 continue
             }
@@ -249,18 +251,19 @@ class TermLookup(
      */
     suspend fun wordAt(text: String, index: Int): IntRange {
         scan(text).firstOrNull { index >= it.start && index < it.end }?.let { return it.start until it.end }
-        val from = scan(text.substring(index, minOf(text.length, index + MAX_TERM_LENGTH))).firstOrNull { it.start == 0 }
+        val from = scan(text.substring(index, minOf(text.length, index + Languages.current.maxTermLength))).firstOrNull { it.start == 0 }
         return index until index + (from?.text?.length ?: 1)
     }
 
     suspend fun lookup(word: String, allowDeinflection: Boolean = true): LookupDetails = withContext(Dispatchers.Default) {
+        val language = Languages.current
         val dicts = dictionariesByPriority()
         if (dicts.isEmpty() || word.isBlank()) {
             return@withContext LookupDetails(surface = word, terms = emptyList(), frequencies = emptyList(), kanji = emptyList())
         }
 
         val candidates = if (allowDeinflection) {
-            JapaneseDeinflector.deinflect(word)
+            language.deinflect(word)
         } else {
             listOf(Candidate(term = word, conditions = 0L))
         }
@@ -280,9 +283,9 @@ class TermLookup(
             val uses = formConditions[form] ?: continue
             for (row in rows) {
                 val dict = dicts[row.dictId] ?: continue
-                val expected = InflectionType.parseRules(row.rules)
+                val expected = language.ruleMask(row.rules)
                 val matchingUse = uses.firstOrNull { (conditions, _) ->
-                    InflectionType.termMatches(conditions, expected)
+                    language.termMatches(conditions, expected)
                 } ?: continue
                 deinflectionReasons += matchingUse.second
                 matches += HeadMatch(row, dict, form, matchingUse.second)
@@ -330,7 +333,11 @@ class TermLookup(
         enabledCache?.let { return it }
         ensureObserving()
         val generation = cacheGeneration
-        val loaded = db.dictionaryDao().getEnabled().associateBy { it.id }
+        // Only the study language's dictionaries: an English dictionary must not answer Japanese text.
+        val language = Languages.current.code
+        val loaded = db.dictionaryDao().getEnabled()
+            .filter { Languages.codeOfDictionary(it.sourceLanguage) == language }
+            .associateBy { it.id }
         if (generation == cacheGeneration) enabledCache = loaded
         return loaded
     }
@@ -417,6 +424,7 @@ class TermLookup(
             .sortedWith(
                 compareBy<TermResult> { it.dictionaryPriority }
                     .thenByDescending { if (it.expression == surface) 1 else 0 }
+                    .thenByDescending { if (it.expression.equals(surface, ignoreCase = true)) 1 else 0 }
                     .thenByDescending { if (it.reading == surface) 1 else 0 }
                     .thenBy { it.deinflectionReasons.size }
                     .thenByDescending { it.score },
@@ -439,7 +447,6 @@ class TermLookup(
     }
 
     companion object {
-        private const val MAX_TERM_LENGTH = 16
         private const val DB_CHUNK = 800
 
         /** Forms per terms query: bound twice (expression IN, reading IN), and old SQLite allows 999 args. */
@@ -453,8 +460,11 @@ class TermLookup(
             return script == Character.UnicodeScript.HIRAGANA || script == Character.UnicodeScript.KATAKANA
         }
 
+        /** Characters that can start a search term in the study language (recursive lookup taps). */
+        fun isLookupable(c: Char): Boolean = Languages.current.isLookupable(c)
+
         /** Characters that can be part of a Japanese search term. */
-        fun isLookupable(c: Char): Boolean {
+        fun isJapaneseLookupable(c: Char): Boolean {
             if (isKanji(c) || isKana(c)) return true
             return c == 'ー' || c == '々' || c == '〻' || c == 'ゝ' || c == 'ゞ' || c == 'ヽ' || c == 'ヾ'
         }

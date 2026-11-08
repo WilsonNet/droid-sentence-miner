@@ -24,6 +24,7 @@ val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "ds
 class DsmPrefs(private val context: Context) {
 
     private object Keys {
+        val language = stringPreferencesKey("language")
         val ankiProvider = stringPreferencesKey("anki_provider")
         val ankiConnectUrl = stringPreferencesKey("anki_connect_url")
         val ankiDeck = stringPreferencesKey("anki_deck")
@@ -83,6 +84,10 @@ class DsmPrefs(private val context: Context) {
         val lastScan = stringPreferencesKey("last_scan")
         val driveRecent = stringPreferencesKey("drive_recent")
     }
+
+    /** The study language's code ([io.github.wilsonnet.droidsentenceminer.lang.Languages]); null until picked. */
+    val language: Flow<String?> = context.dataStore.data.map { it[Keys.language] }
+    suspend fun setLanguage(code: String) = edit { it[Keys.language] = code }
 
     val ankiProvider: Flow<String> = context.dataStore.data.map { it[Keys.ankiProvider] ?: PROVIDER_ANKIDROID }
     val ankiConnectUrl: Flow<String> = context.dataStore.data.map { it[Keys.ankiConnectUrl] ?: DEFAULT_CONNECT_URL }

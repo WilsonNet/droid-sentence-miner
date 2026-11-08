@@ -1,5 +1,7 @@
 package io.github.wilsonnet.droidsentenceminer.textlog
 
+import io.github.wilsonnet.droidsentenceminer.lang.Languages
+
 /**
  * Turns a stream of periodic OCR reads of one screen region into text-line events.
  *
@@ -175,9 +177,17 @@ object TextSimilarity {
         val rows = text.lines().map { it.trim().replace(boxEdges, "").trim() }.filter { it.isNotEmpty() }
         val out = StringBuilder()
         for (row in rows) {
-            // Japanese wraps without spaces; keep one between Latin words split across rows.
-            if (out.isNotEmpty() && out.last().isLatinOrDigit() && row.first().isLatinOrDigit()) out.append(' ')
-            out.append(row)
+            // Japanese wraps without spaces (one is kept between Latin words); spaced languages get one.
+            if (out.isEmpty()) {
+                out.append(row)
+            } else if (Languages.current.usesSpaces) {
+                val joined = Languages.current.joinRows(out.toString(), row)
+                out.setLength(0)
+                out.append(joined)
+            } else {
+                if (out.last().isLatinOrDigit() && row.first().isLatinOrDigit()) out.append(' ')
+                out.append(row)
+            }
         }
         return out.toString()
     }

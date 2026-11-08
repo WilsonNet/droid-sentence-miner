@@ -86,8 +86,13 @@ fun HomeScreen(modifier: Modifier = Modifier) {
         )
     }
     val running by OverlayService.observeRunning().collectAsState()
-    val dictionaries by remember { container.db.dictionaryDao().observeAll() }
+    val allDictionaries by remember { container.db.dictionaryDao().observeAll() }
         .collectAsState(initial = emptyList())
+    val languageCode by container.languageChoice.collectAsState()
+    val language = io.github.wilsonnet.droidsentenceminer.lang.Languages.byCode(languageCode)
+    val dictionaries = remember(allDictionaries, language) {
+        allDictionaries.filter { io.github.wilsonnet.droidsentenceminer.lang.Languages.codeOfDictionary(it.sourceLanguage) == language.code }
+    }
     val dictUpdates by container.dictUpdates.collectAsState()
     val recentCards by remember { container.db.minedCardDao().observeRecent() }
         .collectAsState(initial = emptyList())
@@ -175,7 +180,7 @@ fun HomeScreen(modifier: Modifier = Modifier) {
     ) {
         Text("Droid Sentence Miner", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
         Text(
-            "OCR Japanese text from any app, look words up with Yomitan dictionaries and mine them straight to Anki.",
+            "OCR ${language.displayName} text from any app, look words up with Yomitan dictionaries and mine them straight to Anki.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -203,7 +208,7 @@ fun HomeScreen(modifier: Modifier = Modifier) {
                     }
                 }
                 StatusLine("Dictionaries installed", dictionaries.isNotEmpty(), "${dictionaries.size}")
-                dictUpdates.values.firstOrNull()?.let { update ->
+                dictUpdates.values.firstOrNull { u -> dictionaries.any { it.id == u.dictId } }?.let { update ->
                     val status = dictUpdateStatus
                     if (status != null) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -254,8 +259,8 @@ fun HomeScreen(modifier: Modifier = Modifier) {
                     it.title == io.github.wilsonnet.droidsentenceminer.dict.RecommendedDictionaries.KANJIUM_TITLE ||
                         it.title.contains("pitch", ignoreCase = true) || it.title.contains("NHK")
                 }
-                StatusLine("Pitch accent dictionary", hasPitch)
-                if (!hasPitch) {
+                if (language.code == "ja") StatusLine("Pitch accent dictionary", hasPitch)
+                if (!hasPitch && language.code == "ja") {
                     val status = pitchStatus
                     if (status != null) {
                         Text(status, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
@@ -369,7 +374,7 @@ fun HomeScreen(modifier: Modifier = Modifier) {
                 Text("Recent mined cards", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 if (recentCards.isEmpty()) {
                     Text(
-                        "Nothing yet. Scan some Japanese and tap Add to Anki.",
+                        "Nothing yet. Scan some ${language.displayName} and tap Add to Anki.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -411,9 +416,12 @@ fun HomeScreen(modifier: Modifier = Modifier) {
         Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text("Getting started", fontWeight = FontWeight.SemiBold)
-                Text("1. Import a Yomitan dictionary (Jitendex or JMdict) in Settings → Dictionaries", style = MaterialTheme.typography.bodySmall)
+                Text(
+                    "1. Install a dictionary (" + (if (language.code == "ja") "Jitendex or JMdict" else "the recommended one") + ") in Settings → Dictionaries",
+                    style = MaterialTheme.typography.bodySmall,
+                )
                 Text("2. Configure Anki in Settings → Anki", style = MaterialTheme.typography.bodySmall)
-                Text("3. Start the floating bubble and tap it over Japanese text", style = MaterialTheme.typography.bodySmall)
+                Text("3. Start the floating bubble and tap it over ${language.displayName} text", style = MaterialTheme.typography.bodySmall)
             }
         }
     }

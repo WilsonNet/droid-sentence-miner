@@ -1,7 +1,7 @@
 package io.github.wilsonnet.droidsentenceminer.book
 
 import io.github.wilsonnet.droidsentenceminer.ocr.BoundingBox
-import io.github.wilsonnet.droidsentenceminer.ocr.JapaneseTextScore
+import io.github.wilsonnet.droidsentenceminer.lang.Languages
 import io.github.wilsonnet.droidsentenceminer.ocr.OcrLine
 import io.github.wilsonnet.droidsentenceminer.ocr.OcrPostProcessor
 import io.github.wilsonnet.droidsentenceminer.ocr.OcrTextFixes
@@ -50,10 +50,10 @@ object PageLayout {
                 lines.sortedWith(compareBy({ it.box.top }, { it.box.left }))
             }
             val pieces = ordered.map { line -> clean(line.text).let { it to glyphsOf(line, it, vertical) } }
-            val text = pieces.joinToString("") { it.first }
-            // Page numbers, running heads in Latin script, etc.
-            if (text.none { JapaneseTextScore.isJapanese(it) }) return@mapNotNull null
-            PageBlock(text, ordered.map { it.box }.reduce { a, b -> a.union(b) }, vertical, pieces.flatMap { it.second })
+            val (text, glyphs) = joinPieces(pieces)
+            // Page numbers, running heads in another script, etc.
+            if (text.none { Languages.current.isTargetChar(it) }) return@mapNotNull null
+            PageBlock(text, ordered.map { it.box }.reduce { a, b -> a.union(b) }, vertical, glyphs)
         }
         val ordered = if (vertical) {
             built.sortedWith(compareByDescending<PageBlock> { it.box.right }.thenBy { it.box.top })
@@ -73,12 +73,31 @@ object PageLayout {
         for (block in blocks) {
             val prev = out.lastOrNull()
             if (prev != null && prev.text.last() !in TERMINATORS + CLOSERS && continues(prev.box, block.box, vertical, thickness)) {
-                out[out.lastIndex] = PageBlock(prev.text + block.text, prev.box.union(block.box), vertical, prev.glyphs + block.glyphs)
+                val (text, glyphs) = joinPieces(listOf(prev.text to prev.glyphs, block.text to block.glyphs))
+                out[out.lastIndex] = PageBlock(text, prev.box.union(block.box), vertical, glyphs)
             } else {
                 out += block
             }
         }
         return out
+    }
+
+    /**
+     * Rows joined into one text the study language's way (spaced languages get a space, which sits
+     * on the previous row's last glyph so [PageBlock.glyphs] stays one box per character).
+     */
+    private fun joinPieces(pieces: List<Pair<String, List<BoundingBox>>>): Pair<String, List<BoundingBox>> {
+        val language = Languages.current
+        var text = ""
+        val glyphs = ArrayList<BoundingBox>()
+        for ((piece, boxes) in pieces) {
+            val joined = language.joinRows(text, piece)
+            val added = joined.length - text.length - piece.length
+            if (added > 0 && glyphs.isNotEmpty()) repeat(added) { glyphs += glyphs.last() }
+            text = joined
+            glyphs += boxes
+        }
+        return text to glyphs
     }
 
     private fun continues(a: BoundingBox, b: BoundingBox, vertical: Boolean, thickness: Int): Boolean {
@@ -98,7 +117,11 @@ object PageLayout {
     private val ELLIPSIS = Regex("[.・…]{2,}")
 
     fun clean(text: String): String =
-        OcrTextFixes.apply(OcrPostProcessor.normalize(text)).replace(ELLIPSIS, "……")
+        if (Languages.current.usesSpaces) {
+            OcrPostProcessor.normalize(text)
+        } else {
+            OcrTextFixes.apply(OcrPostProcessor.normalize(text)).replace(ELLIPSIS, "……")
+        }
 
     /**
      * One box per character of the cleaned [text]: the engine's symbol boxes when they line up,
@@ -128,7 +151,7 @@ object PageLayout {
         return kanaOnly && thicknessOf(line.box, vertical) < medianThickness * 0.6f
     }
 
-    private const val TERMINATORS = "。！？!?\n"
+    private const val TERMINATORS = "。！？!?.\n"
     private const val CLOSERS = "」』）)】〕"
 
     /**

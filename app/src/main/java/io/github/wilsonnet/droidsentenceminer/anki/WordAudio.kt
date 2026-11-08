@@ -2,6 +2,11 @@ package io.github.wilsonnet.droidsentenceminer.anki
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonObject
 import okhttp3.FormBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -29,9 +34,15 @@ class WordAudio(private val client: OkHttpClient = defaultClient) {
         val read = reading.ifBlank { term }
         val attempts = buildList<Pair<String, () -> List<String>>> {
             customUrl?.takeIf { it.isNotBlank() }?.let { template -> add("custom" to { listOf(WordAudioSources.customUrl(template, term, read)) }) }
-            add("jpod101" to { listOf(WordAudioSources.jpod101Url(term, read)) })
-            add("languagepod101" to { languagePod101(term, read) })
-            add("jisho" to { jisho(term, read) })
+            val language = io.github.wilsonnet.droidsentenceminer.lang.Languages.current
+            if (language.japaneseWordAudio) {
+                add("jpod101" to { listOf(WordAudioSources.jpod101Url(term, read)) })
+                add("languagepod101" to { languagePod101(term, read) })
+                add("jisho" to { jisho(term, read) })
+            } else {
+                // Yomitan's source for other languages: Wiktionary's recordings on Wikimedia Commons.
+                add("wiktionary" to { wiktionary(language.code, term) })
+            }
         }
         for ((source, urls) in attempts) {
             if (android.os.SystemClock.elapsedRealtime() > deadline) break
@@ -47,7 +58,10 @@ class WordAudio(private val client: OkHttpClient = defaultClient) {
     }
 
     private fun download(url: String): ByteArray? {
-        client.newCall(Request.Builder().url(url).build()).execute().use { response ->
+        val request = Request.Builder().url(url)
+        // Wikimedia answers 403 to clients that don't identify themselves (okhttp's default agent).
+        if (url.contains("wikimedia.org")) request.header("User-Agent", COMMONS_UA)
+        client.newCall(request.build()).execute().use { response ->
             if (!response.isSuccessful) return null
             val type = response.header("Content-Type").orEmpty()
             if (type.startsWith("text/")) return null
@@ -70,6 +84,20 @@ class WordAudio(private val client: OkHttpClient = defaultClient) {
         return WordAudioSources.parseLanguagePod101(html, term, reading)
     }
 
+    /** Commons files named `En-us-word.ogg`, `En-uk-word.ogg`… (Yomitan's wiktionary source), US first. */
+    private fun wiktionary(language: String, term: String): List<String> {
+        val search = commonsJson(WordAudioSources.commonsSearchUrl(language, term)) ?: return emptyList()
+        val titles = WordAudioSources.parseCommonsTitles(search, language, term).take(4)
+        if (titles.isEmpty()) return emptyList()
+        val info = commonsJson(WordAudioSources.commonsInfoUrl(titles)) ?: return emptyList()
+        return WordAudioSources.parseCommonsUrls(info, titles)
+    }
+
+    private fun commonsJson(url: String): String? =
+        client.newCall(Request.Builder().url(url).header("User-Agent", COMMONS_UA).build()).execute().use { r ->
+            if (r.isSuccessful) r.body?.string() else null
+        }
+
     private fun jisho(term: String, reading: String): List<String> {
         val url = "https://jisho.org/search/" + URLEncoder.encode(term, "UTF-8").replace("+", "%20")
         val html = client.newCall(Request.Builder().url(url).build()).execute().use { it.body?.string().orEmpty() }
@@ -77,6 +105,9 @@ class WordAudio(private val client: OkHttpClient = defaultClient) {
     }
 
     companion object {
+        /** Wikimedia asks API clients to identify themselves. */
+        private const val COMMONS_UA = "DroidSentenceMiner/1.0 (https://github.com/WilsonNet/droid-sentence-miner)"
+
         /** Total time a card waits for word audio; it is added without it after that. */
         const val BUDGET_MS = 8_000L
 
@@ -135,6 +166,52 @@ object WordAudioSources {
         if (bytes.size < 1_000) return false
         if (source == "jpod101" && sha256(bytes) == JPOD101_INVALID) return false
         return true
+    }
+
+    /** Commons full-text search for `<Lang>(-xx)?-<term>N.ogg` file names (Yomitan's query). */
+    fun commonsSearchUrl(language: String, term: String): String {
+        val prefix = language.replaceFirstChar { it.uppercaseChar() }
+        val pattern = "intitle:/$prefix(-[a-z]{2})?-${escapeRegex(term)}[0-9]*\\.ogg/i"
+        return "https://commons.wikimedia.org/w/api.php?action=query&format=json&list=search&srnamespace=6&srlimit=10&srsearch=" +
+            URLEncoder.encode(pattern, "UTF-8")
+    }
+
+    private fun escapeRegex(text: String): String = buildString { text.forEach { c -> if (c.isLetterOrDigit() || c == ' ') append(c) else append('\\').append(c) } }
+
+    /**
+     * File titles from a Commons search that really are [term] in [language] (the search is fuzzy),
+     * US recordings first, then UK, then the rest.
+     */
+    fun parseCommonsTitles(json: String, language: String, term: String): List<String> {
+        val root = runCatching { Json.parseToJsonElement(json).jsonObject }.getOrNull() ?: return emptyList()
+        val hits = (root["query"] as? JsonObject)?.get("search") as? JsonArray ?: return emptyList()
+        val exact = Regex("File:${Regex.escape(language)}(-[a-z]{2})?-${Regex.escape(term)}[0-9]*\\.ogg", RegexOption.IGNORE_CASE)
+        val titles = hits.mapNotNull { ((it as? JsonObject)?.get("title") as? JsonPrimitive)?.content }.filter { exact.matches(it) }
+        fun rank(t: String) = when {
+            t.contains("-us-", ignoreCase = true) -> 0
+            t.contains("-uk-", ignoreCase = true) -> 1
+            else -> 2
+        }
+        return titles.sortedBy { rank(it) }
+    }
+
+    fun commonsInfoUrl(titles: List<String>): String =
+        "https://commons.wikimedia.org/w/api.php?action=query&format=json&prop=imageinfo&iiprop=url&titles=" +
+            URLEncoder.encode(titles.joinToString("|"), "UTF-8")
+
+    /** Download URLs from a Commons imageinfo answer, in [titles] order. */
+    fun parseCommonsUrls(json: String, titles: List<String>): List<String> {
+        val root = runCatching { Json.parseToJsonElement(json).jsonObject }.getOrNull() ?: return emptyList()
+        val pages = (root["query"] as? JsonObject)?.get("pages") as? JsonObject ?: return emptyList()
+        val byTitle = HashMap<String, String>()
+        for (page in pages.values) {
+            val o = page as? JsonObject ?: continue
+            val info = (o["imageinfo"] as? JsonArray)?.firstOrNull() as? JsonObject ?: continue
+            val url = (info["url"] as? JsonPrimitive)?.content?.substringBefore('?') ?: continue
+            val title = (o["title"] as? JsonPrimitive)?.content ?: continue
+            byTitle[title] = url
+        }
+        return titles.mapNotNull { byTitle[it] }
     }
 
     fun extension(url: String): String =

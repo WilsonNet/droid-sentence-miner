@@ -13,7 +13,7 @@ MediaProjection ──► ScreenCaptureManager ──► AutoOcrController ─�
                                 (AudioPlaybackCapture)   (last N min)         (line's voice clip)
                                                                                     │
                                                                                     ▼
-   OCR text ──► TermLookup.scan() ──► JapaneseDeinflector ──► Room DB (Yomitan dictionaries)
+   OCR text ──► TermLookup.scan() ──► LanguageModule.deinflect ──► Room DB (Yomitan dictionaries)
                         │                                        │
                         ▼                                        ▼
                  Overlay popup (Compose + WebView)        Glossary parser/Renderer
@@ -36,14 +36,45 @@ MediaProjection ──► ScreenCaptureManager ──► AutoOcrController ─�
   blocks are kept as paragraphs; `PageLayout` decides vertical vs horizontal from line shapes,
   orders columns right→left (lines top→bottom when horizontal), drops thin kana-only ruby lines
   and non-Japanese blocks, and joins a block that ends mid-sentence with the adjacent one.
-- **Matching**: `JapaneseDeinflector` expands every substring of the OCR text into dictionary-form
-  candidates (Yomitan/Jiten rules), a single batched SQL query resolves them, and longest-match-wins
+- **Matching**: the study language's module expands the OCR text into dictionary-form candidates
+  (Japanese: every substring through `JapaneseDeinflector`, Yomitan/Jiten rules; English: whole
+  words and phrases through suffix rules), a single batched SQL query resolves them, and longest-match-wins
   builds the clickable word list. Grammar-only single-kana matches are filtered as noise.
 - **Storage**: Room DB with `terms`, `kanji`, `tags`, `term_meta`, `kanji_meta`, `dictionaries` and
   `mined_cards` tables; indices on expression/reading for fast lookup.
 - **Overlay**: a foreground service draws the bubble, capture selector and a Compose result panel;
   MediaProjection consent is handled by a transparent activity that forwards the result to the
   service (with the Android 14/15 foreground-service-type ordering).
+
+## Languages (`lang/`)
+
+Everything language-specific sits behind `LanguageModule` (`lang/Language.kt`); `Languages.current`
+is the study language (pref `language`, set by the first-run screen). Generic code — scanning,
+OCR post-processing, line tracking, Book layout, filters — only asks the module:
+
+| Hook | Japanese (`lang/ja`) | English (`lang/en`) |
+| --- | --- | --- |
+| `candidateLengths` | every substring length | whole words and phrases (≤ 5 words, stop at punctuation) |
+| `deinflect` / `ruleMask` / `termMatches` | Yomitan/Jiten rules (`JapaneseDeinflector`) | suffix rules + POS bits (`n`/`v`/`adj`/`adv`), case folding |
+| `normalizeOcr` / `joinRows` | NFKC, full-width punctuation, no spaces | NFKC, keep spaces/punctuation, join rows with a space |
+| `isTargetChar`, `textScore`, `looksLikeText` | kana/kanji | Latin letters |
+| `isRubyChar` | kana (furigana filter) | none |
+| `pack` | — (meikiocr models via `MeikiModels`) | PaddleOCR models (`LanguagePacks`) |
+
+Dictionaries carry their language in `DictionaryEntity.sourceLanguage` (Yomitan `index.json`
+`sourceLanguage`; sniffed from the first term bank when missing; `null` = Japanese, which every
+dictionary imported before languages existed is). `TermLookup` only reads the study language's
+dictionaries, and caches are keyed by language.
+
+**Language packs** keep the APK lean: heavy per-language data is a zip on this repo's GitHub
+Releases (tag `lang-<code>-<version>`, not `v*`, published with `--latest=false` so the in-app
+updater keeps seeing the app), built by `tools/lang-packs/build_pack.py` from pinned upstream
+files and verified by SHA-256 on download (`LanguagePacks.install` → `files/lang/<code>/`). The
+English pack holds PaddleOCR ONNX models run by `ocr/PaddleOcr.kt` (DB detector + CTC recognizer,
+pure parts in `PaddleDecoder`); PP-OCRv6 recognizers read 50 languages, so other languages can
+reuse the engine with their own pack. Code per language is plain Kotlin of a few KB; Android
+cannot safely load downloaded code in a sideloaded APK, so modules ship in the APK and only data is
+downloaded. Adding a language: `.opencode/skills/dsm-language/SKILL.md`.
 
 ## Dictionary compatibility
 

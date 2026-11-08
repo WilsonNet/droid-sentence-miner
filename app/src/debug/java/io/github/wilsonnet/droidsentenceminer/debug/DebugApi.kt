@@ -144,6 +144,8 @@ object DebugApi {
             }
             "/mine" -> respondApi(socket) { mine(params) }
             "/dicts" -> respondApi(socket) { dicts() }
+            "/language" -> respondApi(socket) { language(params) }
+            "/lang_pack" -> respondApi(socket) { langPack(params) }
             "/order_dicts" -> respondApi(socket) { orderDicts(params) }
             "/dict_updates" -> respondApi(socket) { dictUpdates() }
             "/install_dict" -> respondApi(socket) { installDict(params) }
@@ -366,6 +368,8 @@ object DebugApi {
         val container = AppContainer.from(app)
         val service = OverlayService.activeInstance
         val json = JSONObject()
+        json.put("language", io.github.wilsonnet.droidsentenceminer.lang.Languages.current.code)
+        json.put("languageSetupNeeded", container.languageSetupNeeded.value)
         json.put("overlayService", service != null)
         json.put("captureReady", service?.debugCaptureManager?.isReady == true)
         json.put("accessibilityScreenshots", io.github.wilsonnet.droidsentenceminer.capture.ScreenshotAccessibilityService.isConnected)
@@ -694,10 +698,47 @@ object DebugApi {
                     .put("enabled", dict.enabled)
                     .put("termCount", dict.termCount)
                     .put("kanjiCount", dict.kanjiCount)
-                    .put("zipPath", dict.zipPath),
+                    .put("zipPath", dict.zipPath)
+                    .put("language", io.github.wilsonnet.droidsentenceminer.lang.Languages.codeOfDictionary(dict.sourceLanguage)),
             )
         }
         return JSONObject().put("ok", true).put("dictionaries", array)
+    }
+
+    /** `/language?set=en` switches the study language; without `set` it reports it. */
+    private fun language(params: Map<String, String>): JSONObject {
+        val container = AppContainer.from(app)
+        // `?setup=1` shows the first-run language screen again (no data is touched).
+        if (params["setup"] == "1") container.languageSetupNeeded.value = true
+        params["set"]?.let { code ->
+            val known = io.github.wilsonnet.droidsentenceminer.lang.Languages.ALL.map { it.code }
+            if (code !in known) return errorJson("unknown language '$code' (known: $known)")
+            runBlocking { container.prefs.setLanguage(code) }
+            // The pref collector applies it asynchronously; apply now so the next call sees it.
+            val deadline = System.currentTimeMillis() + 2000
+            while (io.github.wilsonnet.droidsentenceminer.lang.Languages.current.code != code && System.currentTimeMillis() < deadline) Thread.sleep(20)
+        }
+        return JSONObject().put("ok", true)
+            .put("language", io.github.wilsonnet.droidsentenceminer.lang.Languages.current.code)
+            .put("available", JSONArray(io.github.wilsonnet.droidsentenceminer.lang.Languages.ALL.map { it.code }))
+    }
+
+    /**
+     * `/lang_pack` reports the study language's pack; `?install=1` downloads it (blocking, returns
+     * when done), `?remove=1` deletes it. Paddle timings of the last OCR are in `lastTimings`.
+     */
+    private fun langPack(params: Map<String, String>): JSONObject {
+        val lang = io.github.wilsonnet.droidsentenceminer.lang.Languages.current
+        val pack = lang.pack ?: return JSONObject().put("ok", true).put("language", lang.code).put("pack", JSONObject.NULL)
+        val packs = io.github.wilsonnet.droidsentenceminer.lang.LanguagePacks
+        if (params["remove"] == "1") packs.remove(app, pack.language)
+        if (params["install"] == "1") runBlocking { packs.install(app, pack) }
+        val engine = io.github.wilsonnet.droidsentenceminer.ocr.PaddleOcr.load(packs.dir(app, pack.language))
+        return JSONObject().put("ok", true).put("language", lang.code)
+            .put("pack", pack.name).put("version", pack.version)
+            .put("installedVersion", packs.installedVersion(app, pack.language))
+            .put("engine", engine?.name ?: JSONObject.NULL)
+            .put("lastTimings", engine?.lastTimings?.let { "det ${it.detMs} ms, rec ${it.recMs} ms, ${it.lines} lines" } ?: JSONObject.NULL)
     }
 
     private fun orderDicts(params: Map<String, String>): JSONObject {

@@ -1,4 +1,6 @@
-package io.github.wilsonnet.droidsentenceminer.dict
+package io.github.wilsonnet.droidsentenceminer.lang.ja
+
+import io.github.wilsonnet.droidsentenceminer.lang.Candidate
 
 /**
  * Japanese deinflector (deconjugator) for Japanese verbs and adjectives.
@@ -76,17 +78,6 @@ private enum class RuleType {
     REWRITE, // Only applies when the entire term matches (Deconjugator.cs rewriterule)
 }
 
-/**
- * Represents a deinflection candidate.
- */
-data class Candidate(
-    val term: String,
-    val conditions: Long,
-    val reasons: ArrayDeque<String> = ArrayDeque(),
-    val alternateReasonChains: Set<List<String>> = emptySet(),
-    val canBeFinal: Boolean = true,
-    val hasAppliedRule: Boolean = false, // Tracks whether any rule has been applied to reach this candidate
-)
 
 /**
  * Object containing word class constants and utility functions.

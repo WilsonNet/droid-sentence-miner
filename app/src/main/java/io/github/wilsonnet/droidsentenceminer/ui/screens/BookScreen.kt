@@ -117,7 +117,7 @@ fun BookScreen(modifier: Modifier = Modifier) {
                     container.bookPage.value = read
                     selected = if (read.blocks.size == 1) 0 else -1
                     readerOpen = read.blocks.isNotEmpty()
-                    if (read.blocks.isEmpty()) error = "No Japanese text found. Get closer and keep the page flat and lit."
+                    if (read.blocks.isEmpty()) error = "No ${io.github.wilsonnet.droidsentenceminer.lang.Languages.current.displayName} text found. Get closer and keep the page flat and lit."
                 }.onFailure { error = "OCR failed: ${it.message}" }
             }
             reading = false

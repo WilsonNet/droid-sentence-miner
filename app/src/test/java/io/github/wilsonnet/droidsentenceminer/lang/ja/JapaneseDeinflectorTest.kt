@@ -1,4 +1,4 @@
-package io.github.wilsonnet.droidsentenceminer.dict
+package io.github.wilsonnet.droidsentenceminer.lang.ja
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

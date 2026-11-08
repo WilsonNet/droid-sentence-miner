@@ -1,6 +1,6 @@
 package io.github.wilsonnet.droidsentenceminer.ocr
 
-import java.text.Normalizer
+import io.github.wilsonnet.droidsentenceminer.lang.Languages
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -45,7 +45,7 @@ object OcrPostProcessor {
 
         val merged = groups.map { group ->
             val ordered = group.sortedBy { it.box.left }
-            val text = joinJapanese(ordered.map { it.text })
+            val text = joinRows(ordered.map { it.text })
             val box = ordered.map { it.box }.reduce { acc, box -> acc.union(box) }
             MergedLine(text, box)
         }
@@ -87,7 +87,7 @@ object OcrPostProcessor {
         return lines.filterNot { line ->
             val height = line.box.height
             val isSmall = height < median * 0.62f
-            val isKanaOnly = line.text.all { JapaneseTextScore.isJapanese(it) } &&
+            val isKanaOnly = line.text.all { Languages.current.isRubyChar(it) } &&
                 line.text.none { TermLookupIsKanji(it) }
             val overlapsTaller = lines.any { other ->
                 other !== line && other.box.height > height * 1.4f &&
@@ -113,49 +113,15 @@ object OcrPostProcessor {
         for (ch in text) {
             if (ch.isLetterOrDigit()) {
                 significant++
-                if (JapaneseTextScore.isJapanese(ch)) japanese++
+                if (Languages.current.isTargetChar(ch)) japanese++
             }
         }
         return if (significant == 0) 0f else japanese.toFloat() / significant
     }
 
-    private fun joinJapanese(parts: List<String>): String {
-        val sb = StringBuilder()
-        for (part in parts) {
-            if (sb.isEmpty()) {
-                sb.append(part)
-                continue
-            }
-            val prev = sb.last()
-            val next = part.first()
-            val needSpace = prev.isLetterOrDigit() && !JapaneseTextScore.isJapanese(prev) &&
-                next.isLetterOrDigit() && !JapaneseTextScore.isJapanese(next)
-            if (needSpace) sb.append(' ')
-            sb.append(part)
-        }
-        return sb.toString().trim()
-    }
+    private fun joinRows(parts: List<String>): String =
+        parts.fold("") { acc, part -> Languages.current.joinRows(acc, part) }.trim()
 
-    fun normalize(text: String): String {
-        var t = Normalizer.normalize(text, Normalizer.Form.NFKC)
-        t = t.replace('\u00A0', ' ')
-            .replace('\u3000', ' ')
-        t = t.map { ch ->
-            when (ch) {
-                '\uFF0D', '\u2010', '\u2011', '\u2012', '\u2013', '\u2014', '\u2015' -> 'ー'
-                '\uFF5E', '\u301C' -> '〜'
-                '!' -> '！'
-                '?' -> '？'
-                else -> ch
-            }
-        }.joinToString("")
-        t = t.replace(Regex("[ \\t]+"), " ")
-        // Drop spaces between Japanese characters / around Japanese punctuation.
-        t = t.replace(Regex("(?<=[$JP_CHARS]) (?=[$JP_CHARS])"), "")
-        t = t.replace(Regex("(?<=[$JP_CHARS]) "), "")
-        t = t.replace(Regex(" (?=[$JP_CHARS])"), "")
-        return t.trim()
-    }
-
-    private const val JP_CHARS = "\\p{IsHan}\\p{IsHiragana}\\p{IsKatakana}。、！？「」『』（）…・ー〜"
+    /** OCR text normalization for the study language (NFKC, punctuation, spacing). */
+    fun normalize(text: String): String = Languages.current.normalizeOcr(text)
 }

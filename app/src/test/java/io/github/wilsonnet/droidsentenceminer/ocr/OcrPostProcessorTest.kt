@@ -1,5 +1,7 @@
 package io.github.wilsonnet.droidsentenceminer.ocr
 
+import io.github.wilsonnet.droidsentenceminer.lang.ja.JapaneseTextScore
+
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

@@ -231,18 +231,20 @@ document.addEventListener('click', function (e) {
     if (e.clientX >= b.left && e.clientX <= b.right && e.clientY >= b.top && e.clientY <= b.bottom) off--;
   }
   if (off >= node.textContent.length) return;
+  // Latin words are looked up from their first letter (a tap on "running"'s n sends "running").
+  while (off > 0 && /[A-Za-z0-9\u00C0-\u024F'\u2019]/.test(node.textContent.charAt(off - 1)) && /[A-Za-z0-9\u00C0-\u024F]/.test(node.textContent.charAt(off))) off--;
   var block = node.parentElement.closest('li,p,td,div') || document.body;
   var range = document.createRange(); range.setStart(node, off); range.setEnd(block, block.childNodes.length);
   var after = range.cloneContents(); after.querySelectorAll('rt,rp').forEach(function (n) { n.remove(); });
   var whole = block.cloneNode(true); whole.querySelectorAll('rt,rp').forEach(function (n) { n.remove(); });
-  dsm.tap(after.textContent.substring(0, 24), whole.textContent.trim());
+  dsm.tap(after.textContent.substring(0, 64), whole.textContent.trim());
 });
 </script>"""
 
 /** A lookup in the popup's history; recursive lookups from the definition push new ones. */
 private data class LookupEntry(val word: String, val sentence: String)
 
-/** Recursive lookup: tapping Japanese in a definition pushes its first word. */
+/** Recursive lookup: tapping study-language text in a definition pushes its first word. */
 @Composable
 private fun rememberLookupStack(word: String, sentence: String): androidx.compose.runtime.snapshots.SnapshotStateList<LookupEntry> =
     remember(word, sentence) { androidx.compose.runtime.mutableStateListOf(LookupEntry(word, sentence)) }

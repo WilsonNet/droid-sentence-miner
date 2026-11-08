@@ -55,4 +55,21 @@ class WordAudioSourcesTest {
             WordAudioSources.customUrl("http://127.0.0.1:5050/?term={term}&reading={reading}", "腰", "こし"),
         )
     }
+
+    @Test
+    fun commonsTitlesAreExactAndUsFirst() {
+        val json = """{"query":{"search":[{"title":"File:En-uk-running.ogg"},{"title":"File:En-us-running.ogg"},""" +
+            """{"title":"File:En-us-running water.ogg"},{"title":"File:De-running.ogg"}]}}"""
+        assertEquals(
+            listOf("File:En-us-running.ogg", "File:En-uk-running.ogg"),
+            WordAudioSources.parseCommonsTitles(json, "en", "running"),
+        )
+        val info = """{"query":{"pages":{"1":{"title":"File:En-uk-running.ogg","imageinfo":[{"url":"https://u.org/b/En-uk-running.ogg?x=1"}]},""" +
+            """"2":{"title":"File:En-us-running.ogg","imageinfo":[{"url":"https://u.org/a/En-us-running.ogg"}]}}}}"""
+        assertEquals(
+            listOf("https://u.org/a/En-us-running.ogg", "https://u.org/b/En-uk-running.ogg"),
+            WordAudioSources.parseCommonsUrls(info, listOf("File:En-us-running.ogg", "File:En-uk-running.ogg")),
+        )
+        assertEquals("ogg", WordAudioSources.extension("https://u.org/a/En-us-running.ogg"))
+    }
 }

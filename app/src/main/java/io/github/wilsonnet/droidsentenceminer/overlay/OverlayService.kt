@@ -41,7 +41,7 @@ import io.github.wilsonnet.droidsentenceminer.capture.ScreenText
 import io.github.wilsonnet.droidsentenceminer.capture.ScreenshotAccessibilityService
 import io.github.wilsonnet.droidsentenceminer.ocr.SubtitleLineFilter
 import io.github.wilsonnet.droidsentenceminer.capture.ScreenCaptureManager
-import io.github.wilsonnet.droidsentenceminer.ocr.JapaneseTextScore
+import io.github.wilsonnet.droidsentenceminer.lang.Languages
 import io.github.wilsonnet.droidsentenceminer.ocr.MlKitJapaneseOcr
 import io.github.wilsonnet.droidsentenceminer.textlog.TextLineEntity
 import kotlinx.coroutines.CoroutineScope
@@ -477,7 +477,7 @@ class OverlayService : Service() {
             ScreenText.fromRead(read, read.map { it.box }, crop.width, crop.height, area, 0)
         }
         if (lines.isEmpty()) {
-            toast("No Japanese text in the box")
+            toast("No ${Languages.current.displayName} text in the box")
             return 0
         }
         screenDictionary.showQuick(lines)
@@ -969,9 +969,9 @@ class OverlayService : Service() {
         }
 
         val text = result.text.trim()
-        if (text.isBlank() || JapaneseTextScore.score(text) < 1.0) {
+        if (text.isBlank() || Languages.current.textScore(text) < 1.0) {
             panelState.scanning = false
-            val status = "No Japanese text found (${result.elapsedMs} ms)"
+            val status = "No ${Languages.current.displayName} text found (${result.elapsedMs} ms)"
             panelState.status = status
             return ScanOutcome(text, result.elapsedMs, 0, status)
         }

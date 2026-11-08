@@ -10,7 +10,8 @@ numbers, update the markdown docs **in the same push**: `CHANGELOG.md` (*Unrelea
 `.opencode/skills/` (also visible to Claude Code via `.claude/skills` and Antigravity via `.agents/skills`). The checklist of which file
 owns what is in `.opencode/skills/dsm-docs/SKILL.md` — follow it before committing.
 
-Skills: `dsm-debug-api` (drive/validate the app over adb), `dsm-navigation` (navigate DroidDeck,
+Skills: `dsm-debug-api` (drive/validate the app over adb), `dsm-language` (add/improve a
+study-language module, build/publish language packs), `dsm-navigation` (navigate DroidDeck,
 MediaProjection consent dialogs, YouTube and DSM UI over adb with exact coordinates), `dsm-nightshade`
 (play the Nightshade visual novel test bed: launch, load, advance, quicksave, close), `dsm-ocr-eval`
 (measure OCR accuracy and latency/CPU with ground truth), `dsm-audio` (measure/tune sentence audio
@@ -135,7 +136,8 @@ curl -s "localhost:9099/mine?word=%E3%81%AA%E3%81%84&sentence=..."   # Anki card
 
 Endpoints: `/state`, `/scan`, `/frame.png`, `/ocr` (`l,t,r,b` crops the file first),
 `/ocr_bench?dir=&n=&threads=&variants=&anyw=&xnnpack=&cfg=` (meikiocr per-stage timings over a folder), `/lookup`, `/lookup_bench?text=&index=&n=&fresh=` (tap → popup HTML timings), `/popup.html?word=&dark=` (exact popup WebView HTML), `/dict_media?dict=&path=` (a glossary image as the popup gets it), `/mine`, `/dicts`, `/order_dicts?ids=`, `/dict_updates`,
-`/autoocr?on=1|0`, `/lines?limit=`, `/clip.wav?id=&trim=0|1`, `/line_shot.jpg?id=`, `/mine_line?id=&word=`,
+`/language?set=ja|en&setup=1` (study language; `setup=1` reshows the first-run screen), `/lang_pack?install=1|remove=1`,
+`/word_audio?term=`, `/autoocr?on=1|0`, `/lines?limit=`, `/clip.wav?id=&trim=0|1`, `/line_shot.jpg?id=`, `/mine_line?id=&word=`,
 `/set_region?l=&t=&r=&b=&orientation=`, `/clear_lines`, `/add_line?text=&ago=&dur=`,
 `/quick?l=&t=&r=&b=` (bubble quick lookup of a box), `/install_ocr_models` (meikiocr download), `/ocr?engine=meiki|mlkit`, `/select_areas` (opens the area editor),
 `/install_dict?id=jitendex|jmnedict|pixiv-light` (background install; progress in `/state.dictInstall`),
@@ -146,6 +148,25 @@ Regions are screen fractions.
 See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes.
 
 ## Gotchas learned the hard way
+
+- **Study language** (`lang/`, `Languages.current`, pref `language`): generic code must ask the
+  module (`isTargetChar`, `candidateLengths`, `deinflect`, `normalizeOcr`, `joinRows`,
+  `isRubyChar`…), never hard-code kana checks — that's how English got `!`→`！` and dashes→`ー`.
+  Dictionaries are per language by `sourceLanguage` (`null` = Japanese, all pre-language
+  imports; sniffed on import when `index.json` has none). Pref `ocr_engine = meiki` means "the
+  language's downloadable engine" (meikiocr for ja, the pack's PaddleOCR for en); `mlkit` forces
+  ML Kit. A fresh install shows `LanguageSetupScreen`; installs with dictionaries silently get
+  `ja`. `chooseLanguage` must apply even when the value is unchanged (DataStore doesn't re-emit,
+  the first-run *Continue* did nothing). Adding a language: `.opencode/skills/dsm-language`.
+- **English OCR = PaddleOCR pack** (`ocr/PaddleOcr.kt`, `PaddleDecoder`, `LanguagePacks`):
+  PP-OCRv5 mobile det + PP-OCRv6 small rec, axis-aligned DB boxes, BGR input, rec height 48,
+  CTC with the dictionary's last class = space. ML Kit's bundled *Japanese* model reads English
+  too (zero APK cost) but WER 12 % vs 3.5 %. The pack zip is a GitHub release `lang-en-1`
+  created with `--latest=false` (the in-app updater reads `releases/latest`); sha256 in
+  `EnglishLanguage.pack`. Test without a release by `run-as cp` of the unzipped pack into
+  `files/lang/en`.
+- **Wikimedia needs a User-Agent**: `upload.wikimedia.org` and the Commons API answer 403 to
+  okhttp's default agent — `WordAudio` sends `COMMONS_UA` (English word audio).
 
 - **Auto OCR / text log / replay buffer** (GSM model): `AutoOcrController` polls new frames,
   OCRs the saved region, and `TextLineTracker` turns stable reads into lines (start = first
@@ -540,8 +561,11 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
 
 ```
 app/src/main/java/io/github/wilsonnet/droidsentenceminer/
-├── dict/      Yomitan import, Room storage, deinflector, lookup, glossary rendering
-├── ocr/       meikiocr (ONNX) + ML Kit engines, preprocessing, GSM-style post-processing
+├── lang/      LanguageModule interface, Languages registry, LanguagePacks (downloadable data)
+│   ├── ja/    Japanese module, JapaneseDeinflector, JapaneseTextScore
+│   └── en/    English module (word/phrase scan, suffix deinflector)
+├── dict/      Yomitan import, Room storage, lookup, glossary rendering, IPA
+├── ocr/       meikiocr + PaddleOCR (ONNX) + ML Kit engines, preprocessing, GSM-style post-processing
 ├── capture/   MediaProjection capture, auto OCR loop, text areas
 ├── textlog/   Text log DB, line tracker/consensus, clip windows
 ├── audio/     AudioPlaybackCapture, VAD, WAV/AAC encoders, PCM utils
@@ -551,11 +575,12 @@ app/src/main/java/io/github/wilsonnet/droidsentenceminer/
 ├── ui/        Compose screens, theme, lookup dialogs, audio editor
 └── core/      Settings (DataStore)
 
+tools/lang-packs/ builds per-language data zips (OCR models) for GitHub Releases `lang-<code>-<n>`
 tools/ocr-eval/   OCR benchmark scripts (desktop meikiocr, on-device runner/A-B timing, scorer, subtitle burner, hand GT)
 tools/mic-eval/   microphone fallback scoring (LTAS/PESQ/STOI vs clean speech) + Python port of the EQ fit
 tools/meiki-variants/  builds the meikiocr model cuts in app/src/main/assets/meiki (make_assets.py)
 site/             Astro/Starlight marketing site + docs (Node 24, pnpm 12)
 docs/             contributor docs (features, usage, architecture, building, validation, roadmap) + README media
 CHANGELOG.md      user-visible changes per release (Unreleased on top)
-.opencode/skills/ dsm-debug-api, dsm-navigation, dsm-nightshade, dsm-audio, dsm-ocr-eval, dsm-docs, wisdom-increaser, dsm-promo-media, dsm-release (symlinked as .claude/skills and .agents/skills)
+.opencode/skills/ dsm-debug-api, dsm-language, dsm-navigation, dsm-nightshade, dsm-audio, dsm-ocr-eval, dsm-docs, wisdom-increaser, dsm-promo-media, dsm-release (symlinked as .claude/skills and .agents/skills)
 ```

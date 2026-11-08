@@ -6,6 +6,26 @@ versions are the `v*` tags that publish a signed APK on
 
 ## [Unreleased]
 
+### Added
+- **Study language: Japanese or English.** A first-run screen asks what you are learning
+  (Japanese stays the main focus and is preselected); switch any time in *Settings → Language*.
+  Only the chosen language downloads anything: its dictionaries and, optionally, its OCR models.
+  Dictionaries of the other language stay installed but are hidden and unused.
+- **English support** (requested in #1): lookups of whole words and phrases (*look up*,
+  *ice cream*, up to five words), inflections (*running → run*, *happiest → happy*, *wolves →
+  wolf*, *looked up → look up*), case folding, IPA pronunciation in the popup and as the card's
+  reading, and word audio from Wiktionary recordings on Wikimedia Commons.
+- **English dictionaries in one tap**: Wiktionary English (wty-en-en, 1.6 M entries), Wiktionary
+  English IPA, and small English → Portuguese / Spanish / German / French / Italian / Russian /
+  Chinese / Japanese / Korean glossaries (all Wiktionary via kaikki/wty, updatable).
+- **English OCR pack** (*Settings → Language*, 23 MB, optional): PaddleOCR PP-OCRv5 detector +
+  PP-OCRv6 recognizer. On game/subtitle-style English it makes about a third of the word errors of
+  the built-in reader (WER 3.5 % vs 12.2 %) and runs 2.5× faster on a Xiaomi Pad 7.
+
+### Changed
+- OCR clean-up, line joining, the Book tab and the Home/Dictionaries pages follow the study
+  language (English keeps spaces and Latin punctuation; Japanese behaves exactly as before).
+
 ## [0.5.1] — 2026-10-31
 
 ### Changed

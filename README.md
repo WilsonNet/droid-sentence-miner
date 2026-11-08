@@ -2,7 +2,8 @@
 
 A native Android sentence miner for Japanese immersion: OCR text from any app with a floating
 popup, look words up with Yomitan dictionaries, and mine them into Anki — plus the game's voice
-line as sentence audio.
+line as sentence audio. Japanese is the focus; English is supported too, and other languages can
+be added as modules that download nothing unless you study them.
 
 Inspired by [GameSentenceMiner](https://github.com/bpwhelan/GameSentenceMiner), rebuilt for Android
 with [Yomitan](https://github.com/yomidevs/yomitan) dictionary compatibility.
@@ -45,6 +46,10 @@ GIF for the MP4; recorded on a Xiaomi Pad 7).
 - **Sentence audio** — a replay buffer of the app's audio, a waveform editor, loudness
   normalization, and a calibrated microphone fallback for apps that block capture.
 - **Books and manga** — photograph a page and tap the printed text to look it up.
+- **Multilingual, Japanese first** — pick the language you study on first launch: Japanese
+  (main focus) or English (Wiktionary dictionaries, phrasal verbs, IPA, optional PaddleOCR pack).
+  Only that language's dictionaries and models are downloaded. New languages are small modules
+  ([how](.opencode/skills/dsm-language/SKILL.md)).
 
 Every feature in detail: [docs/features.md](docs/features.md).
 
@@ -109,7 +114,14 @@ This project stands on the shoulders of these projects — thank you:
   by `tools/meiki-variants` from the originals, whose weights they read at runtime).
 - **[meikidroid](https://github.com/rtr46/meikidroid)** by rtr46 — Android game OCR overlay that
   served as a reference for the region-capture + overlay workflow and the hotkey idea.
-- **[ONNX Runtime](https://onnxruntime.ai/)** (MIT) — runs meikiocr on device.
+- **[ONNX Runtime](https://onnxruntime.ai/)** (MIT) — runs meikiocr and PaddleOCR on device.
+- **[PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR)** (Apache-2.0) — PP-OCRv5 detector and
+  PP-OCRv6 recognizer ONNX models from [huggingface.co/PaddlePaddle](https://huggingface.co/PaddlePaddle),
+  repackaged unmodified in the optional English OCR pack (GitHub Releases `lang-en-*`).
+- **[Wiktionary](https://www.wiktionary.org/)** via **[kaikki.org](https://kaikki.org/)** and
+  **[wty / wiktionary-to-yomitan](https://github.com/yomidevs/wiktionary-to-yomitan)** (CC BY-SA) —
+  the one-click English dictionaries and IPA; English word audio comes from Wiktionary's recordings
+  on [Wikimedia Commons](https://commons.wikimedia.org/) (the same source Yomitan uses).
 - **[ML Kit](https://developers.google.com/ml-kit)** (Google) — on-device Japanese text recognition (alternative engine).
 - **[AnkiDroid](https://github.com/ankidroid/Anki-Android)** (GPL-3.0) — the AnkiDroid API used for
   card creation.

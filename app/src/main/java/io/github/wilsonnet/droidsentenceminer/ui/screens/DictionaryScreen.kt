@@ -58,6 +58,7 @@ import io.github.wilsonnet.droidsentenceminer.dict.DictionaryEntity
 import io.github.wilsonnet.droidsentenceminer.dict.DictionaryUpdate
 import io.github.wilsonnet.droidsentenceminer.dict.RecommendedDictionaries
 import io.github.wilsonnet.droidsentenceminer.dict.RecommendedDictionary
+import io.github.wilsonnet.droidsentenceminer.lang.Languages
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -69,8 +70,16 @@ fun DictionaryScreen(modifier: Modifier = Modifier) {
     val container = remember { AppContainer.from(context) }
     val scope = rememberCoroutineScope()
 
-    val dictionaries by remember { container.db.dictionaryDao().observeAll() }
+    val allDictionaries by remember { container.db.dictionaryDao().observeAll() }
         .collectAsState(initial = emptyList())
+    // Only the study language's dictionaries are listed (and used by lookups); others stay installed.
+    val languageCode by container.languageChoice.collectAsState()
+    val language = Languages.byCode(languageCode)
+    val dictionaries = remember(allDictionaries, language) {
+        allDictionaries.filter { Languages.codeOfDictionary(it.sourceLanguage) == language.code }
+    }
+    val otherLanguageCount = allDictionaries.size - dictionaries.size
+    val recommendedList = remember(language) { RecommendedDictionaries.forLanguage(language.code) }
     val updates by container.dictUpdates.collectAsState()
 
     val listState = rememberLazyListState()
@@ -149,7 +158,8 @@ fun DictionaryScreen(modifier: Modifier = Modifier) {
             Column(Modifier.padding(bottom = 4.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Dictionaries", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                 Text(
-                    "Import Yomitan/Yomichan dictionaries (.zip) from this device or Google Drive, several at once. Jitendex, JMdict, KANJIDIC and frequency dictionaries all work.",
+                    "${language.displayName} dictionaries. Import Yomitan/Yomichan dictionaries (.zip) from this device or Google Drive, several at once" +
+                        (if (language.code == "ja") ". Jitendex, JMdict, KANJIDIC and frequency dictionaries all work." else "."),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -225,6 +235,14 @@ fun DictionaryScreen(modifier: Modifier = Modifier) {
                         )
                     }
                 }
+                if (otherLanguageCount > 0) {
+                    Text(
+                        "$otherLanguageCount dictionar${if (otherLanguageCount == 1) "y" else "ies"} for other languages hidden. " +
+                            "Switch the study language in Settings to see them.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 errorText?.let {
                     Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                 }
@@ -233,7 +251,7 @@ fun DictionaryScreen(modifier: Modifier = Modifier) {
                     Card(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text("Recommended dictionaries", fontWeight = FontWeight.SemiBold)
-                            RecommendedDictionaries.ALL.forEach { dict ->
+                            recommendedList.forEach { dict ->
                                 Row(
                                     Modifier.fillMaxWidth(),
                                     verticalAlignment = Alignment.CenterVertically,
@@ -267,8 +285,8 @@ fun DictionaryScreen(modifier: Modifier = Modifier) {
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
-                            RecommendedDictionaries.ALL.forEach { dict ->
-                                val installedDict = dictionaries.firstOrNull { it.title.contains(dict.name, ignoreCase = true) }
+                            recommendedList.forEach { dict ->
+                                val installedDict = dictionaries.firstOrNull { dict.matches(it.title) }
                                 val installed = installedDict != null
                                 val update = installedDict?.let { updates[it.id] }
                                 Row(

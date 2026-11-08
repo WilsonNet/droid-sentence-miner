@@ -4,6 +4,17 @@
 
 Everything the app does, in detail. The short version is in the [README](../README.md).
 
+- **Study language** — Japanese (the main focus) or English, picked on first launch and in
+  *Settings → Language*. Lookups, OCR clean-up, recommended dictionaries and the Dictionaries page
+  follow it; only that language downloads dictionaries and models (other languages' dictionaries
+  stay installed, hidden and unused). English: whole words and phrases up to five words
+  (*look up*, *ice cream*, *give up on*), suffix deinflection with parts of speech (plural, past,
+  -ing, comparative/superlative, -ly, possessive; phrasal verbs inflect their first word), case
+  folding, IPA under the headword and as the card's *Reading* (Wiktionary IPA dictionary), word
+  audio from Wiktionary recordings on Wikimedia Commons, and an optional 23 MB OCR pack
+  (PaddleOCR) that reads English game and subtitle text with a third of ML Kit's word errors.
+  Until the pack is installed English is read by the bundled ML Kit model.
+
 - **Auto OCR mode** — draw boxes over the game's text areas once (dialogue box, name box,
   subtitles; kept separately for portrait and landscape) and keep playing. The areas are read
   every ~400 ms; each new line is logged with the moment it appeared, the moment it went away and

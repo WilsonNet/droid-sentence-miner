@@ -9,6 +9,7 @@ import io.github.wilsonnet.droidsentenceminer.core.GlossaryMode
 import io.github.wilsonnet.droidsentenceminer.dict.DictArchive
 import io.github.wilsonnet.droidsentenceminer.dict.DictDatabase
 import io.github.wilsonnet.droidsentenceminer.dict.DictMedia
+import io.github.wilsonnet.droidsentenceminer.dict.Ipa
 import io.github.wilsonnet.droidsentenceminer.dict.GlossaryHtml
 import io.github.wilsonnet.droidsentenceminer.dict.GlossaryParser
 import io.github.wilsonnet.droidsentenceminer.dict.PitchAccent
@@ -104,8 +105,9 @@ class CardMiner(
             .take(20_000)
             .ifBlank { null }
 
-        val reading = resolved.reading.orEmpty()
         val expression = resolved.baseForm.ifBlank { word }
+        // Languages without kana readings (English) get the IPA as the card's reading.
+        val reading = resolved.reading.orEmpty().ifBlank { Ipa.of(resolved.frequencies, expression).firstOrNull()?.ipa.orEmpty() }
         val pitchGraph = pitchGraphs(resolved, word)
         val tAudio = android.os.SystemClock.elapsedRealtime()
         val wordAudio = wordAudioJob.await()
@@ -291,6 +293,9 @@ class CardMiner(
                 pitchGraphs(details.forEntry(index)).takeIf { it.isNotEmpty() }?.let {
                     sb.append("<div class=\"dsm-pitch\">").append(it).append("</div>")
                 }
+                Ipa.of(details.frequencies, entry.expression).takeIf { it.isNotEmpty() }?.let {
+                    sb.append("<div class=\"dsm-ipa\">").append(GlossaryHtml.escape(Ipa.line(it))).append("</div>")
+                }
                 CardHtml.frequencyLine(details.forEntry(index))?.let {
                     sb.append("<div class=\"gloss-header\"><span class=\"gloss-frequency\">").append(GlossaryHtml.escape(it)).append("</span></div>")
                 }
@@ -305,7 +310,9 @@ class CardMiner(
             "<div class=\"gloss-header\"><span class=\"gloss-frequency\">${GlossaryHtml.escape(frequencies)}</span></div>"
         } else {
             ""
-        } + (pitchGraphs(details).takeIf { entries.size <= 1 && it.isNotEmpty() }?.let { "<div class=\"dsm-pitch\">$it</div>" } ?: "")
+        } + (pitchGraphs(details).takeIf { entries.size <= 1 && it.isNotEmpty() }?.let { "<div class=\"dsm-pitch\">$it</div>" } ?: "") +
+            (Ipa.of(details.frequencies, details.baseForm).takeIf { entries.size <= 1 && it.isNotEmpty() }
+                ?.let { "<div class=\"dsm-ipa\">${GlossaryHtml.escape(Ipa.line(it))}</div>" } ?: "")
         val dictStyles = details.terms.mapNotNull { dicts[it.dictId] }.distinctBy { it.id }
             .mapNotNull { DictArchive.styles(context, it)?.takeIf { s -> s.isNotBlank() } }
             .joinToString("\n")
@@ -404,6 +411,7 @@ class CardMiner(
 .dsm-entry-head { display: flex; align-items: baseline; gap: 8px; }
 .dsm-headword { font-size: 1.3em; font-weight: 700; }
 .dsm-reading { opacity: 0.75; }
+.dsm-ipa { opacity: 0.8; margin: 2px 0 6px; font-size: 0.95em; }
 .dsm-actions { margin-left: auto; align-self: center; display: flex; gap: 2px; flex-shrink: 0; }
 .dsm-add, .dsm-edit { border: none; padding: 5px 14px; font: inherit; font-size: 0.9em;
   background: rgba(128,128,128,0.25); color: inherit; }

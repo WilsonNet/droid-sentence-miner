@@ -4,6 +4,27 @@
 
 What was measured, on which device, and how. Recipes and scripts: [`.opencode/skills/dsm-ocr-eval`](../.opencode/skills/dsm-ocr-eval/SKILL.md), [`dsm-audio`](../.opencode/skills/dsm-audio/SKILL.md), [`dsm-debug-api`](../.opencode/skills/dsm-debug-api/SKILL.md), `tools/`.
 
+- English OCR, 80 frames of caption sentences drawn over TED-talk footage in four styles
+  (outlined subtitle, VN dialogue box, yellow shadowed subtitle, dark-on-light panel; exact
+  ground truth; `tools/ocr-eval/gen_latin_set.py` + `score_latin.py`), Xiaomi Pad 7 through the
+  app's `/ocr` pipeline (2026-11-08):
+
+  | Engine | CER | WER | Exact lines | Median ms |
+  | --- | --- | --- | --- | --- |
+  | ML Kit (bundled Japanese model, reads Latin too) | 6.0 % | 12.2 % | 61 % | 420 |
+  | PaddleOCR PP-OCRv5 det + PP-OCRv6 small rec (English pack) | 3.7 % | 3.5 % | 86 % | 165 |
+
+  Desktop (ONNX Runtime, same frames, `run_paddle.py`): PP-OCRv6 small det+rec 5.5 % / 4.5 %,
+  en_PP-OCRv5 mobile 4.6 % / 4.6 %, PP-OCRv6 tiny 5.7 % / 7.9 %; most remaining errors are
+  slide text behind the caption read as extra words. ML Kit's errors are mostly missing spaces
+  and stray kanji.
+- English auto OCR on YouTube (TED talk `arj7oStGLkU` with its English captions, landscape
+  fullscreen, PaddleOCR pack, text area on the captions): 20/20 logged lines identical to the
+  subtitle file. Sentence clips cross-correlated against the video's own audio (NCC 0.98–0.99):
+  each clip covers its cue fully, starting 0.15–0.34 s before it and ending 0.5–0.65 s after.
+- English lookups, Wiktionary English (1,630,667 entries) + IPA with the 8 Japanese
+  dictionaries also installed (unused): a tap on a 7-word line, warm, 68 ms median (wordAt 31,
+  lookup 6.5, popup HTML 31). Import: 5 min on the Pad 7.
 - Lookup speed with 8 dictionaries (~2.1 M rows: Jitendex, Kanjium, Pixiv, 広辞苑, 三省堂, 実用日本語表現,
   新明解, 大辞林), Xiaomi Pad 7, `/lookup_bench` median per tap (line scan + lookup + popup
   HTML), before → after the lean-scan/cache work:

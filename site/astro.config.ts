@@ -92,6 +92,7 @@ export default defineConfig({
             { label: "Live text window", slug: "docs/guides/live-text" },
             { label: "Texts and sentence audio", slug: "docs/guides/texts-and-audio" },
             { label: "Anki mining", slug: "docs/guides/anki" },
+            { label: "Languages", slug: "docs/guides/languages" },
           ],
           label: "Guides",
         },

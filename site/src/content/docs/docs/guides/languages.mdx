@@ -1,0 +1,44 @@
+---
+title: Languages
+description: Study Japanese (the main focus) or English. Only the language you pick downloads dictionaries and OCR models.
+---
+
+Droid Sentence Miner is built for Japanese first, and it supports other languages as small
+modules. On first launch it asks **What are you learning?**: Japanese is preselected. Change it
+any time in **Settings → Language**.
+
+## What follows the language
+
+- **Lookups** use only that language's dictionaries. Dictionaries of the other language stay
+  installed but are hidden and unused, so you can switch back without reinstalling.
+- **Settings → Dictionaries** shows that language's dictionaries and one-tap recommendations.
+- **OCR clean-up** keeps the language's spacing and punctuation (English keeps spaces and `!?`,
+  Japanese uses full-width punctuation and joins wrapped lines without spaces).
+- **Downloads**: nothing for a language you don't study. The APK carries only a few KB of code
+  per language.
+
+## English
+
+- **Dictionaries**: install *Wiktionary English* (English → English, about 110 MB download) and
+  *Wiktionary English IPA* (pronunciations, 3 MB) under **Settings → Dictionaries**. Small
+  English → Portuguese, Spanish, German, French, Italian, Russian, Chinese, Japanese and Korean
+  glossaries are there too.
+- **Words and phrases**: tap a word and the longest dictionary match wins, up to five words, so
+  *looked up*, *ice cream* and *give up on* open as phrases. Inflections are undone with parts of
+  speech: *running → run*, *happiest → happy*, *wolves → wolf*, *looked up → look up*.
+- **Pronunciation**: the IPA is shown under the headword and goes into the card's *Reading*
+  field. Word audio comes from Wiktionary's recordings on Wikimedia Commons (US first).
+- **OCR**: without downloads, English is read by the built-in ML Kit model. For games and
+  subtitles install the **English OCR models** (23 MB) in **Settings → Language**: PaddleOCR made
+  about a third of ML Kit's word errors in our test (3.5 % vs 12.2 %) and is faster.
+
+## Japanese
+
+Everything else on this site describes Japanese: game-trained meikiocr, pitch accent, Jitendex,
+JapanesePod101 word audio, vertical book pages.
+
+## More languages
+
+A language is a small Kotlin module plus a list of recommended dictionaries and, optionally, a
+downloadable OCR pack. If you want to bring your language, see the
+[contributor guide](https://github.com/WilsonNet/droid-sentence-miner/blob/main/.opencode/skills/dsm-language/SKILL.md).

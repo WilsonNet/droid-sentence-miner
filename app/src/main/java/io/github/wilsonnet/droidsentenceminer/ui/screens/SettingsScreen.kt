@@ -108,16 +108,21 @@ fun SettingsScreen(modifier: Modifier = Modifier, onOpen: (String) -> Unit = {})
     ) {
         Text("Settings", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
 
-        val dictionaries by remember { container.db.dictionaryDao().observeAll() }.collectAsState(initial = emptyList())
-        val dictUpdates by container.dictUpdates.collectAsState()
+        LanguageSettingsCard()
+        val languageCode by container.languageChoice.collectAsState()
+        val language = io.github.wilsonnet.droidsentenceminer.lang.Languages.byCode(languageCode)
+        val allDictionaries by remember { container.db.dictionaryDao().observeAll() }.collectAsState(initial = emptyList())
+        val dictionaries = allDictionaries.filter { io.github.wilsonnet.droidsentenceminer.lang.Languages.codeOfDictionary(it.sourceLanguage) == language.code }
+        val allDictUpdates by container.dictUpdates.collectAsState()
+        val dictUpdates = allDictUpdates.filterKeys { id -> dictionaries.any { it.id == id } }
         val ankiDeck by container.prefs.ankiDeck.collectAsState(initial = "")
         LaunchedEffect(dictionaries.size) {
-            if (dictionaries.isNotEmpty() && dictUpdates.isEmpty()) {
+            if (dictionaries.isNotEmpty() && allDictUpdates.isEmpty()) {
                 runCatching { container.refreshDictUpdates() }
             }
         }
         val dictSubtitle = when {
-            dictionaries.isEmpty() -> "None installed yet: install Jitendex here"
+            dictionaries.isEmpty() -> "None installed yet: install ${if (language.code == "ja") "Jitendex" else "the recommended one"} here"
             dictUpdates.isNotEmpty() -> "${dictionaries.size} installed · ${dictUpdates.size} update${if (dictUpdates.size > 1) "s" else ""} available"
             else -> "${dictionaries.size} installed"
         }
@@ -138,7 +143,15 @@ fun SettingsScreen(modifier: Modifier = Modifier, onOpen: (String) -> Unit = {})
                 val meiki = io.github.wilsonnet.droidsentenceminer.core.DsmPrefs.ENGINE_MEIKI
                 val mlkit = io.github.wilsonnet.droidsentenceminer.core.DsmPrefs.ENGINE_MLKIT
                 Text("Engine", style = MaterialTheme.typography.bodyLarge)
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                if (!language.supportsMeikiOcr) {
+                    Text(
+                        language.pack?.let { "${language.displayName} is read by the language pack's PaddleOCR models when installed (Language above), otherwise by ML Kit." }
+                            ?: "${language.displayName} is read by ML Kit.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                if (language.supportsMeikiOcr) Row(verticalAlignment = Alignment.CenterVertically) {
                     androidx.compose.material3.RadioButton(
                         selected = engine == meiki,
                         onClick = { scope.launch { container.prefs.setOcrEngine(meiki) } },
@@ -153,7 +166,7 @@ fun SettingsScreen(modifier: Modifier = Modifier, onOpen: (String) -> Unit = {})
                         )
                     }
                 }
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                if (language.supportsMeikiOcr) Row(verticalAlignment = Alignment.CenterVertically) {
                     androidx.compose.material3.RadioButton(
                         selected = engine == mlkit,
                         onClick = { scope.launch { container.prefs.setOcrEngine(mlkit) } },
@@ -167,7 +180,7 @@ fun SettingsScreen(modifier: Modifier = Modifier, onOpen: (String) -> Unit = {})
                         )
                     }
                 }
-                if (engine == meiki && !meikiInstalled) {
+                if (language.supportsMeikiOcr && engine == meiki && !meikiInstalled) {
                     val progress = meikiProgress
                     if (progress != null) {
                         androidx.compose.material3.LinearProgressIndicator(
@@ -202,8 +215,8 @@ fun SettingsScreen(modifier: Modifier = Modifier, onOpen: (String) -> Unit = {})
                     scope.launch { container.prefs.setOcrTwoPass(value) }
                 }
                 SettingSwitch(
-                    title = "Filter non-Japanese lines",
-                    description = "Drop UI noise such as menus or numbers when Japanese text is present.",
+                    title = "Filter non-${language.displayName} lines",
+                    description = "Drop UI noise such as menus or numbers when ${language.displayName} text is present.",
                     checked = dropNoise,
                 ) { value ->
                     dropNoise = value

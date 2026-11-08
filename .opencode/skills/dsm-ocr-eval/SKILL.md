@@ -121,3 +121,32 @@ runs live in DroidDeck (`Nightshade.exe` ~75–82 % CPU, `surfaceflinger` ~36 %,
 - Scoring a live auto-OCR run: dump `/lines`, match each line's text to the closest
   ground-truth line (`score.lev` on `score.norm` text); a best match worse than 50 % CER = junk,
   two lines matching the same GT line = duplicate.
+
+## Latin-script / English OCR
+
+English (and any Latin-script module) is scored with case and punctuation, because a lookup
+needs `it's` vs `its` and word boundaries (WER) matter as much as letters (CER).
+
+```bash
+# 1. Test set: caption sentences drawn over real footage in 4 game/subtitle styles, exact GT
+yt-dlp -f "bv*[height<=720][ext=mp4]" --download-sections "*1:00-5:00" -o ted.mp4 "https://www.youtube.com/watch?v=arj7oStGLkU"
+yt-dlp --skip-download --write-auto-subs --sub-langs en --sub-format json3 -o ted "https://www.youtube.com/watch?v=arj7oStGLkU"
+python3 tools/ocr-eval/gen_latin_set.py ted.mp4 ted.en.json3 en_set 80     # en_set/img/*.png + gt.json
+# 2. Desktop PaddleOCR (venv: onnxruntime opencv-python-headless pyclipper pyyaml numpy)
+python3 tools/ocr-eval/run_paddle.py PP-OCRv5_mobile_det_onnx PP-OCRv6_small_rec_onnx en_set/img out/paddle.json
+# 3. Device, through the app's pipeline (Android 16: copy into files/ with run-as, see dsm-language)
+curl -s "localhost:9099/language?set=en"
+python3 tools/ocr-eval/run_device.py /data/user/0/io.github.wilsonnet.droidsentenceminer.debug/files/en_set en_set/img out/mlkit.json mlkit
+python3 tools/ocr-eval/run_device.py /data/user/0/io.github.wilsonnet.droidsentenceminer.debug/files/en_set en_set/img out/paddle_dev.json paddle
+python3 tools/ocr-eval/score_latin.py en_set/gt.json mlkit=out/mlkit.json paddle=out/paddle_dev.json
+```
+
+Model dirs are `PaddlePaddle/<name>_onnx` Hugging Face repos (`inference.onnx` + `inference.yml`).
+Results (Xiaomi Pad 7, 80 frames, 2026-11-08): ML Kit 6.0 % CER / 12.2 % WER / 61 % exact /
+420 ms; English pack (PP-OCRv5 det + PP-OCRv6 small rec) 3.7 % / 3.5 % / 86 % / 165 ms.
+Desktop: v6 small 5.5/4.5, en_PP-OCRv5 4.6/4.6, v6 tiny 5.7/7.9, v5 det + v6 small rec 4.5/4.4
+(most residual errors: slide text behind the caption). The GT uses auto captions, so sentences
+are lower-case run-ons; that's fine for OCR scoring. For a live check, run auto OCR over the same
+TED video with its manual English captions and compare `/lines` to `yt-dlp --write-subs` output
+(20/20 exact with the caption area drawn tightly).
+

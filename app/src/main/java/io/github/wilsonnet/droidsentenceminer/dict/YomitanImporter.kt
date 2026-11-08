@@ -197,7 +197,8 @@ class YomitanImporter(
                         author = index.author,
                         description = index.description,
                         attribution = index.attribution,
-                        sourceLanguage = index.sourceLanguage,
+                        // Lookups only use the study language's dictionaries; old index.json files have no language.
+                        sourceLanguage = index.sourceLanguage ?: sniffLanguage(zip),
                         targetLanguage = index.targetLanguage,
                         sequenced = index.sequenced,
                         frequencyMode = index.frequencyMode,
@@ -364,6 +365,22 @@ class YomitanImporter(
     fun parseIndex(jsonString: String): DictionaryIndex = YomitanIndexParser.parse(jsonString)
 
     /**
+     * The headword language of a dictionary whose index.json doesn't say: Japanese when the start
+     * of its first term bank has kana/kanji, otherwise English if it is Latin text, else unknown
+     * (null, treated as Japanese like every dictionary imported before languages existed).
+     */
+    private fun sniffLanguage(zip: ZipFile): String? {
+        val entry = zip.entries().asSequence()
+            .firstOrNull { it.name.matches(Regex("(term|term_meta|kanji)_bank_\\d+\\.json")) } ?: return null
+        val sample = zip.getInputStream(entry).bufferedReader().use { reader ->
+            val buffer = CharArray(SNIFF_CHARS)
+            val read = reader.read(buffer)
+            if (read <= 0) "" else String(buffer, 0, read)
+        }
+        return YomitanIndexParser.languageOfSample(sample)
+    }
+
+    /**
      * Finds an installed dictionary that [newTitle] should replace: either an exact title match,
      * or the same base title when a trailing `[...]` date/version tag is stripped (e.g.
      * `Jitendex.org [2026-09-01]` → `Jitendex.org [2026-10-03]`).
@@ -403,6 +420,7 @@ class YomitanImporter(
 
     companion object {
         private const val INSERT_CHUNK = 4000
+        private const val SNIFF_CHARS = 16_384
 
         fun baseDictionaryTitle(title: String): String =
             title.replace(Regex("\\s*\\[[^\\]]*]\\s*$"), "").trim()
@@ -411,6 +429,14 @@ class YomitanImporter(
 
 /** Parses Yomitan index.json. Kept separate so it can be unit tested on the JVM. */
 object YomitanIndexParser {
+
+    /** See `YomitanImporter.sniffLanguage`: headwords' script decides, Japanese wins ties. */
+    fun languageOfSample(sample: String): String? {
+        val japanese = sample.count { TermLookup.isKana(it) || TermLookup.isKanji(it) }
+        if (japanese >= 20) return "ja"
+        val latin = sample.count { it in 'a'..'z' || it in 'A'..'Z' }
+        return if (latin >= 200) "en" else null
+    }
     private val json = Json { ignoreUnknownKeys = true }
 
     fun parse(jsonString: String): DictionaryIndex {

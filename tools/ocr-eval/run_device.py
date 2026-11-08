@@ -13,7 +13,7 @@ import urllib.request
 
 remote, local, out = sys.argv[1:4]
 engine = sys.argv[4] if len(sys.argv) > 4 else "meiki"
-base = "/sdcard/Android/data/io.github.wilsonnet.droidsentenceminer.debug/files/" + remote
+base = remote if remote.startswith("/") else "/sdcard/Android/data/io.github.wilsonnet.droidsentenceminer.debug/files/" + remote
 result, times = {}, []
 for name in sorted(os.listdir(local)):
     query = urllib.parse.urlencode({"file": f"{base}/{name}", "engine": engine, "twoPass": "1"})

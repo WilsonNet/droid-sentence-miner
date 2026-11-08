@@ -1,5 +1,7 @@
 package io.github.wilsonnet.droidsentenceminer.ocr
 
+import io.github.wilsonnet.droidsentenceminer.lang.Languages
+
 /**
  * Auto OCR reads a fixed region every few hundred ms, so background text (signs, labels,
  * UI) drifting through it would otherwise get glued onto the dialogue. Dialogue lines share
@@ -34,7 +36,7 @@ object SubtitleLineFilter {
         return lines.filter { (it.confidence ?: 1f) >= UNSURE_CONFIDENCE }
     }
 
-    private fun japaneseCount(text: String) = text.count { JapaneseTextScore.isJapanese(it) }
+    private fun japaneseCount(text: String) = text.count { Languages.current.isTargetChar(it) }
 
     private const val SURE_CONFIDENCE = 0.8f
     private const val UNSURE_CONFIDENCE = 0.5f

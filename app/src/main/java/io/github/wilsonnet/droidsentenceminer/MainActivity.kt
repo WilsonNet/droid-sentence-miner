@@ -89,6 +89,12 @@ private fun AppRoot() {
     var settingsPage by rememberSaveable { mutableStateOf<String?>(null) }
     // Tablets and landscape phones: tabs in a side rail, so the bottom bar doesn't eat the short side.
     val wide = LocalConfiguration.current.screenWidthDp >= 600
+    val container = remember { AppContainer.from(context) }
+    val setupNeeded by container.languageSetupNeeded.collectAsState()
+    if (setupNeeded) {
+        io.github.wilsonnet.droidsentenceminer.ui.screens.LanguageSetupScreen(onDone = { tab = 0 })
+        return
+    }
     val select = { index: Int ->
         if (index == 3 && tab == 3) settingsPage = null
         tab = index

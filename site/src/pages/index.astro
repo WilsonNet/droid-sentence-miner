@@ -54,6 +54,11 @@ const faqs = [
       "Yes when the app allows playback capture. A replay buffer keeps the last few minutes of device audio, and each line is cut from when it appeared to when it was replaced. Apps such as DroidDeck and Netflix block capture; the optional microphone fallback records the speaker instead.",
     question: "Does it capture the character's voice?",
   },
+  {
+    answer:
+      "Japanese is the focus, and English is supported too: Wiktionary dictionaries, phrasal verbs, IPA and an optional PaddleOCR pack. Pick the language on first launch; only that language downloads dictionaries and models. Other languages can be added as small modules.",
+    question: "Is it only for Japanese?",
+  },
 ] as const;
 
 const jsonLd = {

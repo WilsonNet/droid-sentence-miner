@@ -1,5 +1,7 @@
 package io.github.wilsonnet.droidsentenceminer.ocr
 
+import io.github.wilsonnet.droidsentenceminer.lang.Languages
+
 import android.graphics.Bitmap
 import android.graphics.Rect
 import com.google.android.gms.tasks.Task
@@ -86,7 +88,7 @@ class MlKitJapaneseOcr(
             val result = runCatching { recognizeOnce(scaled) }.getOrNull()
             if (result.isNullOrEmpty()) continue
             val candidateText = OcrPostProcessor.merge(result, dropNoise = dropNoise).joinToString("\n") { it.text }
-            if (JapaneseTextScore.score(candidateText) > JapaneseTextScore.score(line.text) + SCORE_MARGIN) {
+            if (Languages.current.textScore(candidateText) > Languages.current.textScore(line.text) + SCORE_MARGIN) {
                 refinedByKey[keyOf(line)] = candidateText
             }
         }

@@ -1,6 +1,7 @@
 package io.github.wilsonnet.droidsentenceminer.overlay
 
 import android.annotation.SuppressLint
+import io.github.wilsonnet.droidsentenceminer.lang.Languages
 import android.graphics.Color
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -435,11 +436,12 @@ fun ClickableJapaneseText(
                     if (char.isLetter()) {
                         onWordClick(
                             run {
-                                // Expand to the run of Japanese characters around the tap.
+                                // Expand to the run of study-language characters around the tap.
+                                val lang = Languages.current
                                 var start = offset
                                 var end = offset + 1
-                                while (start > 0 && text[start - 1].isJapaneseLetter()) start--
-                                while (end < text.length && text[end].isJapaneseLetter()) end++
+                                while (start > 0 && lang.isLookupable(text[start - 1])) start--
+                                while (end < text.length && lang.isLookupable(text[end])) end++
                                 text.substring(start, end)
                             },
                         )
@@ -450,9 +452,3 @@ fun ClickableJapaneseText(
     )
 }
 
-private fun Char.isJapaneseLetter(): Boolean {
-    val code = code
-    return (code in 0x3040..0x30FF) || (code in 0x4E00..0x9FFF) ||
-        (code in 0x3400..0x4DBF) || (code in 0xF900..0xFAFF) ||
-        this == '々' || this == '〆' || this == 'ー'
-}

@@ -2,7 +2,7 @@ package io.github.wilsonnet.droidsentenceminer.capture
 
 import io.github.wilsonnet.droidsentenceminer.book.PageLayout
 import io.github.wilsonnet.droidsentenceminer.ocr.BoundingBox
-import io.github.wilsonnet.droidsentenceminer.ocr.JapaneseTextScore
+import io.github.wilsonnet.droidsentenceminer.lang.Languages
 import io.github.wilsonnet.droidsentenceminer.ocr.OcrLine
 
 /** A box as fractions of the screen. */
@@ -62,7 +62,7 @@ object ScreenText {
             }
             if (!inKept) return@mapNotNull null
             val text = PageLayout.clean(line.text)
-            if (text.none { JapaneseTextScore.isJapanese(it) }) return@mapNotNull null
+            if (text.none { Languages.current.isTargetChar(it) }) return@mapNotNull null
             val vertical = line.box.height > line.box.width * 1.3f && text.length >= 2
             ScreenTextLine(text, PageLayout.glyphsOf(line, text, vertical).map(::frac), areaIndex, line.confidence ?: 1f)
         }.sortedWith(compareBy({ it.area }, { it.bounds.top }, { it.bounds.left }))
