@@ -1,6 +1,6 @@
 ---
 name: dsm-docs
-description: Keep Droid Sentence Miner's markdown docs in sync with the code. Use at the end of every task that changes behavior, UI, settings, build/toolchain, debug API endpoints, test numbers or dependencies — before committing — or when asked to "update the docs/markdowns" or to check/clean up the roadmap (docs/roadmap.md: verify each item against the code, drop shipped ones).
+description: Keep Droid Sentence Miner's markdown docs in sync with the code. Use at the end of every task that changes behavior, UI, settings, build/toolchain, debug API endpoints, test numbers or dependencies — before committing — or when asked to "update the docs/markdowns" or to check/clean up the roadmap (docs/roadmap.md — verify each item against the code, drop shipped ones).
 metadata:
   audience: developers
   project: droid-sentence-miner

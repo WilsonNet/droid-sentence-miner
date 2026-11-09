@@ -1,6 +1,6 @@
 ---
 name: dsm-navigation
-description: Navigate DroidDeck, MediaProjection consent dialogs, YouTube, and Droid Sentence Miner UI on the Xiaomi Pad 7 tablet and Galaxy phone over adb without trial-and-error screenshot loops. Use whenever launching games in DroidDeck, accepting screen-capture consent, or navigating DSM screens (Nightshade gameplay itself: dsm-nightshade).
+description: Navigate DroidDeck, MediaProjection consent dialogs, YouTube, and Droid Sentence Miner UI on the Xiaomi Pad 7 tablet and Galaxy phone over adb without trial-and-error screenshot loops. Use whenever launching games in DroidDeck, accepting screen-capture consent, or navigating DSM screens (Nightshade gameplay itself — dsm-nightshade).
 metadata:
   audience: developers
   project: droid-sentence-miner
