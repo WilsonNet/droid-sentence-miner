@@ -1,10 +1,10 @@
 # Features
 
-[← README](../README.md) · [Features](features.md) · [Usage](usage.md) · [Architecture](architecture.md) · [Building](building.md) · [Validation](validation.md) · [Roadmap](roadmap.md)
+[← README](../README.md) · [Features](features.md) · [Usage](usage.md) · [Architecture](architecture.md) · [Building](building.md) · [Validation](validation.md) · [Dictionaries](dictionaries.md) · [Roadmap](roadmap.md)
 
 Everything the app does, in detail. The short version is in the [README](../README.md).
 
-- **Study language** — Japanese (the main focus) or English, picked on first launch and in
+- **Study language** — Japanese (the main focus), English or German, picked on first launch and in
   *Settings → Language*. Lookups, OCR clean-up, recommended dictionaries and the Dictionaries page
   follow it; only that language downloads dictionaries and models (other languages' dictionaries
   stay installed, hidden and unused). English: whole words and phrases up to five words
@@ -15,6 +15,29 @@ Everything the app does, in detail. The short version is in the [README](../READ
   queries its own word-audio sources), and an optional 23 MB OCR pack
   (PaddleOCR) that reads English game and subtitle text with a third of ML Kit's word errors.
   Until the pack is installed English is read by the bundled ML Kit model.
+  German: the same word/phrase scanning (≤ 4 words, hyphenated compounds like *E-Mail*), every
+  surface tried as written (nouns are capitalized), lower-cased and Capitalized (ALL-CAPS game
+  text); Wiktionary's dictionaries list most inflected forms themselves (*ging → gehen*, *Häuser →
+  Haus*) and a fallback deinflector covers regular conjugation, participles (also separable:
+  *aufgemacht → aufmachen*), zu-infinitives (*anzufangen*), adjective declension and degrees, noun
+  endings. Line-end hyphens are joined (*Wör- terbuch*), „quotes“ read as `,,` are restored. Word
+  audio: Wiktionary's `De-<word>.ogg` recordings (standard first, then Austrian/Swiss), then Lingua
+  Libre (also files recorded with the article, *das Mädchen*). The optional OCR pack is the English
+  one (its recognizer reads äöüß). Dictionaries per language: [docs/dictionaries.md](dictionaries.md).
+- **Anki cards per language** — deck, note type and tags are kept per study
+  language (Japanese keeps its existing settings). Each language gets its own note type, created
+  on the first card: *Droid Sentence Miner* (Japanese: Reading, Pitch graph), *Droid Sentence
+  Miner (English)* (IPA instead of Reading, no pitch graph), *Droid Sentence Miner (German)*
+  (Gender — the noun's article der/die/das from Wiktionary's gender tags — and IPA), in decks
+  *Droid Sentence Miner::English* / *::German*. Other note types match the new contents by name
+  (*IPA*/*Pronunciation*, *Gender*/*Article*; a *Reading* field takes the IPA).
+- **Leaving contents out** — set a field to *Nothing* in *Settings → Anki → Fields* (the mapping
+  is per note type): a content no field receives isn't fetched at all (no word-audio request, no
+  sentence-clip encode, no screenshot). For simple cards, map only the word, sentence and
+  glossary.
+- **What's new** — after an update a one-time dialog shows the new version's changelog (every
+  release since the last one you saw, up to five); *Got it* dismisses it until the next update.
+  Fresh installs don't see it.
 
 - **Auto OCR mode** — draw boxes over the game's text areas once (dialogue box, name box,
   subtitles; kept separately for portrait and landscape) and keep playing. The areas are read

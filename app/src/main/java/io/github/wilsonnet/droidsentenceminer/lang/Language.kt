@@ -1,5 +1,6 @@
 package io.github.wilsonnet.droidsentenceminer.lang
 
+import io.github.wilsonnet.droidsentenceminer.lang.de.GermanLanguage
 import io.github.wilsonnet.droidsentenceminer.lang.en.EnglishLanguage
 import io.github.wilsonnet.droidsentenceminer.lang.ja.JapaneseLanguage
 
@@ -12,6 +13,7 @@ import io.github.wilsonnet.droidsentenceminer.lang.ja.JapaneseLanguage
  * interface in `lang/<code>/`, list it in [Languages.ALL], and add its recommended dictionaries
  * to `RecommendedDictionaries` with that language code.
  */
+@Suppress("TooManyFunctions") // One hook per language-specific behavior, by design (dsm-language skill).
 interface LanguageModule {
     /** ISO 639-1 code; also what Yomitan dictionaries put in `index.json` `sourceLanguage`. */
     val code: String
@@ -43,11 +45,41 @@ interface LanguageModule {
      */
     val linguaLibrePrefix: String? get() = null
 
+    /**
+     * Articles Lingua Libre speakers often record with a noun (`LL-Q188 (deu)-<speaker>-der Hund.wav`):
+     * such files also count as the bare word, after the ones without an article.
+     */
+    val linguaLibreArticles: List<String> get() = emptyList()
+
+    /**
+     * Preferred regional Wiktionary recordings, best first: the code between language and word in
+     * `En-us-word.ogg`; "" is a file without one (`De-Hund.ogg`). Unlisted regions come last.
+     */
+    val wiktionaryRegions: List<String> get() = listOf("us", "uk")
+
+    /**
+     * Anki: true when the card's pronunciation is IPA (an "IPA" field) rather than a reading in
+     * another script (Japanese kana, the "Reading" field).
+     */
+    val hasIpaReading: Boolean get() = true
+
+    /** Anki: whether cards get a pitch accent graph field (Japanese). */
+    val hasPitchAccent: Boolean get() = false
+
+    /** Anki: whether nouns have a grammatical gender worth its own card field (German der/die/das). */
+    val hasNounGender: Boolean get() = false
+
     /** This language's word-audio sources, tried in order; no other source is ever queried. */
     val wordAudioSources: List<WordAudioSource> get() = emptyList()
 
     /** Longest surface, in characters, tried at one position while scanning. */
     val maxTermLength: Int
+
+    /**
+     * The article of a noun whose dictionary tags are [definitionTags] (Wiktionary's `masc`/`fem`/
+     * `neut`), e.g. "der"; null when the language has none or the tags don't say.
+     */
+    fun nounArticle(definitionTags: Collection<String>): String? = null
 
     /** A character of this language's script (OCR filters count these). */
     fun isTargetChar(c: Char): Boolean
@@ -91,7 +123,8 @@ interface LanguageModule {
 
 /** The registry and the language the user studies. */
 object Languages {
-    val ALL: List<LanguageModule> = listOf(JapaneseLanguage, EnglishLanguage)
+    /** Every study language, in picker order. */
+    val ALL: List<LanguageModule> = listOf(JapaneseLanguage, EnglishLanguage, GermanLanguage)
 
     const val DEFAULT_CODE = "ja"
 

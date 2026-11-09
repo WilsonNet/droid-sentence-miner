@@ -43,7 +43,9 @@ All GET, all JSON (except `frame.png`). Regions are screen fractions unless note
 
 | Endpoint | What it does |
 | --- | --- |
-| `/language` | Study language and the available ones; `?set=ja\|en` switches (waits until applied), `?setup=1` reshows the first-run language screen (no data touched) |
+| `/language` | Study language and the available ones; `?set=ja\|en\|de` switches (waits until applied), `?setup=1` reshows the first-run language screen (no data touched) |
+| `/whats_new` | Update dialog: `version` (`name+code`), `seen`, `pending` (what the next launch shows), `sections`; `?reset=1` makes it look like an update, `?show=1` opens it now |
+| `/card_contents` | The study language's Anki card contents (`all`) and the ones the current note type's field mapping receives (`enabled`; a field set to *Nothing* in *Settings → Anki → Fields* drops its content) |
 | `/lang_pack` | The study language's downloadable pack: name, version, `installedVersion`, loaded engine, last PaddleOCR timings; `?install=1` downloads it (blocking), `?remove=1` deletes it |
 | `/state` | `language`, `languageSetupNeeded`, plus service/capture status, saved region, last scan, panel state, OCR prefs; `screenText` = the screen dictionary's text layer (lines, glyph counts, bounds as fractions) and `popupOpen` |
 | `/request_projection` | Ask for MediaProjection consent (shows system dialog on device) |
@@ -139,6 +141,15 @@ $ADB -s <serial> push test.png /sdcard/Android/data/io.github.wilsonnet.droidsen
 ```
 
 ## Gotchas
+
+- New endpoints go in `debug/DebugExtras.kt` (`PATHS` + `handle`), not in `DebugApi`'s `when`
+  (editing it resurfaces ~90 baselined lint findings — dsm-lint skill).
+- Per-language Anki test (dedicated decks, OK to mine into): `/language?set=de`, then
+  `/mine?word=Hund&sentence=…` creates *Droid Sentence Miner (German)* in *Droid Sentence
+  Miner::German*; `/anki_notes?word=Hund` shows `Gender=der`, `IPA=/hʊnt/`; `/anki_templates?model=`
+  shows the generated templates. Leaving contents out: set a field to *Nothing* in *Settings → Anki
+  → Fields* (UI), check `/card_contents`, mine, and `/anki_notes` shows it empty. Japanese keeps the user's own
+  deck/model (`/preview_card` only — never `/mine` in Japanese on the personal collection).
 
 - **Scoped storage**: `/ocr?file=` cannot read `/sdcard/Pictures` (needs READ_MEDIA_IMAGES).
   Use the app's own external files dir as above, or push into `/data/local/tmp` and `run-as`.

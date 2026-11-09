@@ -9,12 +9,13 @@ import io.github.wilsonnet.droidsentenceminer.core.GlossaryMode
 import io.github.wilsonnet.droidsentenceminer.dict.DictArchive
 import io.github.wilsonnet.droidsentenceminer.dict.DictDatabase
 import io.github.wilsonnet.droidsentenceminer.dict.DictMedia
-import io.github.wilsonnet.droidsentenceminer.dict.Ipa
 import io.github.wilsonnet.droidsentenceminer.dict.GlossaryHtml
 import io.github.wilsonnet.droidsentenceminer.dict.GlossaryParser
+import io.github.wilsonnet.droidsentenceminer.dict.Ipa
 import io.github.wilsonnet.droidsentenceminer.dict.PitchAccent
 import io.github.wilsonnet.droidsentenceminer.dict.TermLookup
 import io.github.wilsonnet.droidsentenceminer.dict.TermResult
+import io.github.wilsonnet.droidsentenceminer.lang.Languages
 import io.github.wilsonnet.droidsentenceminer.textlog.TextLineEntity
 import io.github.wilsonnet.droidsentenceminer.textlog.TextLog
 import kotlinx.coroutines.Deferred
@@ -37,7 +38,23 @@ class CardMiner(
     private val textLog: TextLog,
     private val wordAudioFetcher: WordAudio = WordAudio(),
 ) {
+    /**
+     * The study language's card contents that the note type receives: with a mapping from
+     * Settings → Anki → Fields, a content no field gets (*Nothing*) is left out — never fetched —
+     * and the screenshot switch turns the picture off. See [CardContents.forMapping].
+     */
+    suspend fun cardFields(): List<String> {
+        val mapping = prefs.ankiFieldMap(prefs.ankiModel.first())
+        return CardContents.forMapping(language = Languages.current, fieldMap = mapping, includeImage = prefs.ankiIncludeImage.first())
+    }
 
+    /** The note for [word] in [sentence] with the study language's card contents (see [cardFields]). */
+    @Suppress(
+        "MultilineExpressionWrapping", // Legacy expression body; ktlint's wrapping rules disagree on these (dsm-lint skill).
+        "CyclomaticComplexMethod",
+        "CognitiveComplexMethod",
+        "LongMethod", // Legacy; one branch per card content.
+    )
     suspend fun buildCard(
         word: String,
         sentence: String,
@@ -48,6 +65,7 @@ class CardMiner(
         wordAudioFetch: Deferred<WordAudio.Clip?>? = null,
     ): AnkiCard = withContext(Dispatchers.Default) {
         val snapshot = prefs.snapshot()
+        val fields = cardFields()
         val resolved = details ?: lookup.lookup(word)
         val wordAudioJob = wordAudioFetch ?: async { fetchWordAudio(word, resolved) }
         val dicts = db.dictionaryDao().getEnabled().associateBy { it.id }
@@ -106,8 +124,11 @@ class CardMiner(
             .ifBlank { null }
 
         val expression = resolved.baseForm.ifBlank { word }
-        // Languages without kana readings (English) get the IPA as the card's reading.
-        val reading = resolved.reading.orEmpty().ifBlank { Ipa.of(resolved.frequencies, expression).firstOrNull()?.ipa.orEmpty() }
+        // Languages without kana readings (English, German) get the IPA: its own card field, and the
+        // reading of the history entry.
+        val ipa = Ipa.of(resolved.frequencies, expression).firstOrNull()?.ipa.orEmpty()
+        val reading = resolved.reading.orEmpty().ifBlank { ipa }
+        val gender = CardContents.gender(terms)
         val pitchGraph = pitchGraphs(resolved, word)
         val tAudio = android.os.SystemClock.elapsedRealtime()
         val wordAudio = wordAudioJob.await()
@@ -127,28 +148,33 @@ class CardMiner(
             }
         }
 
+        val on = CardContents(fields)
+        val frequency = CardHtml.frequencyLine(resolved).takeUnless { mode == GlossaryMode.FIRST }
         AnkiCard(
             expression = resolved.baseForm.ifBlank { word },
-            reading = reading,
-            meaningHtml = CardHtml.meaning(sb.toString(), CardHtml.frequencyLine(resolved).takeUnless { mode == GlossaryMode.FIRST }, dictStyles),
-            sentence = sentence,
-            sentenceHtml = CardHtml.highlightSentence(sentence, resolved.baseForm.ifBlank { word }),
-            imageBytes = imageBytes,
+            reading = on.text(field = CardFields.READING, value = reading),
+            meaningHtml = on.text(field = CardFields.MEANING) { CardHtml.meaning(sb.toString(), frequency, dictStyles) },
+            sentence = on.text(field = CardFields.SENTENCE, value = sentence),
+            sentenceHtml = on.text(field = CardFields.SENTENCE) { CardHtml.highlightSentence(sentence, expression) },
+            imageBytes = imageBytes.takeIf { CardFields.IMAGE in fields },
             imageName = "dsm_${sanitizeForFilename(resolved.baseForm.ifBlank { word })}.jpg",
-            audioBytes = audio?.bytes,
+            audioBytes = audio?.bytes.takeIf { CardFields.AUDIO in fields },
             audioName = audio?.let { "dsm_${sanitizeForFilename(resolved.baseForm.ifBlank { word })}.${it.extension}" },
-            pitchGraphHtml = pitchGraph,
-            wordAudioBytes = wordAudio?.bytes,
+            pitchGraphHtml = on.text(field = CardFields.PITCH_GRAPH, value = pitchGraph),
+            ipa = on.text(field = CardFields.IPA, value = ipa),
+            gender = on.text(field = CardFields.GENDER, value = gender),
+            fields = fields,
+            wordAudioBytes = wordAudio?.bytes.takeIf { CardFields.WORD_AUDIO in fields },
             wordAudioName = wordAudio?.let { "dsm_${sanitizeForFilename(expression)}_pron.${it.extension}" },
-            sourceTitle = "Droid Sentence Miner (screen OCR)",
+            sourceTitle = "Droid Sentence Miner (screen OCR)".takeIf { CardFields.SOURCE in fields },
             tags = tags,
-            glossaryMedia = glossaryMedia.values.toList(),
+            glossaryMedia = glossaryMedia.values.toList().takeIf { CardFields.MEANING in fields }.orEmpty(),
         )
     }
 
     /** The word's pronunciation for the card (null when turned off or not found in time). */
     private suspend fun fetchWordAudio(word: String, details: TermLookup.LookupDetails): WordAudio.Clip? {
-        if (!prefs.wordAudio.first()) return null
+        if (!prefs.wordAudio.first() || CardFields.WORD_AUDIO !in cardFields()) return null
         val t0 = android.os.SystemClock.elapsedRealtime()
         val expression = details.baseForm.ifBlank { word }
         return wordAudioFetcher.fetch(expression, details.reading.orEmpty(), prefs.wordAudioCustomUrl.first()).also {
@@ -206,6 +232,10 @@ class CardMiner(
      * voice clip cut from the replay buffer. [audio] overrides the clip (e.g. after editing);
      * [edits] from the card editor override both the sentence and the clip.
      */
+    @Suppress(
+        "MultilineExpressionWrapping", // Legacy expression body; ktlint's wrapping rules disagree on these (dsm-lint skill).
+        "CyclomaticComplexMethod", // Legacy; one branch per audio source.
+    )
     suspend fun mineLine(
         line: TextLineEntity,
         word: String,
@@ -219,7 +249,9 @@ class CardMiner(
         // two overlap (encoding a few seconds of audio took 1.6 s with Nightshade running).
         val resolved = details ?: lookup.lookup(word)
         val wordAudioFetch = async(Dispatchers.IO) { fetchWordAudio(word, resolved) }
+        val fields = cardFields()
         val segment = when {
+            CardFields.AUDIO !in fields -> null
             edits != null -> edits.audio
             !includeAudio -> null
             audio != null -> audio
@@ -246,7 +278,7 @@ class CardMiner(
             }
         }
         val t1 = android.os.SystemClock.elapsedRealtime()
-        val image = textLog.screenshot(line)
+        val image = if (CardFields.IMAGE in fields) textLog.screenshot(line) else null
         val t2 = android.os.SystemClock.elapsedRealtime()
         android.util.Log.i(TAG, "line ${line.id}: clip+encode ${t1 - t0} ms (${segment?.durationMs ?: 0} ms audio), screenshot ${t2 - t1} ms")
         val result = mine(word, edits?.sentence ?: line.text, image, resolved, audio = encoded, wordAudioFetch = wordAudioFetch)
@@ -259,7 +291,7 @@ class CardMiner(
 
     /** The line's sentence audio as [mineLine] would attach it, for the card editor to trim. */
     suspend fun lineAudio(line: TextLineEntity): AudioSegment? =
-        if (prefs.audioEnabled.first()) textLog.clip(line)?.segment else null
+        if (prefs.audioEnabled.first() && CardFields.AUDIO in cardFields()) textLog.clip(line)?.segment else null
 
     /**
      * Builds the HTML body shown in the popup WebView. Each dictionary header says whether that

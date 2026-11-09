@@ -1,6 +1,6 @@
 # Building
 
-[← README](../README.md) · [Features](features.md) · [Usage](usage.md) · [Architecture](architecture.md) · [Building](building.md) · [Validation](validation.md) · [Roadmap](roadmap.md)
+[← README](../README.md) · [Features](features.md) · [Usage](usage.md) · [Architecture](architecture.md) · [Building](building.md) · [Validation](validation.md) · [Dictionaries](dictionaries.md) · [Roadmap](roadmap.md)
 
 ## Android app
 
@@ -22,7 +22,7 @@ echo "sdk.dir=$ANDROID_HOME" > local.properties
 # 3. Lint, build & test (the same gate as PR CI, .github/workflows/ci.yml)
 ./gradlew detekt detektDebug detektDebugUnitTest   # detekt: every rule + ktlint + Compose rules
 ./gradlew lintDebug                  # Android Lint: every check, warnings are errors
-./gradlew testDebugUnitTest          # 231 JVM unit tests, incl. ArchitectureTest
+./gradlew testDebugUnitTest          # 265 JVM unit tests, incl. ArchitectureTest and property tests
 ./gradlew connectedDebugAndroidTest  # 4 on-device tests (VAD + AAC encoding)
 ./gradlew assembleDebug              # app/build/outputs/apk/debug/app-debug.apk
 
@@ -51,7 +51,18 @@ Findings that predate the linter are recorded in `app/detekt-baseline*.xml` and
 findings (baseline entries are tied to the code): fix them in the same change. Regenerate a
 baseline (`./gradlew detektBaseline detektBaselineDebug detektBaselineDebugUnitTest`, or delete
 `lint-baseline.xml` and run `lintDebug` twice) only after fixing old findings, never to hide new
-ones.
+ones. How to write code that passes the first time (the shapes ktlint accepts, conflicting
+rules, when a `@Suppress` with a reason is right, editing legacy code without resurfacing its
+baseline): `.opencode/skills/dsm-lint/SKILL.md`. `./gradlew detekt -PdetektAutoCorrect` applies
+ktlint's formatting fixes — to *every* file, so revert files you didn't mean to touch.
+
+**Property-based tests** (kotest-property, `app/src/test/.../properties/`) check invariants on
+generated input where examples can't cover the space: every language module's scanner, deinflector
+and OCR helpers (`LanguagePropertiesTest`), the Anki field mapper and card sizing
+(`AnkiPropertiesTest`), version ordering and the What's new selection (`VersionPropertiesTest`).
+They found two bugs on the first run (a *Sentence Audio* field filled while sentence audio was
+off; a wrong test assumption about curly apostrophes). Use them for parsers, scanners, mappers
+and anything with an "always/never" rule; keep example tests for specific language facts.
 
 ## Language packs
 

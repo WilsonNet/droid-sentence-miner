@@ -1,6 +1,6 @@
 # Roadmap
 
-[← README](../README.md) · [Features](features.md) · [Usage](usage.md) · [Architecture](architecture.md) · [Building](building.md) · [Validation](validation.md) · [Roadmap](roadmap.md)
+[← README](../README.md) · [Features](features.md) · [Usage](usage.md) · [Architecture](architecture.md) · [Building](building.md) · [Validation](validation.md) · [Dictionaries](dictionaries.md) · [Roadmap](roadmap.md)
 
 Ideas and known gaps, roughly in priority order. Shipped work moves to [CHANGELOG.md](../CHANGELOG.md)
 (the `dsm-docs` skill checks this list against the code at the end of every task).
@@ -11,6 +11,10 @@ Ideas and known gaps, roughly in priority order. Shipped work moves to [CHANGELO
 - More study languages: a module is `lang/<code>/` + registry entry + recommended dictionaries
   (wty has Wiktionary dictionaries for dozens of languages, PP-OCRv6 reads 50). Spanish,
   Chinese and Korean are the obvious next ones; Chinese/Korean need their own segmentation.
+- Make `build_pack.py` zips byte-reproducible (fixed timestamps), so a rebuilt pack keeps its SHA-256.
+- German: separated verb prefixes (*Ich stehe früh auf* → aufstehen) aren't joined; compound
+  nouns missing from Wiktionary aren't split; PaddleOCR's character set has no „ (low quote), so
+  it's dropped rather than read as `,,`; German OCR is only checked on 3 rendered lines.
 - English: book mode is untested on English print; no English frequency dictionary is offered;
   irregular forms rely on Wiktionary's form-of entries; the English OCR pack is only used for
   English (PaddleOCR on Japanese untested).

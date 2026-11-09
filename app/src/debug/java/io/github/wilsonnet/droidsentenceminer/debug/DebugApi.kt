@@ -48,7 +48,6 @@ import java.util.concurrent.Executors
  *   curl -s "localhost:9099/mine?word=...&sentence=..."
  */
 object DebugApi {
-
     private const val TAG = "DSM-DebugApi"
     private const val PORT = 9099
 
@@ -109,6 +108,8 @@ object DebugApi {
         val pathOnly = path.substringBefore('?')
         val params = parseQuery(path.substringAfter('?', ""))
 
+        // Outside the `when`: adding a branch there resurfaces its baselined lint findings.
+        if (pathOnly in DebugExtras.PATHS) return respondApi(socket) { DebugExtras.handle(app, pathOnly, params) }
         when (pathOnly) {
             "/state" -> respondJson(socket, stateJson())
             "/scan" -> respondApi(socket) { scan(params) }

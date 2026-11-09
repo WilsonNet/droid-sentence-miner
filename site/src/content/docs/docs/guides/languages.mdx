@@ -1,6 +1,6 @@
 ---
 title: Languages
-description: Study Japanese (the main focus) or English. Only the language you pick downloads dictionaries and OCR models.
+description: Study Japanese (the main focus), English or German. Only the language you pick downloads dictionaries and OCR models.
 ---
 
 Droid Sentence Miner is built for Japanese first, and it supports other languages as small
@@ -26,11 +26,29 @@ any time in **Settings → Language**.
 - **Words and phrases**: tap a word and the longest dictionary match wins, up to five words, so
   *looked up*, *ice cream* and *give up on* open as phrases. Inflections are undone with parts of
   speech: *running → run*, *happiest → happy*, *wolves → wolf*, *looked up → look up*.
-- **Pronunciation**: the IPA is shown under the headword and goes into the card's *Reading*
-  field. Word audio comes from Wiktionary's recordings on Wikimedia Commons (US first).
+- **Pronunciation**: the IPA is shown under the headword and goes into the card's *IPA* field
+  (or *Reading*, on a note type without one). Word audio comes from Wiktionary's recordings on Wikimedia Commons (US first).
 - **OCR**: without downloads, English is read by the built-in ML Kit model. For games and
   subtitles install the **English OCR models** (23 MB) in **Settings → Language**: PaddleOCR made
   about a third of ML Kit's word errors in our test (3.5 % vs 12.2 %) and is faster.
+
+## German
+
+- **Dictionaries**: install *Wiktionary German → English* (17 MB) and *Wiktionary German IPA*
+  (1.5 MB). *Wiktionary German* (German → German, 55 MB) and German → Portuguese, Spanish, French,
+  Italian, Russian, Chinese, Japanese and Korean glossaries are there too. Which is which:
+  [dictionary list](https://github.com/WilsonNet/droid-sentence-miner/blob/main/docs/dictionaries.md).
+- **Words and phrases**: whole words and phrases of up to four words, hyphenated compounds
+  (*E-Mail*). Nouns keep their capital; a capitalized word at the start of a sentence and ALL-CAPS
+  game text are looked up too. Wiktionary lists most inflected forms itself (*ging → gehen*,
+  *Häuser → Haus*); regular ones are undone on top: *gemacht → machen*, *aufgemacht → aufmachen*,
+  *anzufangen → anfangen*, *schnelleren → schnell*, *Lehrerinnen → Lehrerin*. Separated prefixes
+  (*Ich stehe früh auf*) aren't joined yet.
+- **Cards**: the *Gender* field gets the noun's article (*der Hund*, *die Katze*), the *IPA* field
+  the pronunciation. Word audio: Wiktionary's recordings (standard German first, then Austrian and
+  Swiss), then Lingua Libre.
+- **OCR**: the built-in ML Kit model reads umlauts and ß; the optional OCR models (23 MB, the same
+  PaddleOCR pack as English) work too. Hyphenated line breaks (*Wör-* / *terbuch*) are joined.
 
 ## Japanese
 

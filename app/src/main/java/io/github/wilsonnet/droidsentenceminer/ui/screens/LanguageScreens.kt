@@ -47,10 +47,12 @@ import io.github.wilsonnet.droidsentenceminer.lang.LanguagePacks
 import io.github.wilsonnet.droidsentenceminer.lang.Languages
 import kotlinx.coroutines.launch
 
-/** What each language gets, one line, for the picker. Japanese is the project's main focus. */
+// What each language gets, one line, for the picker. Japanese is the project's main focus.
+@Suppress("MultilineExpressionWrapping") // Legacy expression body; ktlint's wrapping rules disagree on these (dsm-lint skill).
 private fun blurb(language: LanguageModule): String = when (language.code) {
     "ja" -> "Main focus. Game-trained OCR, pitch accent, word audio, vertical book pages."
     "en" -> "Wiktionary dictionaries, inflections and phrasal verbs, PaddleOCR (optional ${language.pack?.sizeMb?.toInt()} MB download)."
+    "de" -> "Wiktionary dictionaries with inflected forms, umlaut-aware OCR (optional ${language.pack?.sizeMb?.toInt()} MB download)."
     else -> ""
 }
 

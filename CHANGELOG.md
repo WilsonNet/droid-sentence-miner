@@ -6,6 +6,36 @@ versions are the `v*` tags that publish a signed APK on
 
 ## [Unreleased]
 
+## [0.7.0] — 2026-11-09
+
+### Added
+- **German.** Pick it as your study language: lookups of words and phrases (hyphenated compounds
+  like *E-Mail*, capitalized nouns, ALL-CAPS game text), inflections (*ging → gehen*, *gemacht →
+  machen*, *aufgemacht → aufmachen*, *anzufangen → anfangen*, *schnelleren → schnell*), IPA, word
+  audio from Wiktionary and Lingua Libre recordings, and OCR clean-up for „quotes“ and words
+  hyphenated across lines.
+- **German dictionaries in one tap**: Wiktionary German → English (600,000 entries, with inflected
+  forms) and German IPA (recommended), Wiktionary German (monolingual) and its IPA, and small
+  German → Portuguese / Spanish / French / Italian / Russian / Chinese / Japanese / Korean
+  glossaries. Which is which: [docs/dictionaries.md](docs/dictionaries.md).
+- **Anki per language.** Deck, note type and tags are kept per study language
+  (Japanese keeps your current settings). English and German get their own note types and decks
+  (*Droid Sentence Miner (English)* in *Droid Sentence Miner::English*, same for German): an
+  *IPA* field instead of Reading, no pitch graph, and for German a *Gender* field with the noun's
+  article (der/die/das).
+- **Leave contents out with *Nothing*.** In *Settings → Anki → Fields*, a field set to *Nothing*
+  now also means that content isn't fetched at all (no word audio download, no sentence clip, no
+  screenshot) — handy for simple word + sentence + glossary cards.
+- **What's new**: after an update, a one-time dialog shows what changed since the version you had.
+
+### Fixed
+- The English OCR models download (*Settings → Language*) failed with "HTTP 404": the pack was never
+  published. It is now, and German uses the same pack.
+- An Anki note type with a *Sentence Audio* field got the sentence clip even with sentence audio
+  turned off.
+- Small one-tap dictionaries show "<1 MB" instead of "~0 MB".
+- Word audio prefers the recording spelled exactly like the word (*De-Haus* before *De-haus*).
+
 ## [0.6.0] — 2026-11-08
 
 ### Added
@@ -162,7 +192,8 @@ First release.
 - Microphone fallback for apps that block audio capture; typewriter-text handling for visual novels.
 - Tablet/landscape layout with a navigation rail.
 
-[Unreleased]: https://github.com/WilsonNet/droid-sentence-miner/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/WilsonNet/droid-sentence-miner/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/WilsonNet/droid-sentence-miner/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/WilsonNet/droid-sentence-miner/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/WilsonNet/droid-sentence-miner/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/WilsonNet/droid-sentence-miner/compare/v0.4.0...v0.5.0

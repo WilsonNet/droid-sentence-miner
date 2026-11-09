@@ -49,12 +49,29 @@ The mapper uses aliases in preference order, not note-type field order. A card c
 | Screenshot | Image, Picture, Snapshot, Screenshot, Photo |
 | Sentence audio | Audio, Sentence Audio, Voice, Sound, Audio Clip |
 | Word audio | Word Audio, Expression Audio, Vocab Audio, Vocabulary Audio, Term Audio, Audio Word |
-| Pitch graph | Pitch Graph, Graph, Pitch Accent Graph(s), Pitch Accent, Pitch, Pitch Accents |
+| Pitch graph (Japanese) | Pitch Graph, Graph, Pitch Accent Graph(s), Pitch Accent, Pitch, Pitch Accents |
+| IPA (English, German) | IPA, Pronunciation, Phonetic(s), Transcription, then Reading, Word Reading |
+| Gender (German) | Gender, Article, Artikel, Genus — the noun's article: der, die, das |
 | Source | Source, Origin, Title, URL |
 
 Field names are normalized (lowercase, punctuation removed), so `Context Sentence` and
 `context_sentence` match. Only fields that exist on the chosen note type are filled; the rest are
 skipped. Plain Basic note types with two fields use a compact Front/Back layout instead.
+
+### Per language
+
+Deck, note type and tags are kept **per study language** — Japanese keeps the
+settings you already had. Each language has its own note type, created on the first card if it
+doesn't exist: *Droid Sentence Miner* (Japanese: Reading and Pitch graph), *Droid Sentence Miner
+(English)* (IPA instead of Reading, no pitch graph) and *Droid Sentence Miner (German)* (Gender and
+IPA), in the decks *Droid Sentence Miner*, *Droid Sentence Miner::English* and *Droid Sentence
+Miner::German*.
+
+### Leaving contents out
+
+In **Settings → Anki → Fields**, set a field to **Nothing** and that content is left out: it isn't
+even fetched (no word-audio download, no sentence clip, no screenshot). For simple cards, map only
+the word, the sentence and the glossary. The word is always added.
 
 If the automatic mapping is wrong, open **Settings → Anki → Fields**, load the note type, and pick
 what each field receives. A custom map replaces name matching for that note type and is saved per

@@ -8,6 +8,10 @@ import okhttp3.Request
 import java.io.File
 import java.util.concurrent.TimeUnit
 
+// Wiktionary dictionaries built by wty (yomidevs/wiktionary-to-yomitan) on Hugging Face.
+private const val WTY = "https://huggingface.co/datasets/daxida/wty-release/resolve/main/latest"
+private const val PAIR_WITH_GERMAN_ENGLISH = "Pair it with Wiktionary German → English."
+
 /** Downloadable Yomitan dictionaries offered as one-click installs. */
 data class RecommendedDictionary(
     val id: String,
@@ -48,6 +52,8 @@ data class DictionaryUpdate(
 )
 
 object RecommendedDictionaries {
+    /** Every one-tap dictionary, all languages; [forLanguage] picks one language's. */
+    @Suppress("MultilineExpressionWrapping") // Legacy layout; re-indenting the whole list resurfaces its baselined findings.
     val ALL = listOf(
         RecommendedDictionary(
             id = "jitendex",
@@ -212,6 +218,131 @@ object RecommendedDictionaries {
             indexUrl = "https://huggingface.co/datasets/daxida/wty-release/resolve/main/latest/index/wty-en-ko-index.json?download=true",
             language = "en",
             installedTitle = "wty-en-ko",
+        ),
+        // German: Wiktionary via wty, CC BY-SA. wty-de-en lists inflected forms as entries, which GermanLanguage relies on.
+        RecommendedDictionary(
+            id = "wty-de-en",
+            name = "Wiktionary German → English",
+            description = "German words glossed in English, from the English Wiktionary (wty-de-en): 600,000 entries " +
+                "including inflected forms (ging → gehen, Häuser → Haus). Recommended.",
+            url = "$WTY/dict/de/en/wty-de-en.zip?download=true",
+            approximateSizeMb = 17.3,
+            indexUrl = "$WTY/index/wty-de-en-index.json?download=true",
+            language = "de",
+            recommended = true,
+            installedTitle = "wty-de-en",
+        ),
+        RecommendedDictionary(
+            id = "wty-de-en-ipa",
+            name = "Wiktionary German IPA",
+            description = "Pronunciation (IPA) for German words, from the English Wiktionary, shown in the popup and on the card.",
+            url = "$WTY/dict/de/en/wty-de-en-ipa.zip?download=true",
+            approximateSizeMb = 1.5,
+            indexUrl = "$WTY/index/wty-de-en-ipa-index.json?download=true",
+            language = "de",
+            recommended = true,
+            installedTitle = "wty-de-en-ipa",
+        ),
+        RecommendedDictionary(
+            id = "wty-de-de",
+            name = "Wiktionary German",
+            description = "German → German, from the German Wiktionary (wty-de-de): definitions, examples and inflected " +
+                "forms. Bigger and more complete than the English one; pair them or pick one.",
+            url = "$WTY/dict/de/de/wty-de-de.zip?download=true",
+            approximateSizeMb = 54.7,
+            indexUrl = "$WTY/index/wty-de-de-index.json?download=true",
+            language = "de",
+            installedTitle = "wty-de-de",
+        ),
+        RecommendedDictionary(
+            id = "wty-de-de-ipa",
+            name = "Wiktionary German IPA (German Wiktionary)",
+            description = "More IPA transcriptions, from the German Wiktionary (wty-de-de-ipa).",
+            url = "$WTY/dict/de/de/wty-de-de-ipa.zip?download=true",
+            approximateSizeMb = 12.8,
+            indexUrl = "$WTY/index/wty-de-de-ipa-index.json?download=true",
+            language = "de",
+            installedTitle = "wty-de-de-ipa",
+        ),
+        RecommendedDictionary(
+            id = "wty-de-pt",
+            name = "Wiktionary German → Portuguese",
+            description = "German words glossed in Portuguese, from the Portuguese Wiktionary (wty-de-pt). $PAIR_WITH_GERMAN_ENGLISH",
+            url = "$WTY/dict/de/pt/wty-de-pt.zip?download=true",
+            approximateSizeMb = 0.3,
+            indexUrl = "$WTY/index/wty-de-pt-index.json?download=true",
+            language = "de",
+            installedTitle = "wty-de-pt",
+        ),
+        RecommendedDictionary(
+            id = "wty-de-es",
+            name = "Wiktionary German → Spanish",
+            description = "German words glossed in Spanish, from the Spanish Wiktionary (wty-de-es). $PAIR_WITH_GERMAN_ENGLISH",
+            url = "$WTY/dict/de/es/wty-de-es.zip?download=true",
+            approximateSizeMb = 0.2,
+            indexUrl = "$WTY/index/wty-de-es-index.json?download=true",
+            language = "de",
+            installedTitle = "wty-de-es",
+        ),
+        RecommendedDictionary(
+            id = "wty-de-fr",
+            name = "Wiktionary German → French",
+            description = "German words glossed in French, from the French Wiktionary (wty-de-fr). $PAIR_WITH_GERMAN_ENGLISH",
+            url = "$WTY/dict/de/fr/wty-de-fr.zip?download=true",
+            approximateSizeMb = 16.9,
+            indexUrl = "$WTY/index/wty-de-fr-index.json?download=true",
+            language = "de",
+            installedTitle = "wty-de-fr",
+        ),
+        RecommendedDictionary(
+            id = "wty-de-it",
+            name = "Wiktionary German → Italian",
+            description = "German words glossed in Italian, from the Italian Wiktionary (wty-de-it). $PAIR_WITH_GERMAN_ENGLISH",
+            url = "$WTY/dict/de/it/wty-de-it.zip?download=true",
+            approximateSizeMb = 0.5,
+            indexUrl = "$WTY/index/wty-de-it-index.json?download=true",
+            language = "de",
+            installedTitle = "wty-de-it",
+        ),
+        RecommendedDictionary(
+            id = "wty-de-ru",
+            name = "Wiktionary German → Russian",
+            description = "German words glossed in Russian, from the Russian Wiktionary (wty-de-ru). $PAIR_WITH_GERMAN_ENGLISH",
+            url = "$WTY/dict/de/ru/wty-de-ru.zip?download=true",
+            approximateSizeMb = 5.1,
+            indexUrl = "$WTY/index/wty-de-ru-index.json?download=true",
+            language = "de",
+            installedTitle = "wty-de-ru",
+        ),
+        RecommendedDictionary(
+            id = "wty-de-zh",
+            name = "Wiktionary German → Chinese",
+            description = "German words glossed in Chinese, from the Chinese Wiktionary (wty-de-zh). $PAIR_WITH_GERMAN_ENGLISH",
+            url = "$WTY/dict/de/zh/wty-de-zh.zip?download=true",
+            approximateSizeMb = 5.7,
+            indexUrl = "$WTY/index/wty-de-zh-index.json?download=true",
+            language = "de",
+            installedTitle = "wty-de-zh",
+        ),
+        RecommendedDictionary(
+            id = "wty-de-ja",
+            name = "Wiktionary German → Japanese",
+            description = "German words glossed in Japanese, from the Japanese Wiktionary (wty-de-ja). $PAIR_WITH_GERMAN_ENGLISH",
+            url = "$WTY/dict/de/ja/wty-de-ja.zip?download=true",
+            approximateSizeMb = 0.6,
+            indexUrl = "$WTY/index/wty-de-ja-index.json?download=true",
+            language = "de",
+            installedTitle = "wty-de-ja",
+        ),
+        RecommendedDictionary(
+            id = "wty-de-ko",
+            name = "Wiktionary German → Korean",
+            description = "German words glossed in Korean, from the Korean Wiktionary (wty-de-ko). $PAIR_WITH_GERMAN_ENGLISH",
+            url = "$WTY/dict/de/ko/wty-de-ko.zip?download=true",
+            approximateSizeMb = 0.2,
+            indexUrl = "$WTY/index/wty-de-ko-index.json?download=true",
+            language = "de",
+            installedTitle = "wty-de-ko",
         ),
     )
 

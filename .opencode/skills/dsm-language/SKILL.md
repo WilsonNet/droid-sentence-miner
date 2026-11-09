@@ -48,7 +48,10 @@ when a user studies that language. Architecture table: `docs/architecture.md` �
 6. Word audio: set `wordAudioSources` (and `linguaLibrePrefix` = `LL-<Wikidata Q-id> (<ISO 639-3>)`
    for Lingua Libre). Only listed sources are queried; add a `WordAudioSource` + a branch in
    `WordAudio.urls` for a new provider.
-7. Unit tests in `app/src/test/.../lang/` (see `EnglishLanguageTest`), docs pass (`dsm-docs`).
+7. Anki: set `hasIpaReading` / `hasPitchAccent` / `hasNounGender` (+ `nounArticle`) so cards get
+   the right fields; add the dictionaries to `docs/dictionaries.md`.
+8. Unit tests in `app/src/test/.../lang/` (see `GermanLanguageTest`); `LanguagePropertiesTest`
+   checks every registered module's invariants automatically. Lint: `dsm-lint`. Docs pass (`dsm-docs`).
 
 ## Publishing a language pack
 
@@ -81,6 +84,24 @@ curl -s "localhost:9099/ocr?engine=paddle&file=/data/user/0/io.github.wilsonnet.
 - `/lang_pack` → pack status and last PaddleOCR timings; `?install=1` downloads (blocking),
   `?remove=1` deletes.
 - `/dicts` rows have `language`. `/word_audio?term=` tests the language's word-audio sources.
+
+## German (`lang/de`, 2026-11-09) — worked example of a second spaced language
+
+- Split for lint: `GermanLanguage` (overrides only, 11 functions max), `GermanScanner`
+  (scan/OCR helpers), `GermanDeinflector` (rules as `"suffix>replacement"` strings per POS group).
+- wty-de-en lists inflected forms (non-lemma entries) — check a dictionary's term bank for that
+  before writing big rule tables; German only needed a fallback.
+- Language-specific Anki fields come from module flags (`hasIpaReading`, `hasPitchAccent`,
+  `hasNounGender`, `nounArticle`) → `CardFields.forLanguage`; a new language gets its own note
+  type (`DsmPrefs.defaultModel`) and subdeck automatically.
+- Word audio knobs: `wiktionaryRegions` (Commons `De-at-…` region ranking, "" = no region) and
+  `linguaLibreArticles` (Lingua Libre files recorded with the article).
+- The pack can reuse another language's zip when the recognizer's charset covers it (PP-OCRv6
+  small rec: äöüß yes, „ no). `lang-en-1` was only published with 0.7.0 (it 404'd in 0.6.0) — see AGENTS.md.
+- Device results: all test forms resolve (gemacht, aufgemacht, anzufangen, schnelleren,
+  Lehrerinnen, HUND → Hund); tap → popup 54 ms warm; Wiktionary audio found for Hund, Mädchen,
+  Wörterbuch, schön, Entschuldigung; 3 rendered umlaut lines read exactly by ML Kit and PaddleOCR
+  (PaddleOCR drops „).
 
 ## Known numbers (Xiaomi Pad 7, 2026-11-08)
 

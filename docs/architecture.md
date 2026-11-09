@@ -1,6 +1,6 @@
 # Architecture
 
-[← README](../README.md) · [Features](features.md) · [Usage](usage.md) · [Architecture](architecture.md) · [Building](building.md) · [Validation](validation.md) · [Roadmap](roadmap.md)
+[← README](../README.md) · [Features](features.md) · [Usage](usage.md) · [Architecture](architecture.md) · [Building](building.md) · [Validation](validation.md) · [Dictionaries](dictionaries.md) · [Roadmap](roadmap.md)
 
 ## Pipeline
 
@@ -52,14 +52,25 @@ Everything language-specific sits behind `LanguageModule` (`lang/Language.kt`); 
 is the study language (pref `language`, set by the first-run screen). Generic code — scanning,
 OCR post-processing, line tracking, Book layout, filters — only asks the module:
 
-| Hook | Japanese (`lang/ja`) | English (`lang/en`) |
-| --- | --- | --- |
-| `candidateLengths` | every substring length | whole words and phrases (≤ 5 words, stop at punctuation) |
-| `deinflect` / `ruleMask` / `termMatches` | Yomitan/Jiten rules (`JapaneseDeinflector`) | suffix rules + POS bits (`n`/`v`/`adj`/`adv`), case folding |
-| `normalizeOcr` / `joinRows` | NFKC, full-width punctuation, no spaces | NFKC, keep spaces/punctuation, join rows with a space |
-| `isTargetChar`, `textScore`, `looksLikeText` | kana/kanji | Latin letters |
-| `isRubyChar` | kana (furigana filter) | none |
-| `pack` | — (meikiocr models via `MeikiModels`) | PaddleOCR models (`LanguagePacks`) |
+| Hook | Japanese (`lang/ja`) | English (`lang/en`) | German (`lang/de`) |
+| --- | --- | --- | --- |
+| `candidateLengths` | every substring length | whole words and phrases (≤ 5 words, stop at punctuation) | words/phrases ≤ 4 words (`GermanScanner`) |
+| `deinflect` / `ruleMask` / `termMatches` | Yomitan/Jiten rules (`JapaneseDeinflector`) | suffix rules + POS bits (`n`/`v`/`adj`/`adv`), case folding | fallback rules (`GermanDeinflector`; wty lists inflected forms), case forms |
+| `normalizeOcr` / `joinRows` | NFKC, full-width punctuation, no spaces | NFKC, keep spaces/punctuation, join rows with a space | + `,,` → „, line-end hyphen joins words (not before *und*/capitals) |
+| `isTargetChar`, `textScore`, `looksLikeText` | kana/kanji | Latin letters | Latin letters |
+| `isRubyChar` | kana (furigana filter) | none | none |
+| `pack` | — (meikiocr models via `MeikiModels`) | PaddleOCR models (`LanguagePacks`) | the English pack's zip, installed as `de` |
+| `wordAudioSources`, `wiktionaryRegions`, `linguaLibreArticles` | JapanesePod101, Jisho | Wiktionary (us, uk), Lingua Libre | Wiktionary (no region, at, ch), Lingua Libre (+ der/die/das) |
+| `hasIpaReading`, `hasPitchAccent`, `hasNounGender`, `nounArticle` | kana Reading, pitch graph | IPA field | IPA + Gender field (der/die/das) |
+
+**Anki fields per language** (`anki/AnkiModels.kt` → `CardFields.forLanguage`, `CardTemplates`):
+the module's flags decide the card contents (Japanese = the historic `CardFields.ORDER`); the
+contents no field receives in the note type's custom mapping (*Nothing*) are dropped
+(`CardContents.forMapping`, `CardMiner.cardFields`), and
+`AnkiCard.fields` carries the result to the bridges, which create our note type with exactly those
+fields and templates and map only those onto other note types. Deck, note type, tags and contents
+prefs are per language: Japanese keeps the original keys, others use `<key>_<code>`
+(`DsmPrefs.perLanguage`).
 
 Dictionaries carry their language in `DictionaryEntity.sourceLanguage` (Yomitan `index.json`
 `sourceLanguage`; sniffed from the first term bank when missing; `null` = Japanese, which every

@@ -86,4 +86,34 @@ class WordAudioSourcesTest {
             WordAudioSources.parseLinguaLibreTitles(json = json, prefix = "LL-Q1860 (eng)", term = "gratification"),
         )
     }
+
+    @Test
+    fun germanWiktionaryPrefersStandardRecordingsAndExactCase() {
+        val json =
+            """{"query":{"search":[{"title":"File:De-at-Haus.ogg"},{"title":"File:De-haus.ogg"},""" +
+                """{"title":"File:De-Haus2.ogg"},{"title":"File:De-Haus.ogg"},{"title":"File:De-Hausboot.ogg"}]}}"""
+        assertEquals(
+            listOf("File:De-Haus2.ogg", "File:De-Haus.ogg", "File:De-haus.ogg", "File:De-at-Haus.ogg"),
+            WordAudioSources.parseCommonsTitles(json = json, language = "de", term = "Haus", regions = listOf("", "at", "ch")),
+        )
+    }
+
+    @Test
+    fun linguaLibreAcceptsArticlesAfterTheBareWord() {
+        val titles =
+            listOf(
+                "File:LL-Q188 (deu)-Natschoba-das Mädchen.wav",
+                "File:LL-Q188 (deu)-Sebastian Wallroth-Mädchen.wav",
+                "File:LL-Q188 (deu)-X-ein Mädchen.wav",
+            )
+        val json = titles.joinToString(prefix = """{"query":{"search":[""", postfix = "]}}") { """{"title":"$it"}""" }
+        val parsed =
+            WordAudioSources.parseLinguaLibreTitles(
+                json = json,
+                prefix = "LL-Q188 (deu)",
+                term = "Mädchen",
+                articles = listOf("der", "die", "das"),
+            )
+        assertEquals(listOf(titles[1], titles[0]), parsed)
+    }
 }
