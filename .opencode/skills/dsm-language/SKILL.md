@@ -1,6 +1,6 @@
 ---
 name: dsm-language
-description: Add or improve a study-language module in Droid Sentence Miner (lang/<code>/: scanning, deinflection, OCR normalization, recommended dictionaries, downloadable language pack with OCR models). Use when adding a new language, improving English (or any non-Japanese) support, building/publishing a language pack, or when generic code needs language-specific behavior.
+description: Add or improve a study-language module in Droid Sentence Miner (lang/<code>/ — scanning, deinflection, OCR normalization, recommended dictionaries, downloadable language pack with OCR models). Use when adding a new language, improving English (or any non-Japanese) support, building/publishing a language pack, or when generic code needs language-specific behavior.
 metadata:
   audience: developers
   project: droid-sentence-miner
