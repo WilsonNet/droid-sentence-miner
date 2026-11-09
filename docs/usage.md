@@ -1,6 +1,6 @@
 # Usage
 
-[← README](../README.md) · [Features](features.md) · [Usage](usage.md) · [Architecture](architecture.md) · [Building](building.md) · [Validation](validation.md) · [Roadmap](roadmap.md)
+[← README](../README.md) · [Features](features.md) · [Usage](usage.md) · [Architecture](architecture.md) · [Building](building.md) · [Validation](validation.md) · [Dictionaries](dictionaries.md) · [Roadmap](roadmap.md)
 
 Step by step from a fresh install. The website has the same flow with screenshots: [docs](https://wilsonnet.github.io/droid-sentence-miner/docs/getting-started/installation/).
 

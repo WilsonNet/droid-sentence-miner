@@ -5,8 +5,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -28,8 +28,8 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
@@ -58,6 +58,7 @@ import io.github.wilsonnet.droidsentenceminer.dict.DictionaryEntity
 import io.github.wilsonnet.droidsentenceminer.dict.DictionaryUpdate
 import io.github.wilsonnet.droidsentenceminer.dict.RecommendedDictionaries
 import io.github.wilsonnet.droidsentenceminer.dict.RecommendedDictionary
+import io.github.wilsonnet.droidsentenceminer.dict.sizeLabel
 import io.github.wilsonnet.droidsentenceminer.lang.Languages
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -259,7 +260,7 @@ fun DictionaryScreen(modifier: Modifier = Modifier) {
                                     Column(Modifier.weight(1f)) {
                                         Text(dict.name, style = MaterialTheme.typography.bodyLarge)
                                         Text(
-                                            "${dict.description} (~${dict.approximateSizeMb.toInt()} MB)",
+                                            "${dict.description} (${dict.sizeLabel()})",
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )

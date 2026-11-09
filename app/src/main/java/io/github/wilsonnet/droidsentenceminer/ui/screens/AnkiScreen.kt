@@ -47,8 +47,9 @@ import com.ichi2.anki.api.AddContentApi
 import io.github.wilsonnet.droidsentenceminer.AppContainer
 import io.github.wilsonnet.droidsentenceminer.anki.AnkiDroidBridge
 import io.github.wilsonnet.droidsentenceminer.anki.AnkiFieldMapper
-import io.github.wilsonnet.droidsentenceminer.anki.CardFields
 import io.github.wilsonnet.droidsentenceminer.anki.AnkiResult
+import io.github.wilsonnet.droidsentenceminer.anki.CardFields
+import io.github.wilsonnet.droidsentenceminer.anki.cardsExplanation
 import io.github.wilsonnet.droidsentenceminer.core.DsmPrefs
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -407,9 +408,7 @@ fun AnkiScreen(modifier: Modifier = Modifier) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("How cards are created", fontWeight = FontWeight.SemiBold)
                 Text(
-                    "Fields: Expression, Reading, Meaning, Sentence (with the target word bold), Image, Audio, Source. " +
-                        "Other note types are matched by field name (Anime Cards, Lapis, Yomitan-style), or by the mapping above. " +
-                        "A note type named \"${DsmPrefs.DEFAULT_MODEL}\" is created automatically if it does not exist.",
+                    cardsExplanation(),
                     style = MaterialTheme.typography.bodySmall,
                 )
                 if (!ankiDroidAvailable && provider == DsmPrefs.PROVIDER_ANKIDROID) {
@@ -435,7 +434,7 @@ private fun FieldMappingRow(field: String, canonical: String, onPick: (String) -
                 Icon(Icons.Default.ArrowDropDown, contentDescription = null)
             }
             DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-                (listOf("") + CardFields.ORDER).forEach { option ->
+                (listOf("") + CardFields.current).forEach { option ->
                     DropdownMenuItem(
                         text = { Text(CardFields.label(option)) },
                         onClick = {

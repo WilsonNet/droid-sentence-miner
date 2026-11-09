@@ -38,7 +38,7 @@ object EnglishLanguage : LanguageModule {
         description = "PaddleOCR (PP-OCRv5 detector + PP-OCRv6 recognizer): about half the word errors of the " +
             "built-in reader on game and subtitle text.",
         url = "https://github.com/WilsonNet/droid-sentence-miner/releases/download/lang-en-1/dsm-lang-en-1.zip",
-        sha256 = "eb4db787e46e9f4fbd40dc1a218658969c47db0f0b1936e48705c7c366e8114f",
+        sha256 = "068d48a7590871c297bd17a41774c7ad7ea53d4f8c59ff905638211b77b17813",
         sizeMb = 23.1,
     )
 

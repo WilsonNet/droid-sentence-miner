@@ -1,6 +1,6 @@
 # Validation
 
-[← README](../README.md) · [Features](features.md) · [Usage](usage.md) · [Architecture](architecture.md) · [Building](building.md) · [Validation](validation.md) · [Roadmap](roadmap.md)
+[← README](../README.md) · [Features](features.md) · [Usage](usage.md) · [Architecture](architecture.md) · [Building](building.md) · [Validation](validation.md) · [Dictionaries](dictionaries.md) · [Roadmap](roadmap.md)
 
 What was measured, on which device, and how. Recipes and scripts: [`.opencode/skills/dsm-ocr-eval`](../.opencode/skills/dsm-ocr-eval/SKILL.md), [`dsm-audio`](../.opencode/skills/dsm-audio/SKILL.md), [`dsm-debug-api`](../.opencode/skills/dsm-debug-api/SKILL.md), `tools/`.
 
@@ -25,6 +25,15 @@ What was measured, on which device, and how. Recipes and scripts: [`.opencode/sk
 - English lookups, Wiktionary English (1,630,667 entries) + IPA with the 8 Japanese
   dictionaries also installed (unused): a tap on a 7-word line, warm, 68 ms median (wordAt 31,
   lookup 6.5, popup HTML 31). Import: 5 min on the Pad 7.
+- German (Xiaomi Pad 7, 2026-11-09), Wiktionary German → English (602,286 entries) + German IPA,
+  with the Japanese and English dictionaries also installed: *gemacht* tap → popup 54 ms warm
+  (lookup 5 ms, popup HTML 43 ms); Hund, Mädchen, ging, gemacht, aufgemacht, schönen, schnelleren,
+  Häuser, Lehrerinnen, anzufangen, HUND, Straße all resolve. Wiktionary word audio found for Hund,
+  Mädchen, Wörterbuch, schön, Entschuldigung. OCR on 3 rendered lines (Arial 44 px, umlauts, ß,
+  „…“): ML Kit and PaddleOCR (English pack) exact except PaddleOCR drops „ (not in its charset) —
+  a smoke test, not a benchmark. Cards: *Droid Sentence Miner (German)* created on the first card
+  with Gender = der, IPA = /hʊnt/, word audio; with IPA set to *Nothing* in the field mapping,
+  *Haus* came out with IPA empty (Gender = das) and the mapping reset brought it back.
 - Lookup speed with 8 dictionaries (~2.1 M rows: Jitendex, Kanjium, Pixiv, 広辞苑, 三省堂, 実用日本語表現,
   新明解, 大辞林), Xiaomi Pad 7, `/lookup_bench` median per tap (line scan + lookup + popup
   HTML), before → after the lean-scan/cache work:

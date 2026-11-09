@@ -9,20 +9,20 @@ import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
 import io.github.wilsonnet.droidsentenceminer.audio.MicCalibration
 import io.github.wilsonnet.droidsentenceminer.audio.MicEqProfile
 import io.github.wilsonnet.droidsentenceminer.audio.MicFx
+import io.github.wilsonnet.droidsentenceminer.lang.Languages
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "dsm_settings")
 
 class DsmPrefs(private val context: Context) {
-
     private object Keys {
         val language = stringPreferencesKey("language")
         val ankiProvider = stringPreferencesKey("anki_provider")
@@ -48,6 +48,7 @@ class DsmPrefs(private val context: Context) {
         val audioMicEqProfile = stringPreferencesKey("audio_mic_eq_profile")
         val wordAudio = booleanPreferencesKey("word_audio")
         val appUpdateCheck = booleanPreferencesKey("app_update_check")
+        val whatsNewSeen = stringPreferencesKey("whats_new_seen")
         /** Legacy on/off for [GlossaryMode.FIRST]; read only when [glossaryMode] was never set. */
         val glossaryFirstDictionary = booleanPreferencesKey("glossary_first_dictionary")
         val glossaryMode = stringPreferencesKey("glossary_mode")
@@ -91,9 +92,16 @@ class DsmPrefs(private val context: Context) {
 
     val ankiProvider: Flow<String> = context.dataStore.data.map { it[Keys.ankiProvider] ?: PROVIDER_ANKIDROID }
     val ankiConnectUrl: Flow<String> = context.dataStore.data.map { it[Keys.ankiConnectUrl] ?: DEFAULT_CONNECT_URL }
-    val ankiDeck: Flow<String> = context.dataStore.data.map { it[Keys.ankiDeck] ?: DEFAULT_DECK }
-    val ankiModel: Flow<String> = context.dataStore.data.map { it[Keys.ankiModel] ?: DEFAULT_MODEL }
-    val ankiTags: Flow<String> = context.dataStore.data.map { it[Keys.ankiTags] ?: DEFAULT_TAGS }
+
+    /** The study language's deck (per language, like note type, tags and card contents; Japanese keeps the original keys). */
+    val ankiDeck: Flow<String> = context.dataStore.data.map { it[perLanguage(Keys.ankiDeck, it)] ?: defaultDeck(studyLanguage(it)) }
+
+    /** The study language's note type: an English card has other fields (IPA, no pitch graph). */
+    val ankiModel: Flow<String> = context.dataStore.data.map { it[perLanguage(Keys.ankiModel, it)] ?: defaultModel(studyLanguage(it)) }
+
+    /** The study language's card tags. */
+    val ankiTags: Flow<String> = context.dataStore.data.map { it[perLanguage(Keys.ankiTags, it)] ?: DEFAULT_TAGS }
+
     val ankiIncludeImage: Flow<Boolean> = context.dataStore.data.map { it[Keys.ankiIncludeImage] ?: true }
     /** Max height in px of the card picture (aspect ratio kept, never upscaled); 0 = original size. */
     val ankiImageMaxHeight: Flow<Int> = context.dataStore.data.map { it[Keys.ankiImageMaxHeight] ?: DEFAULT_IMAGE_MAX_HEIGHT }
@@ -110,6 +118,9 @@ class DsmPrefs(private val context: Context) {
     val wordAudio: Flow<Boolean> = context.dataStore.data.map { it[Keys.wordAudio] ?: true }
     /** Release builds look for a newer GitHub release when Home opens (update/AppUpdater). */
     val appUpdateCheck: Flow<Boolean> = context.dataStore.data.map { it[Keys.appUpdateCheck] ?: true }
+
+    /** App version (`name+code`) whose *What's new* notes were dismissed; null before the first one. */
+    val whatsNewSeen: Flow<String?> = context.dataStore.data.map { it[Keys.whatsNewSeen] }
 
     /** Record the microphone when the playing app blocks audio capture (see AudioCaptureManager). */
     val audioMicFallback: Flow<Boolean> = context.dataStore.data.map { it[Keys.audioMicFallback] ?: false }
@@ -224,9 +235,10 @@ class DsmPrefs(private val context: Context) {
 
     suspend fun setAnkiProvider(value: String) = edit { it[Keys.ankiProvider] = value }
     suspend fun setAnkiConnectUrl(value: String) = edit { it[Keys.ankiConnectUrl] = value.trim() }
-    suspend fun setAnkiDeck(value: String) = edit { it[Keys.ankiDeck] = value.trim() }
-    suspend fun setAnkiModel(value: String) = edit { it[Keys.ankiModel] = value.trim() }
-    suspend fun setAnkiTags(value: String) = edit { it[Keys.ankiTags] = value }
+    suspend fun setAnkiDeck(value: String) = edit { it[perLanguage(Keys.ankiDeck, it)] = value.trim() }
+    suspend fun setAnkiModel(value: String) = edit { it[perLanguage(Keys.ankiModel, it)] = value.trim() }
+    suspend fun setAnkiTags(value: String) = edit { it[perLanguage(Keys.ankiTags, it)] = value }
+
     suspend fun setAnkiIncludeImage(value: Boolean) = edit { it[Keys.ankiIncludeImage] = value }
     suspend fun setAnkiImageMaxHeight(value: Int) = edit { it[Keys.ankiImageMaxHeight] = value.coerceAtLeast(0) }
     /** Mapping picked in Settings → Anki → Fields for note type [model] (field -> CardFields name, "" = empty); null = automatic. */
@@ -276,6 +288,14 @@ class DsmPrefs(private val context: Context) {
     }
     suspend fun setWordAudio(value: Boolean) = edit { it[Keys.wordAudio] = value }
     suspend fun setAppUpdateCheck(value: Boolean) = edit { it[Keys.appUpdateCheck] = value }
+
+    /** Records the version whose *What's new* was dismissed; null forgets it. */
+    suspend fun setWhatsNewSeen(value: String?) {
+        edit { prefs ->
+            if (value == null) prefs.remove(Keys.whatsNewSeen) else prefs[Keys.whatsNewSeen] = value
+        }
+    }
+
     suspend fun setGlossaryMode(value: GlossaryMode) = edit {
         it[Keys.glossaryMode] = value.id
         it.remove(Keys.glossaryFirstDictionary)
@@ -314,6 +334,14 @@ class DsmPrefs(private val context: Context) {
         captureRegion = captureRegion.first(),
     )
 
+    private fun studyLanguage(prefs: Preferences): String = prefs[Keys.language] ?: Languages.DEFAULT_CODE
+
+    // Japanese uses the keys from before languages existed, other languages `<key>_<code>`.
+    private fun perLanguage(key: Preferences.Key<String>, prefs: Preferences): Preferences.Key<String> {
+        val code = studyLanguage(prefs)
+        return if (code == Languages.DEFAULT_CODE) key else stringPreferencesKey("${key.name}_$code")
+    }
+
     private suspend fun edit(block: (androidx.datastore.preferences.core.MutablePreferences) -> Unit) {
         context.dataStore.edit(block)
     }
@@ -350,6 +378,17 @@ class DsmPrefs(private val context: Context) {
         const val DEFAULT_AUDIO_BUFFER_SECONDS = 300
         const val ENGINE_MEIKI = "meiki"
         const val ENGINE_MLKIT = "mlkit"
+
+        /** Japanese: "Droid Sentence Miner"; others get a subdeck, "Droid Sentence Miner::English". */
+        fun defaultDeck(code: String): String =
+            if (code == Languages.DEFAULT_CODE) DEFAULT_DECK else "$DEFAULT_DECK::${Languages.byCode(code).displayName}"
+
+        /** Each language's own note type (its fields differ): "Droid Sentence Miner (English)". */
+        fun defaultModel(code: String): String =
+            if (code == Languages.DEFAULT_CODE) DEFAULT_MODEL else "$DEFAULT_MODEL (${Languages.byCode(code).displayName})"
+
+        /** One of the note types this app creates (target word bolded in the sentence). */
+        fun isOwnModel(model: String): Boolean = Languages.ALL.any { model == defaultModel(it.code) }
     }
 }
 

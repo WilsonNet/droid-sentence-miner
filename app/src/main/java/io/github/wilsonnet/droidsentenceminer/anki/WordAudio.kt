@@ -94,21 +94,25 @@ class WordAudio(private val client: OkHttpClient = defaultClient) {
             WordAudioSource.JAPANESE_POD_101 -> listOf(WordAudioSources.jpod101Url(term, read))
             WordAudioSource.JAPANESE_POD_101_SEARCH -> languagePod101(term, read)
             WordAudioSource.JISHO -> jisho(term, read)
-            WordAudioSource.WIKTIONARY -> wiktionary(language.code, term)
-            WordAudioSource.LINGUA_LIBRE -> if (prefix == null) emptyList() else linguaLibre(prefix, term)
+            WordAudioSource.WIKTIONARY -> wiktionary(language, term)
+            WordAudioSource.LINGUA_LIBRE -> if (prefix == null) emptyList() else linguaLibre(prefix, language.linguaLibreArticles, term)
         }
     }
 
-    // Commons files named `En-us-word.ogg`, `En-uk-word.ogg`… (Yomitan's wiktionary source), US first.
-    private fun wiktionary(language: String, term: String): List<String> =
-        commonsAudio(WordAudioSources.commonsSearchUrl(language, term)) { search ->
-            WordAudioSources.parseCommonsTitles(json = search, language = language, term = term).take(WIKTIONARY_FILES)
+    // Commons files named `En-us-word.ogg`, `De-Hund.ogg`… (Yomitan's wiktionary source), preferred regions first.
+    private fun wiktionary(language: LanguageModule, term: String): List<String> =
+        commonsAudio(WordAudioSources.commonsSearchUrl(language.code, term)) { search ->
+            WordAudioSources
+                .parseCommonsTitles(json = search, language = language.code, term = term, regions = language.wiktionaryRegions)
+                .take(WIKTIONARY_FILES)
         }
 
     // Lingua Libre recordings, `File:LL-Q1860 (eng)-<speaker>-<word>.wav`.
-    private fun linguaLibre(prefix: String, term: String): List<String> =
+    private fun linguaLibre(prefix: String, articles: List<String>, term: String): List<String> =
         commonsAudio(WordAudioSources.linguaLibreSearchUrl(prefix, term)) { search ->
-            WordAudioSources.parseLinguaLibreTitles(json = search, prefix = prefix, term = term).take(LINGUA_LIBRE_FILES)
+            WordAudioSources
+                .parseLinguaLibreTitles(json = search, prefix = prefix, term = term, articles = articles)
+                .take(LINGUA_LIBRE_FILES)
         }
 
     // Commons search → file titles picked by [titles] → their download URLs (empty when anything is missing).
@@ -156,7 +160,6 @@ class WordAudio(private val client: OkHttpClient = defaultClient) {
 object WordAudioSources {
     private const val UTF_8 = "UTF-8"
     private const val COMMONS_SEARCH = "https://commons.wikimedia.org/w/api.php?action=query&format=json&list=search&srnamespace=6"
-    private val REGION_ORDER = listOf("-us-", "-uk-")
     private val AUDIO_EXTENSIONS = setOf("mp3", "ogg", "opus", "m4a", "wav", "aac", "flac")
 
     /** SHA-256 of JapanesePod101's "this audio is not available" clip (same constant as Yomitan). */
@@ -220,18 +223,33 @@ object WordAudioSources {
      * File titles from a Commons search that really are [term] in [language] (the search is fuzzy),
      * US recordings first, then UK, then the rest.
      */
-    fun parseCommonsTitles(json: String, language: String, term: String): List<String> {
+    fun parseCommonsTitles(
+        json: String,
+        language: String,
+        term: String,
+        regions: List<String> = listOf("us", "uk"),
+    ): List<String> {
         val exact =
             Regex(
-                "File:${Regex.escape(language)}(-[a-z]{2})?-${Regex.escape(term)}[0-9]*[.]ogg",
+                "File:${Regex.escape(language)}(?:-([a-z]{2}))?-(${Regex.escape(term)})[0-9]*[.]ogg",
                 RegexOption.IGNORE_CASE,
             )
-        return searchTitles(json).filter { exact.matches(it) }.sortedBy { regionRank(it) }
+        val ranked =
+            searchTitles(json).mapNotNull { title ->
+                exact.matchEntire(title)?.let { match ->
+                    val region = regionRank(region = match.groupValues[1], regions = regions)
+                    CommonsHit(title = title, region = region, isOtherCase = match.groupValues[2] != term)
+                }
+            }
+        // Same region: the file spelled exactly like the word first (De-Haus before De-haus).
+        return ranked.sortedWith(compareBy({ it.region }, { it.isOtherCase })).map { it.title }
     }
 
-    private fun regionRank(title: String): Int {
-        val region = REGION_ORDER.indexOfFirst { title.contains(it, ignoreCase = true) }
-        return if (region < 0) REGION_ORDER.size else region
+    private data class CommonsHit(val title: String, val region: Int, val isOtherCase: Boolean)
+
+    private fun regionRank(region: String, regions: List<String>): Int {
+        val rank = regions.indexOf(region.lowercase())
+        return if (rank < 0) regions.size else rank
     }
 
     /** Commons search for Lingua Libre files of [term] by any speaker ([prefix] = `LL-Q1860 (eng)`). */
@@ -240,14 +258,21 @@ object WordAudioSources {
         return "$COMMONS_SEARCH&srlimit=20&srsearch=$query"
     }
 
-    /** Search hits that are exactly [term] by any Lingua Libre speaker. */
-    fun parseLinguaLibreTitles(json: String, prefix: String, term: String): List<String> {
+    /** Search hits that are exactly [term] by any Lingua Libre speaker, also after one of [articles] (bare word first). */
+    fun parseLinguaLibreTitles(
+        json: String,
+        prefix: String,
+        term: String,
+        articles: List<String> = emptyList(),
+    ): List<String> {
+        val article = articles.takeIf { it.isNotEmpty() }?.joinToString("|", prefix = "(?:(?:", postfix = ") )?") { Regex.escape(it) }
         val exact =
             Regex(
-                "File:${Regex.escape(prefix)}-[^-]+-${Regex.escape(term)}[.](wav|ogg|flac)",
+                "File:${Regex.escape(prefix)}-[^-]+-(${article.orEmpty()})${Regex.escape(term)}[.](wav|ogg|flac)",
                 RegexOption.IGNORE_CASE,
             )
-        return searchTitles(json).filter { exact.matches(it) }
+        val hits = searchTitles(json).mapNotNull { title -> exact.matchEntire(title)?.let { title to it.groupValues[1].isNotEmpty() } }
+        return hits.sortedBy { it.second }.map { it.first }
     }
 
     private fun searchTitles(json: String): List<String> {

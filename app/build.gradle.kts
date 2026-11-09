@@ -16,6 +16,8 @@ detekt {
     config.setFrom(rootProject.file("config/detekt/detekt.yml"))
     baseline = file("detekt-baseline.xml")
     parallel = true
+    // ./gradlew detekt -PdetektAutoCorrect applies ktlint's formatting fixes (the ktlint CLI can't be downloaded here).
+    autoCorrect = providers.gradleProperty("detektAutoCorrect").isPresent
 }
 
 kotlin {
@@ -114,6 +116,33 @@ android {
     }
 }
 
+// CHANGELOG.md is bundled as an asset for the one-time "What's new" dialog (update/WhatsNew.kt).
+abstract class CopyChangelog : DefaultTask() {
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val changelog: RegularFileProperty
+
+    @get:OutputDirectory
+    abstract val outputDir: DirectoryProperty
+
+    @TaskAction
+    fun copy() {
+        val out = outputDir.get().asFile
+        out.mkdirs()
+        changelog.get().asFile.copyTo(File(out, "CHANGELOG.md"), overwrite = true)
+    }
+}
+
+val copyChangelog = tasks.register<CopyChangelog>("copyChangelog") {
+    changelog.set(rootProject.layout.projectDirectory.file("CHANGELOG.md"))
+}
+
+androidComponents {
+    onVariants { variant ->
+        variant.sources.assets?.addGeneratedSourceDirectory(copyChangelog, CopyChangelog::outputDir)
+    }
+}
+
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
@@ -148,6 +177,8 @@ dependencies {
 
     testImplementation(libs.junit)
     testImplementation(libs.konsist)
+    // Property-based tests (generators + shrinking) for parsers, scanners and mappers: docs/building.md.
+    testImplementation(libs.kotest.property)
     testImplementation(libs.kotlinx.coroutines.test)
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.espresso.core)

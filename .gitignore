@@ -17,3 +17,4 @@ local.properties
 
 .playwright-mcp/
 .claude/worktrees/
+/out

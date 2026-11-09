@@ -13,17 +13,18 @@ import io.github.wilsonnet.droidsentenceminer.dict.DictDatabase
 import io.github.wilsonnet.droidsentenceminer.dict.DictDownloader
 import io.github.wilsonnet.droidsentenceminer.dict.TermLookup
 import io.github.wilsonnet.droidsentenceminer.dict.YomitanImporter
+import io.github.wilsonnet.droidsentenceminer.lang.Languages
 import io.github.wilsonnet.droidsentenceminer.ocr.MlKitJapaneseOcr
 import io.github.wilsonnet.droidsentenceminer.ocr.OcrEngine
 import io.github.wilsonnet.droidsentenceminer.textlog.TextLog
 import io.github.wilsonnet.droidsentenceminer.textlog.TextLogDatabase
+import io.github.wilsonnet.droidsentenceminer.update.ChangelogSection
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import io.github.wilsonnet.droidsentenceminer.lang.Languages
 
 class DsmApp : Application() {
 
@@ -45,7 +46,6 @@ class DsmApp : Application() {
 
 /** Hand-rolled service locator; keeps the app dependency-light. */
 class AppContainer(private val context: Context) {
-
     val appScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     val db: DictDatabase by lazy { DictDatabase.build(context) }
@@ -88,6 +88,9 @@ class AppContainer(private val context: Context) {
 
     /** True on a fresh install until the user picks a language (MainActivity shows the setup). */
     val languageSetupNeeded = MutableStateFlow(false)
+
+    /** Changelog sections of the *What's new* dialog; empty = not shown (see `update/WhatsNew.kt`). */
+    val whatsNew = MutableStateFlow<List<ChangelogSection>>(emptyList())
 
     /**
      * Reads the study language before anything scans text and follows changes. Installs from

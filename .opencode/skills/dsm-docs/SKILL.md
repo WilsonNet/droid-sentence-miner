@@ -17,6 +17,8 @@ together). Stale docs cost the next agent hours: they trust AGENTS.md and the sk
 | --- | --- |
 | User-visible feature, setting, workflow | `docs/features.md` (full description) and/or `docs/usage.md`; the one-line list in `README.md` → *What it does* only for headline features; `CHANGELOG.md` → *Unreleased*; user guides in `site/src/content/docs/` |
 | Architecture / pipeline / dictionary format support | `docs/architecture.md` |
+| One-tap dictionary added/removed/resized (`RecommendedDictionaries.ALL`) | `docs/dictionaries.md` (per-language tables, "which one do I want") |
+| Lint rule shapes, baseline-resurfacing lessons | `.opencode/skills/dsm-lint/SKILL.md` |
 | Measured accuracy/timing, test counts | `docs/validation.md` (numbers + how measured); test count in `docs/building.md` |
 | Something deferred / known limitation | `docs/roadmap.md` (remove items once shipped; they go to `CHANGELOG.md`; full check in step 5 below) |
 | Every user-visible change, fix or removal | `CHANGELOG.md` → *Unreleased* (Added / Changed / Fixed), one user-facing line each |

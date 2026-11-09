@@ -31,7 +31,6 @@ import java.util.concurrent.TimeUnit
 class AnkiConnectBridge(
     private val prefs: DsmPrefs,
 ) : AnkiBridge {
-
     override val id: String = "ankiconnect"
     override val displayName: String = "AnkiConnect"
 
@@ -84,112 +83,121 @@ class AnkiConnectBridge(
         }
     }
 
-    override suspend fun ensureModel(name: String): AnkiResult<Unit> = withContext(Dispatchers.IO) {
-        val existing = modelNames()
-        if (existing is AnkiResult.Success && name in existing.value) return@withContext AnkiResult.Success(Unit)
-        val params = buildJsonObject {
-            put("modelName", name)
-            put("inOrderFields", buildJsonArray { CardFields.ORDER.forEach { add(JsonPrimitive(it)) } })
-            put("css", AnkiConnectTemplates.CSS)
-            put("isCloze", false)
-            put(
-                "cardTemplates",
-                buildJsonArray {
-                    add(
-                        buildJsonObject {
-                            put("Name", "Recognition")
-                            put("Front", AnkiConnectTemplates.FRONT)
-                            put("Back", AnkiConnectTemplates.BACK)
+    override suspend fun ensureModel(name: String): AnkiResult<Unit> = createModel(name, CardFields.current)
+
+    private suspend fun createModel(name: String, fields: List<String>): AnkiResult<Unit> =
+        withContext(Dispatchers.IO) {
+            val existing = modelNames()
+            if (existing is AnkiResult.Success && name in existing.value) return@withContext AnkiResult.Success(Unit)
+            val params =
+                buildJsonObject {
+                    put("modelName", name)
+                    put("inOrderFields", buildJsonArray { fields.forEach { add(JsonPrimitive(it)) } })
+                    put("css", AnkiConnectTemplates.CSS)
+                    put("isCloze", false)
+                    put(
+                        "cardTemplates",
+                        buildJsonArray {
+                            add(
+                                buildJsonObject {
+                                    put("Name", "Recognition")
+                                    put("Front", CardTemplates.front(fields))
+                                    put("Back", CardTemplates.back(fields))
+                                },
+                            )
                         },
                     )
-                },
-            )
+                }
+            when (val response = invoke("createModel", params)) {
+                is AnkiResult.Success -> AnkiResult.Success(Unit)
+                is AnkiResult.Error -> response
+                AnkiResult.NotAvailable -> AnkiResult.NotAvailable
+            }
         }
-        when (val response = invoke("createModel", params)) {
-            is AnkiResult.Success -> AnkiResult.Success(Unit)
-            is AnkiResult.Error -> response
-            AnkiResult.NotAvailable -> AnkiResult.NotAvailable
-        }
-    }
 
     override suspend fun fieldNames(model: String): AnkiResult<List<String>> = withContext(Dispatchers.IO) {
         modelFieldNames(model)?.let { AnkiResult.Success(it) } ?: AnkiResult.Error("Note type '$model' not found")
     }
 
-    override suspend fun addNote(card: AnkiCard, deck: String, model: String, fieldMap: Map<String, String>?): AnkiResult<String> = withContext(Dispatchers.IO) {
-        ensureDeck(deck)
-        ensureModel(model)
+    override suspend fun addNote(card: AnkiCard, deck: String, model: String, fieldMap: Map<String, String>?): AnkiResult<String> =
+        withContext(Dispatchers.IO) {
+            ensureDeck(deck)
+            createModel(model, card.fields)
 
-        val imageField = card.imageBytes?.let { bytes ->
-            storeMedia(card.imageName ?: "dsm_image.png", bytes)?.let { "<img src=\"$it\">" }
-        }
-        val audioField = card.audioBytes?.let { bytes ->
-            storeMedia(card.audioName ?: "dsm_audio.mp3", bytes)?.let { "[sound:$it]" }
-        }
-        val wordAudioField = card.wordAudioBytes?.let { bytes ->
-            storeMedia(card.wordAudioName ?: "dsm_word.mp3", bytes)?.let { "[sound:$it]" }
-        }
-
-        val meaningHtml = CardHtml.withStoredMedia(card.meaningHtml, card.glossaryMedia) { media ->
-            storeMedia(media.name, media.bytes)
-        }
-
-        val valueMap = mapOf(
-            CardFields.EXPRESSION to card.expression,
-            CardFields.READING to card.reading,
-            CardFields.MEANING to meaningHtml,
-            // Our note type bolds the word; other note types (Anime Cards, Lapis...) get the sentence as
-                // plain text like Yomitan's {sentence}.
-                CardFields.SENTENCE to CardHtml.sentenceFor(model, card),
-            CardFields.IMAGE to (imageField ?: ""),
-            CardFields.AUDIO to (audioField ?: ""),
-            CardFields.SOURCE to (card.sourceTitle ?: ""),
-            CardFields.WORD_AUDIO to (wordAudioField ?: ""),
-            CardFields.PITCH_GRAPH to card.pitchGraphHtml,
-        )
-        val modelFields = modelFieldNames(model) ?: CardFields.ORDER
-        val mappedFields = AnkiFieldMapper.mapToNamedFields(modelFields, valueMap, fieldMap)
-        val fields = buildJsonObject {
-            mappedFields.forEach { (name, value) -> put(name, value) }
-        }
-
-        val params = buildJsonObject {
-            put(
-                "note",
-                buildJsonObject {
-                    put("deckName", deck)
-                    put("modelName", model)
-                    put("fields", fields)
-                    put(
-                        "options",
-                        buildJsonObject {
-                            put("allowDuplicate", false)
-                            put("duplicateScope", "deck")
-                        },
-                    )
-                    put(
-                        "tags",
-                        buildJsonArray { card.tags.forEach { add(JsonPrimitive(it)) } },
-                    )
-                },
-            )
-        }
-
-        when (val response = invoke("addNote", params)) {
-            is AnkiResult.Success -> {
-                val noteId = response.value.jsonPrimitive.longOrNull
-                AnkiResult.Success(noteId?.toString() ?: "ok")
+            val imageField = card.imageBytes?.let { bytes ->
+                storeMedia(card.imageName ?: "dsm_image.png", bytes)?.let { "<img src=\"$it\">" }
             }
-            is AnkiResult.Error -> {
-                if (response.message.contains("duplicate", ignoreCase = true)) {
-                    AnkiResult.Error("Already in Anki")
-                } else {
-                    response
+            val audioField = card.audioBytes?.let { bytes ->
+                storeMedia(card.audioName ?: "dsm_audio.mp3", bytes)?.let { "[sound:$it]" }
+            }
+            val wordAudioField = card.wordAudioBytes?.let { bytes ->
+                storeMedia(card.wordAudioName ?: "dsm_word.mp3", bytes)?.let { "[sound:$it]" }
+            }
+
+            val meaningHtml = CardHtml.withStoredMedia(card.meaningHtml, card.glossaryMedia) { media ->
+                storeMedia(media.name, media.bytes)
+            }
+
+            val valueMap =
+                mapOf(
+                    CardFields.EXPRESSION to card.expression,
+                    CardFields.READING to card.reading,
+                    CardFields.MEANING to meaningHtml,
+                    // Our note type bolds the word; other note types (Anime Cards, Lapis...) get the sentence as
+                        // plain text like Yomitan's {sentence}.
+                        CardFields.SENTENCE to CardHtml.sentenceFor(model, card),
+                    CardFields.IMAGE to (imageField ?: ""),
+                    CardFields.AUDIO to (audioField ?: ""),
+                    CardFields.SOURCE to (card.sourceTitle ?: ""),
+                    CardFields.WORD_AUDIO to (wordAudioField ?: ""),
+                    CardFields.PITCH_GRAPH to card.pitchGraphHtml,
+                    CardFields.IPA to card.ipa,
+                    CardFields.GENDER to card.gender,
+                )
+            val modelFields = modelFieldNames(model) ?: card.fields
+            val mappedFields =
+                AnkiFieldMapper.mapToNamedFields(fieldNames = modelFields, values = valueMap, custom = fieldMap, canonicals = card.fields)
+            val fields = buildJsonObject {
+                mappedFields.forEach { (name, value) -> put(name, value) }
+            }
+
+            val params = buildJsonObject {
+                put(
+                    "note",
+                    buildJsonObject {
+                        put("deckName", deck)
+                        put("modelName", model)
+                        put("fields", fields)
+                        put(
+                            "options",
+                            buildJsonObject {
+                                put("allowDuplicate", false)
+                                put("duplicateScope", "deck")
+                            },
+                        )
+                        put(
+                            "tags",
+                            buildJsonArray { card.tags.forEach { add(JsonPrimitive(it)) } },
+                        )
+                    },
+                )
+            }
+
+            when (val response = invoke("addNote", params)) {
+                is AnkiResult.Success -> {
+                    val noteId = response.value.jsonPrimitive.longOrNull
+                    AnkiResult.Success(noteId?.toString() ?: "ok")
                 }
+                is AnkiResult.Error -> {
+                    if (response.message.contains("duplicate", ignoreCase = true)) {
+                        AnkiResult.Error("Already in Anki")
+                    } else {
+                        response
+                    }
+                }
+                AnkiResult.NotAvailable -> AnkiResult.NotAvailable
             }
-            AnkiResult.NotAvailable -> AnkiResult.NotAvailable
         }
-    }
 
     override suspend fun isDuplicate(word: String, deck: String, model: String): AnkiResult<Boolean> = withContext(Dispatchers.IO) {
         val sanitized = word.replace("\"", "")

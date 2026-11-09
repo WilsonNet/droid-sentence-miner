@@ -18,6 +18,8 @@ object JapaneseLanguage : LanguageModule {
     override val wordAudioSources =
         listOf(WordAudioSource.JAPANESE_POD_101, WordAudioSource.JAPANESE_POD_101_SEARCH, WordAudioSource.JISHO)
     override val maxTermLength = 16
+    override val hasIpaReading = false
+    override val hasPitchAccent = true
 
     override fun isTargetChar(c: Char): Boolean = JapaneseTextScore.isJapanese(c)
 

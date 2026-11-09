@@ -15,8 +15,8 @@ import java.io.File
  * AnkiDroid integration through the official AnkiDroid API (AddContentApi).
  * Cards, images and audio are all supported when AnkiDroid >= 2.16 is installed.
  */
+@Suppress("TooManyFunctions") // AnkiBridge's 10 members + the field-aware model creation.
 class AnkiDroidBridge(private val context: Context) : AnkiBridge {
-
     override val id: String = "ankidroid"
     override val displayName: String = "AnkiDroid"
 
@@ -72,115 +72,125 @@ class AnkiDroidBridge(private val context: Context) : AnkiBridge {
         }.getOrElse { AnkiResult.Error(it.message ?: "Could not create deck") }
     }
 
-    override suspend fun ensureModel(name: String): AnkiResult<Unit> = withContext(Dispatchers.IO) {
-        if (!isAvailable()) return@withContext AnkiResult.NotAvailable
-        runCatching {
-            val existing = api.modelList.orEmpty().entries.firstOrNull { it.value == name }
-            if (existing == null) {
-                api.addNewCustomModel(
-                    name = name,
-                    fields = CardFields.ORDER.toTypedArray(),
-                    cards = arrayOf("Recognition"),
-                    qfmt = arrayOf(Templates.FRONT),
-                    afmt = arrayOf(Templates.BACK),
-                    css = Templates.CSS,
-                    did = null,
-                    sortf = 0,
-                )
-            }
-            AnkiResult.Success(Unit)
-        }.getOrElse { AnkiResult.Error(it.message ?: "Could not create note type") }
-    }
+    override suspend fun ensureModel(name: String): AnkiResult<Unit> = createModel(name, CardFields.current)
 
-    override suspend fun addNote(card: AnkiCard, deck: String, model: String, fieldMap: Map<String, String>?): AnkiResult<String> = withContext(Dispatchers.IO) {
-        if (!isAvailable()) return@withContext AnkiResult.NotAvailable
-        try {
-            val t0 = android.os.SystemClock.elapsedRealtime()
-            ensureDeck(deck)
-            ensureModel(model)
-
-            val deckId = api.deckList.orEmpty().entries.firstOrNull { it.value == deck }?.key
-                ?: return@withContext AnkiResult.Error("Deck '$deck' not found")
-            val modelId = api.modelList.orEmpty().entries.firstOrNull { it.value == model }?.key
-                ?: return@withContext AnkiResult.Error("Note type '$model' not found")
-
-            val t1 = android.os.SystemClock.elapsedRealtime()
-            val imageHtml = card.imageBytes?.let { bytes ->
-                addMedia(bytes, card.imageName ?: "dsm_image.png", "image")
-            }
-            val audioHtml = card.audioBytes?.let { bytes ->
-                addMedia(bytes, card.audioName ?: "dsm_audio.mp3", "audio")
-            }
-            val wordAudioHtml = card.wordAudioBytes?.let { bytes ->
-                addMedia(bytes, card.wordAudioName ?: "dsm_word.mp3", "audio")
-            }
-
-            // AnkiDroid renames media it stores (preferred name + random suffix): use the name it returns.
-            val meaningHtml = CardHtml.withStoredMedia(card.meaningHtml, card.glossaryMedia) { media ->
-                CardHtml.mediaNameOf(addMedia(media.bytes, media.name, "image"))
-            }
-
-            val values = mapOf(
-                CardFields.EXPRESSION to card.expression,
-                CardFields.READING to card.reading,
-                CardFields.MEANING to meaningHtml,
-                // Our note type bolds the word; other note types (Anime Cards, Lapis...) get the sentence as
-                // plain text like Yomitan's {sentence}.
-                CardFields.SENTENCE to CardHtml.sentenceFor(model, card),
-                CardFields.IMAGE to (imageHtml ?: ""),
-                CardFields.AUDIO to (audioHtml ?: ""),
-                CardFields.SOURCE to (card.sourceTitle ?: ""),
-                CardFields.WORD_AUDIO to (wordAudioHtml ?: ""),
-                CardFields.PITCH_GRAPH to card.pitchGraphHtml,
-            )
-            val t2 = android.os.SystemClock.elapsedRealtime()
-            android.util.Log.i("DSM-Mine", "AnkiDroid: deck/model ${t1 - t0} ms, media ${t2 - t1} ms")
-            val fieldNames = api.getFieldList(modelId)?.toList() ?: CardFields.ORDER
-            val fields = AnkiFieldMapper.mapToArray(fieldNames, values, fieldMap)
-            val tags = card.tags.toSet()
-
-            if (api.findDuplicateNotes(modelId, card.expression).isNotEmpty()) {
-                return@withContext AnkiResult.Error("Already in Anki")
-            }
-
-            val t3 = android.os.SystemClock.elapsedRealtime()
-            // Note: current AnkiDroid API takes (modelId, deckId) in this order.
-            var noteId = api.addNote(modelId = modelId, deckId = deckId, fields = fields, tags = tags)
-            android.util.Log.i("DSM-Mine", "AnkiDroid: fields+duplicate check ${t3 - t2} ms, addNote ${android.os.SystemClock.elapsedRealtime() - t3} ms")
-
-            // Some AnkiDroid versions cannot insert notes into a note type that was just
-            // created through the API ("No such notetype" from the Rust backend). Retry
-            // with the built-in Basic note type so the card is still created.
-            if (noteId == null) {
-                android.util.Log.w(
-                    "DSM-Anki",
-                    "addNote failed with modelId=$modelId deckId=$deckId fields=${fields.size} " +
-                        "models=${api.modelList.orEmpty()}",
-                )
-                val basicId = api.modelList.orEmpty().entries
-                    .firstOrNull { it.value == BASIC_MODEL }?.key
-                if (basicId != null && basicId != modelId) {
-                    val basicFields = AnkiFieldMapper.mapToArray(
-                        api.getFieldList(basicId)?.toList() ?: listOf("Front", "Back"),
-                        values,
+    private suspend fun createModel(name: String, fields: List<String>): AnkiResult<Unit> =
+        withContext(Dispatchers.IO) {
+            if (!isAvailable()) return@withContext AnkiResult.NotAvailable
+            runCatching {
+                val existing = api.modelList.orEmpty().entries.firstOrNull { it.value == name }
+                if (existing == null) {
+                    api.addNewCustomModel(
+                        name = name,
+                        fields = fields.toTypedArray(),
+                        cards = arrayOf("Recognition"),
+                        qfmt = arrayOf(CardTemplates.front(fields)),
+                        afmt = arrayOf(CardTemplates.back(fields)),
+                        css = Templates.CSS,
+                        did = null,
+                        sortf = 0,
                     )
-                    noteId = api.addNote(modelId = basicId, deckId = deckId, fields = basicFields, tags = tags)
-                    if (noteId != null) {
-                        return@withContext AnkiResult.Success("$noteId (Basic note type fallback)")
-                    }
-                    android.util.Log.w("DSM-Anki", "Basic fallback also failed (basicId=$basicId)")
-                } else {
-                    android.util.Log.w("DSM-Anki", "no Basic fallback available (basicId=$basicId)")
                 }
-            }
-
-            noteId
-                ?: return@withContext AnkiResult.Error("AnkiDroid refused the note (is the API enabled?)")
-            AnkiResult.Success(noteId.toString())
-        } catch (e: Exception) {
-            AnkiResult.Error(e.message ?: "AnkiDroid error")
+                AnkiResult.Success(Unit)
+            }.getOrElse { AnkiResult.Error(it.message ?: "Could not create note type") }
         }
-    }
+
+    override suspend fun addNote(card: AnkiCard, deck: String, model: String, fieldMap: Map<String, String>?): AnkiResult<String> =
+        withContext(Dispatchers.IO) {
+            if (!isAvailable()) return@withContext AnkiResult.NotAvailable
+            try {
+                val t0 = android.os.SystemClock.elapsedRealtime()
+                ensureDeck(deck)
+                createModel(model, card.fields)
+
+                val deckId = api.deckList.orEmpty().entries.firstOrNull { it.value == deck }?.key
+                    ?: return@withContext AnkiResult.Error("Deck '$deck' not found")
+                val modelId = api.modelList.orEmpty().entries.firstOrNull { it.value == model }?.key
+                    ?: return@withContext AnkiResult.Error("Note type '$model' not found")
+
+                val t1 = android.os.SystemClock.elapsedRealtime()
+                val imageHtml = card.imageBytes?.let { bytes ->
+                    addMedia(bytes, card.imageName ?: "dsm_image.png", "image")
+                }
+                val audioHtml = card.audioBytes?.let { bytes ->
+                    addMedia(bytes, card.audioName ?: "dsm_audio.mp3", "audio")
+                }
+                val wordAudioHtml = card.wordAudioBytes?.let { bytes ->
+                    addMedia(bytes, card.wordAudioName ?: "dsm_word.mp3", "audio")
+                }
+
+                // AnkiDroid renames media it stores (preferred name + random suffix): use the name it returns.
+                val meaningHtml = CardHtml.withStoredMedia(card.meaningHtml, card.glossaryMedia) { media ->
+                    CardHtml.mediaNameOf(addMedia(media.bytes, media.name, "image"))
+                }
+
+                val values =
+                    mapOf(
+                        CardFields.EXPRESSION to card.expression,
+                        CardFields.READING to card.reading,
+                        CardFields.MEANING to meaningHtml,
+                        // Our note type bolds the word; other note types (Anime Cards, Lapis...) get the sentence as
+                        // plain text like Yomitan's {sentence}.
+                        CardFields.SENTENCE to CardHtml.sentenceFor(model, card),
+                        CardFields.IMAGE to (imageHtml ?: ""),
+                        CardFields.AUDIO to (audioHtml ?: ""),
+                        CardFields.SOURCE to (card.sourceTitle ?: ""),
+                        CardFields.WORD_AUDIO to (wordAudioHtml ?: ""),
+                        CardFields.PITCH_GRAPH to card.pitchGraphHtml,
+                        CardFields.IPA to card.ipa,
+                        CardFields.GENDER to card.gender,
+                    )
+                val t2 = android.os.SystemClock.elapsedRealtime()
+                android.util.Log.i("DSM-Mine", "AnkiDroid: deck/model ${t1 - t0} ms, media ${t2 - t1} ms")
+                val fieldNames = api.getFieldList(modelId)?.toList() ?: card.fields
+                val fields =
+                    AnkiFieldMapper.mapToArray(fieldNames = fieldNames, values = values, custom = fieldMap, canonicals = card.fields)
+                val tags = card.tags.toSet()
+
+                if (api.findDuplicateNotes(modelId, card.expression).isNotEmpty()) {
+                    return@withContext AnkiResult.Error("Already in Anki")
+                }
+
+                val t3 = android.os.SystemClock.elapsedRealtime()
+                // Note: current AnkiDroid API takes (modelId, deckId) in this order.
+                var noteId = api.addNote(modelId = modelId, deckId = deckId, fields = fields, tags = tags)
+                android.util.Log.i("DSM-Mine", "AnkiDroid: fields+duplicate check ${t3 - t2} ms, addNote ${android.os.SystemClock.elapsedRealtime() - t3} ms")
+
+                // Some AnkiDroid versions cannot insert notes into a note type that was just
+                // created through the API ("No such notetype" from the Rust backend). Retry
+                // with the built-in Basic note type so the card is still created.
+                if (noteId == null) {
+                    android.util.Log.w(
+                        "DSM-Anki",
+                        "addNote failed with modelId=$modelId deckId=$deckId fields=${fields.size} " +
+                            "models=${api.modelList.orEmpty()}",
+                    )
+                    val basicId = api.modelList.orEmpty().entries
+                        .firstOrNull { it.value == BASIC_MODEL }?.key
+                    if (basicId != null && basicId != modelId) {
+                        val basicFields =
+                            AnkiFieldMapper.mapToArray(
+                                api.getFieldList(basicId)?.toList() ?: listOf("Front", "Back"),
+                                values,
+                                canonicals = card.fields,
+                            )
+                        noteId = api.addNote(modelId = basicId, deckId = deckId, fields = basicFields, tags = tags)
+                        if (noteId != null) {
+                            return@withContext AnkiResult.Success("$noteId (Basic note type fallback)")
+                        }
+                        android.util.Log.w("DSM-Anki", "Basic fallback also failed (basicId=$basicId)")
+                    } else {
+                        android.util.Log.w("DSM-Anki", "no Basic fallback available (basicId=$basicId)")
+                    }
+                }
+
+                noteId
+                    ?: return@withContext AnkiResult.Error("AnkiDroid refused the note (is the API enabled?)")
+                AnkiResult.Success(noteId.toString())
+            } catch (e: Exception) {
+                AnkiResult.Error(e.message ?: "AnkiDroid error")
+            }
+        }
 
     override suspend fun isDuplicate(word: String, deck: String, model: String): AnkiResult<Boolean> = withContext(Dispatchers.IO) {
         if (!isAvailable()) return@withContext AnkiResult.NotAvailable
@@ -232,6 +242,7 @@ object Templates {
 <div class="source">{{Source}}</div>
 """
 
+    /** Styling of the note types this app creates. */
     const val CSS = """
 .card {
   font-family: -apple-system, "Noto Sans JP", "Hiragino Sans", sans-serif;
@@ -239,6 +250,7 @@ object Templates {
 }
 .expression { font-size: 30px; font-weight: 600; }
 .reading { color: #666; margin-bottom: 8px; }
+.gender { font-weight: 400; color: #666; }
 .meaning { margin: 10px 0; }
 .meaning .gloss-tag, .meaning .gloss-frequency { display: inline-block; padding: 1px 6px;
   border-radius: 6px; background: rgba(128,128,128,0.18); font-size: 0.8em; margin-right: 4px; }

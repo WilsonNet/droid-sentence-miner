@@ -3,6 +3,8 @@ package io.github.wilsonnet.droidsentenceminer.anki
 import io.github.wilsonnet.droidsentenceminer.audio.AudioSegment
 import io.github.wilsonnet.droidsentenceminer.dict.GlossaryHtml
 import io.github.wilsonnet.droidsentenceminer.dict.TermLookup
+import io.github.wilsonnet.droidsentenceminer.lang.LanguageModule
+import io.github.wilsonnet.droidsentenceminer.lang.Languages
 
 /**
  * The card editor's result: the sentence as the user trimmed it and the sentence audio as trimmed
@@ -26,6 +28,15 @@ data class AnkiCard(
     val wordAudioName: String? = null,
     /** Yomitan-style pitch accent SVG(s) for the reading; empty without a pitch dictionary. */
     val pitchGraphHtml: String = "",
+    /** IPA transcription (languages with `LanguageModule.hasIpaReading`). */
+    val ipa: String = "",
+    /** A noun's article / gender ("der", "die/das"); empty for other words and languages without gender. */
+    val gender: String = "",
+    /**
+     * The contents this card carries ([CardFields] names: the study language's, minus the ones turned
+     * off): our note type is created with these fields, other note types get only these filled.
+     */
+    val fields: List<String> = CardFields.current,
     val sourceTitle: String? = null,
     val tags: List<String> = emptyList(),
     /** Dictionary images referenced by [meaningHtml] (`src="<name>"`), stored as Anki media on add. */
@@ -72,9 +83,40 @@ object CardFields {
     const val WORD_AUDIO = "WordAudio"
     const val PITCH_GRAPH = "PitchGraph"
 
+    /** IPA transcription, for languages whose cards have no kana-style reading. */
+    const val IPA = "IPA"
+
+    /** A noun's article (German der/die/das). */
+    const val GENDER = "Gender"
+
+    /** Japanese cards (and the historic order of the "Droid Sentence Miner" note type). */
     val ORDER = listOf(EXPRESSION, READING, MEANING, SENTENCE, IMAGE, AUDIO, SOURCE, WORD_AUDIO, PITCH_GRAPH)
 
+    /** Always on: the word is the note's first field (Anki's duplicate check and sort field). */
+    val REQUIRED = setOf(EXPRESSION)
+
+    /** The fields of the study language's cards. */
+    val current: List<String> get() = forLanguage(Languages.current)
+
+    /**
+     * The fields cards of [language] have, in note-type order: Japanese = [ORDER] (kana reading,
+     * pitch graph); English = IPA instead of Reading, no pitch graph; German adds Gender (der/die/das).
+     */
+    fun forLanguage(language: LanguageModule): List<String> {
+        val fields = mutableListOf(EXPRESSION)
+        if (language.hasNounGender) fields += GENDER
+        fields += if (language.hasIpaReading) IPA else READING
+        fields += listOf(MEANING, SENTENCE, IMAGE, AUDIO, SOURCE, WORD_AUDIO)
+        if (language.hasPitchAccent) fields += PITCH_GRAPH
+        return fields
+    }
+
+    /** [language]'s fields without the [disabled] ones ([REQUIRED] always stay). */
+    fun enabled(language: LanguageModule, disabled: Set<String>): List<String> =
+        forLanguage(language).filter { it in REQUIRED || it !in disabled }
+
     /** Names shown in the Fields editor. */
+    @Suppress("MultilineExpressionWrapping") // Legacy expression body; ktlint's wrapping rules disagree on these (dsm-lint skill).
     fun label(canonical: String): String = when (canonical) {
         EXPRESSION -> "Word"
         READING -> "Reading"
@@ -85,14 +127,19 @@ object CardFields {
         SOURCE -> "Source"
         WORD_AUDIO -> "Word audio"
         PITCH_GRAPH -> "Pitch graph"
+        IPA -> "IPA pronunciation"
+        GENDER -> "Gender (article)"
         else -> "Nothing"
     }
 }
 
 object CardHtml {
     fun sentenceFor(model: String, card: AnkiCard): String =
-        if (model == io.github.wilsonnet.droidsentenceminer.core.DsmPrefs.DEFAULT_MODEL) card.sentenceHtml
-        else GlossaryHtml.escape(card.sentence)
+        if (io.github.wilsonnet.droidsentenceminer.core.DsmPrefs.isOwnModel(model)) {
+            card.sentenceHtml
+        } else {
+            GlossaryHtml.escape(card.sentence)
+        }
 
     /** Bold the target word inside the OCR sentence. */
     fun highlightSentence(sentence: String, word: String): String {

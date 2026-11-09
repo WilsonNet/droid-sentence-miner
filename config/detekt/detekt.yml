@@ -39,6 +39,8 @@ style:
         reason: 'Use Languages.current (LanguageModule) instead of the Japanese module directly.'
       - value: 'io.github.wilsonnet.droidsentenceminer.lang.en.*'
         reason: 'Use Languages.current (LanguageModule) instead of the English module directly.'
+      - value: 'io.github.wilsonnet.droidsentenceminer.lang.de.*'
+        reason: 'Use Languages.current (LanguageModule) instead of the German module directly.'
       - value: 'io.github.wilsonnet.droidsentenceminer.debug.*'
         reason: 'Debug-only code is booted by reflection from DsmApp; main code must not depend on it.'
     excludes: ['**/lang/**', '**/test/**', '**/debug/**']

@@ -10,7 +10,12 @@ numbers, update the markdown docs **in the same push**: `CHANGELOG.md` (*Unrelea
 `.opencode/skills/` (also visible to Claude Code via `.claude/skills` and Antigravity via `.agents/skills`). The checklist of which file
 owns what is in `.opencode/skills/dsm-docs/SKILL.md` — follow it before committing.
 
-Skills: `dsm-debug-api` (drive/validate the app over adb), `dsm-language` (add/improve a
+**Before writing Kotlin, read `.opencode/skills/dsm-lint/SKILL.md`**: detekt runs every rule
+(ktlint_official, Compose, allRules) with warnings as errors; the skill lists the shapes that pass
+the first time, the two ktlint rules that contradict each other, and how to edit legacy code
+without resurfacing its baseline. Writing to it up front saves hours of lint iterations.
+
+Skills: `dsm-lint` (write lint-clean Kotlin, edit baselined code), `dsm-debug-api` (drive/validate the app over adb), `dsm-language` (add/improve a
 study-language module, build/publish language packs), `dsm-navigation` (navigate DroidDeck,
 MediaProjection consent dialogs, YouTube and DSM UI over adb with exact coordinates), `dsm-nightshade`
 (play the Nightshade visual novel test bed: launch, load, advance, quicksave, close), `dsm-ocr-eval`
@@ -139,7 +144,8 @@ Endpoints: `/state`, `/scan`, `/frame.png`, `/ocr` (`l,t,r,b` crops the file fir
 `/language?set=ja|en&setup=1` (study language; `setup=1` reshows the first-run screen), `/lang_pack?install=1|remove=1`,
 `/word_audio?term=`, `/autoocr?on=1|0`, `/lines?limit=`, `/clip.wav?id=&trim=0|1`, `/line_shot.jpg?id=`, `/mine_line?id=&word=`,
 `/set_region?l=&t=&r=&b=&orientation=`, `/clear_lines`, `/add_line?text=&ago=&dur=`,
-`/quick?l=&t=&r=&b=` (bubble quick lookup of a box), `/install_ocr_models` (meikiocr download), `/ocr?engine=meiki|mlkit`, `/select_areas` (opens the area editor),
+`/quick?l=&t=&r=&b=` (bubble quick lookup of a box), `/whats_new?reset=1|show=1` (update dialog),
+`/card_contents` (Anki contents the current field mapping receives), `/install_ocr_models` (meikiocr download), `/ocr?engine=meiki|mlkit`, `/select_areas` (opens the area editor),
 `/install_dict?id=jitendex|jmnedict|pixiv-light` (background install; progress in `/state.dictInstall`),
 `/drive_list?url=` (public Drive folder listing), `/install_drive?url=` (public Drive file, same progress),
 `/anki_notes?word=` (field-level card verification via the AnkiDroid provider),
@@ -564,6 +570,35 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   `/preview_card`; Jitendex installs via the app's one-click button or
   `curl localhost:9099/install_dict?id=jitendex` (~40 s, 436,555 terms).
 
+- **German** (`lang/de/`): wty's `wty-de-en` lists ~600 k entries, most of them inflected forms
+  pointing at their lemma, so `GermanDeinflector` is only a fallback for regular endings; surfaces
+  are tried as written, first-letter-lowered, lowered and Capitalized (nouns keep capitals,
+  ALL-CAPS game text → *Hund*). `nounArticle` reads wty's `masc`/`fem`/`neut` definition tags —
+  never the bare `n` tag, which is the noun POS. Word audio: Commons `De-<word>.ogg` (regions
+  ranked by `wiktionaryRegions`: "", at, ch; exact case first), then Lingua Libre `LL-Q188 (deu)`
+  incl. files with the article (`linguaLibreArticles`). The German pack reuses the English pack's
+  zip (PP-OCRv6 rec reads äöüß, not „).
+- **OCR pack zips aren't reproducible** (`build_pack.py`): the 0.6.0 hash `eb4db787…` matched a zip
+  that was never uploaded (`lang-en-1` 404'd). The module's `sha256` must be the hash of the file
+  actually uploaded (`068d48a7…` since 0.7.0, shared by English and German); changing it also means
+  replacing the hash in `app/detekt-baseline*.xml` (the `pack` property's findings are keyed on it).
+  Test without a release: `run-as cp` into `files/lang/<code>`.
+- **Anki per language** (`CardFields.forLanguage`, `CardTemplates`, `DsmPrefs.perLanguage`): deck,
+  note type and tags are per study language — Japanese keeps the original pref
+  keys, others `<key>_<code>` — so switching language never changes the user's Japanese setup.
+  `AnkiCard.fields` (study language's contents minus those a custom field map sends nowhere —
+  *Nothing* in *Settings → Anki → Fields* — and the screenshot switch; `CardContents.forMapping`)
+  drives our note type creation (fields + templates; a template naming a missing field breaks the
+  card) and which canonicals the mapper fills; `buildCard` blanks off contents and `mineLine`
+  skips the clip/screenshot/word-audio work for them. Default note types: `DsmPrefs.defaultModel`.
+- **What's new** (`update/WhatsNew.kt`, `ui/components/WhatsNewDialog.kt`): `copyChangelog`
+  (app/build.gradle.kts) bundles CHANGELOG.md as an asset; pref `whats_new_seen` = `name+code`.
+  Fresh install (`firstInstallTime == lastUpdateTime`) records silently; no seen version = only the
+  current notes; Markdown link definitions (`[0.6.0]: https://…`) are dropped (they leaked into
+  the oldest section). Debug builds are always 0.1.0, so they show the 0.1.0 notes once.
+- **New debug endpoints go in `debug/DebugExtras.kt`** (routed by one `if` before `DebugApi`'s
+  `when`): adding a `when` branch, or editing any branch, resurfaces ~90 baselined findings.
+
 ## Local test servers (used during development)
 
 - Mock AnkiConnect: a tiny Python HTTP server handling `version/deckNames/modelNames/createDeck/createModel/findNotes/storeMediaFile/addNote`
@@ -576,7 +611,8 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
 app/src/main/java/io/github/wilsonnet/droidsentenceminer/
 ├── lang/      LanguageModule interface, Languages registry, LanguagePacks (downloadable data)
 │   ├── ja/    Japanese module, JapaneseDeinflector, JapaneseTextScore
-│   └── en/    English module (word/phrase scan, suffix deinflector)
+│   ├── en/    English module (word/phrase scan, suffix deinflector)
+│   └── de/    German module (GermanScanner, GermanDeinflector fallback rules, noun articles)
 ├── dict/      Yomitan import, Room storage, lookup, glossary rendering, IPA
 ├── ocr/       meikiocr + PaddleOCR (ONNX) + ML Kit engines, preprocessing, GSM-style post-processing
 ├── capture/   MediaProjection capture, auto OCR loop, text areas
@@ -585,7 +621,8 @@ app/src/main/java/io/github/wilsonnet/droidsentenceminer/
 ├── overlay/   Foreground service, bubble, region selector, Compose panel
 ├── anki/      AnkiDroid + AnkiConnect bridges, card builder/miner
 ├── book/      Book mode: page photo loading, ML Kit page OCR, tategaki layout
-├── ui/        Compose screens, theme, lookup dialogs, audio editor
+├── ui/        Compose screens, theme, lookup dialogs, audio editor, What's new dialog
+├── update/    In-app updater (GitHub releases), What's new (bundled CHANGELOG.md)
 └── core/      Settings (DataStore)
 
 tools/lang-packs/ builds per-language data zips (OCR models) for GitHub Releases `lang-<code>-<n>`
@@ -595,5 +632,5 @@ tools/meiki-variants/  builds the meikiocr model cuts in app/src/main/assets/mei
 site/             Astro/Starlight marketing site + docs (Node 24, pnpm 12)
 docs/             contributor docs (features, usage, architecture, building, validation, roadmap) + README media
 CHANGELOG.md      user-visible changes per release (Unreleased on top)
-.opencode/skills/ dsm-debug-api, dsm-language, dsm-navigation, dsm-nightshade, dsm-audio, dsm-ocr-eval, dsm-docs, wisdom-increaser, dsm-promo-media, dsm-release (symlinked as .claude/skills and .agents/skills)
+.opencode/skills/ dsm-lint, dsm-debug-api, dsm-language, dsm-navigation, dsm-nightshade, dsm-audio, dsm-ocr-eval, dsm-docs, wisdom-increaser, dsm-promo-media, dsm-release (symlinked as .claude/skills and .agents/skills)
 ```
