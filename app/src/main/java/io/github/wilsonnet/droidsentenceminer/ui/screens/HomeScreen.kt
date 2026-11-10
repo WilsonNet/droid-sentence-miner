@@ -35,6 +35,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -56,10 +57,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
-import io.github.wilsonnet.droidsentenceminer.capture.ScreenshotAccessibilityService
 import androidx.lifecycle.LifecycleEventObserver
 import io.github.wilsonnet.droidsentenceminer.AppContainer
+import io.github.wilsonnet.droidsentenceminer.capture.ScreenshotAccessibilityService
 import io.github.wilsonnet.droidsentenceminer.dict.ScannedWord
+import io.github.wilsonnet.droidsentenceminer.overlay.BubbleMode
 import io.github.wilsonnet.droidsentenceminer.overlay.OverlayService
 import io.github.wilsonnet.droidsentenceminer.ui.components.WordLookupDialog
 import kotlinx.coroutines.Dispatchers
@@ -96,6 +98,11 @@ fun HomeScreen(modifier: Modifier = Modifier) {
     val dictUpdates by container.dictUpdates.collectAsState()
     val recentCards by remember { container.db.minedCardDao().observeRecent() }
         .collectAsState(initial = emptyList())
+    val bubbleModeName by container.prefs.bubbleMode.collectAsState(initial = "quick")
+    val bubbleMode =
+        remember(bubbleModeName) {
+            BubbleMode.entries.firstOrNull { it.name.equals(bubbleModeName, ignoreCase = true) } ?: BubbleMode.QUICK
+        }
 
     LaunchedEffect(Unit) { container.appUpdater.checkOnce() }
 
@@ -286,6 +293,39 @@ fun HomeScreen(modifier: Modifier = Modifier) {
                 }
                 StatusLine("Overlay running", running)
 
+                if (hasOverlay) {
+                    Text("Floating bubble mode", style = MaterialTheme.typography.labelLarge)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(
+                            selected = bubbleMode == BubbleMode.QUICK,
+                            onClick = {
+                                scope.launch {
+                                    container.prefs.setBubbleMode(BubbleMode.QUICK.name.lowercase())
+                                }
+                            },
+                            label = { Text("Quick lookup") },
+                        )
+                        FilterChip(
+                            selected = bubbleMode == BubbleMode.REGION,
+                            onClick = {
+                                scope.launch {
+                                    container.prefs.setBubbleMode(BubbleMode.REGION.name.lowercase())
+                                }
+                            },
+                            label = { Text("Scan region") },
+                        )
+                    }
+                    Text(
+                        if (bubbleMode == BubbleMode.QUICK) {
+                            "Tap the bubble to drag a box over words in any game or app."
+                        } else {
+                            "Tap the bubble to select a screen region to scan."
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (!hasOverlay) {
                         Button(onClick = { openOverlaySettings(context) }) { Text("Grant overlay permission") }
@@ -297,13 +337,12 @@ fun HomeScreen(modifier: Modifier = Modifier) {
                             OverlayService.start(context)
                         }) { Text("Start floating bubble") }
                     } else {
-                        Button(onClick = { OverlayService.scanRegion(context) }) { Text("Scan now") }
-                        OutlinedButton(onClick = { OverlayService.stop(context) }) { Text("Stop") }
+                        OutlinedButton(onClick = { OverlayService.stop(context) }) { Text("Stop floating bubble") }
                     }
                 }
-                if (!hasOverlay) {
+                if (hasOverlay) {
                     Text(
-                        "Tap the bubble to select a screen region, long-press it for the menu.",
+                        "Tip: Hold (long-press) the floating bubble for more options: Start auto OCR, text areas, and live text.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -421,7 +460,18 @@ fun HomeScreen(modifier: Modifier = Modifier) {
                     style = MaterialTheme.typography.bodySmall,
                 )
                 Text("2. Configure Anki in Settings → Anki", style = MaterialTheme.typography.bodySmall)
-                Text("3. Start the floating bubble and tap it over ${language.displayName} text", style = MaterialTheme.typography.bodySmall)
+                Text(
+                    "3. Select the Floating Bubble mode above and start the floating bubble",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Text(
+                    "4. Switch to your game or app and tap the bubble over ${language.displayName} text",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Text(
+                    "5. Hold (long-press) the floating bubble for more options (Auto OCR, text areas, live text window)",
+                    style = MaterialTheme.typography.bodySmall,
+                )
             }
         }
     }

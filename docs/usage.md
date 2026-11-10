@@ -26,7 +26,9 @@ Step by step from a fresh install. The website has the same flow with screenshot
    - *AnkiConnect*: start Anki with the AnkiConnect add-on and enter the URL
      (e.g. `http://192.168.1.10:8765`).
    Pick a deck and note type (a "Droid Sentence Miner" note type is created automatically).
-3. **Quick lookup** — tap the bubble, drag a box over a word, lift: the definition pops up next
+3. **Quick lookup** — on Home pick the floating bubble mode (*Quick lookup* or *Scan region*),
+   tap *Start floating bubble*, then switch to your game or app and tap the bubble; hold it for
+   the full menu. Drag a box over a word, lift: the definition pops up next
    to it with *+ Anki* (sentence = the boxed text, audio from the replay buffer); the ✎ beside it
    opens the card editor to trim the sentence and the audio first. Tap another word
    in the box to look that one up; tap anywhere else to close. A tap without a drag cancels.

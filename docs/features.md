@@ -110,7 +110,8 @@ Everything the app does, in detail. The short version is in the [README](../READ
 - **Floating popup overlay** — a draggable bubble that stays on screen. Tap it, drag a box over a
   word and its definition pops up right next to it (*Quick lookup*, the default); other words in
   the box can be tapped too. Long-press opens the menu, where *Bubble tap* switches to *Scan
-  region* (the region editor with Scan / Full screen / Live and the results panel). The
+  region* (the region editor with Scan / Full screen / Live and the results panel); the Home
+  screen offers the same two modes and starts/stops the bubble. The
   notification stays available as a shortcut.
 - **Japanese OCR trained on games** — on-device [meikiocr](https://github.com/rtr46/meikiocr)
   (ONNX Runtime), a detector + recognizer trained on Japanese video-game text: 3–19× fewer

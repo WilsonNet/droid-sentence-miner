@@ -6,6 +6,9 @@ versions are the `v*` tags that publish a signed APK on
 
 ## [Unreleased]
 
+### Changed
+- **Home screen floating overlay controls & getting started instructions:** Replaced the confusing "Scan now" button on the home screen with in-app floating bubble mode selection (*Quick lookup* vs *Scan region*). When the overlay is running, the button now reads *Stop floating bubble*. Added prominent tips clarifying that the user should switch to their game or app before tapping the bubble, and that holding (long-pressing) the floating bubble opens the full menu (Auto OCR, text areas, live text window, and audio options).
+
 ## [0.7.0] — 2026-11-09
 
 ### Added
