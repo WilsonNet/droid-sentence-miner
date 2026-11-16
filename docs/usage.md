@@ -68,9 +68,12 @@ Step by step from a fresh install. The website has the same flow with screenshot
    Arrows step through paragraphs; ✎ corrects the OCR text.
 8. **Manga (`.cbz`)** — open the *Manga* tab and import `.cbz` (optionally paired with `.mokuro`
    files of the same name) via *From files* or *Google Drive* (*Browse my Drive* or public Drive
-   links/folders). Tap any volume to read; tap a character in a speech bubble for instant definitions,
-   and tap *+ Anki* to crop the exact panel or bubble before sending the card. Use the top bar
-   icons to re-OCR a page, cycle *Transparent / Light / Dark / Hidden* overlays, edit OCR text boxes,
-   or switch between *Single page*, *Double page*, and *Vertical scroll*.
+   links/folders). Use the volume card menu (`⋮`) → *Prepare OCR (all pages)* to pre-OCR an entire
+   volume in the background, or tap any volume to read on the go (Google Lens when online with
+   automatic offline fallback). Tap any character or bubble gap for instant definitions, and tap
+   *+ Anki* to crop the exact panel or bubble before sending the card. Use the top bar icons to
+   re-OCR a page, cycle *Transparent / Light / Dark / Hidden* overlays, edit OCR text boxes, or
+   open *Reader settings* to pick *Single page / Double page / Vertical scroll* and *Auto / Google
+   Lens / On-device* OCR.
 9. **Test drive** — the Home tab has a built-in sample (a public-domain Aozora Bunko passage) and
    an image picker to test OCR + lookup without a game.

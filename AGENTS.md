@@ -150,7 +150,7 @@ Endpoints: `/state`, `/scan`, `/frame.png`, `/ocr` (`l,t,r,b` crops the file fir
 `/language?set=ja|en&setup=1` (study language; `setup=1` reshows the first-run screen), `/lang_pack?install=1|remove=1`,
 `/word_audio?term=`, `/autoocr?on=1|0`, `/lines?limit=`, `/clip.wav?id=&trim=0|1`, `/line_shot.jpg?id=`, `/mine_line?id=&word=`,
 `/set_region?l=&t=&r=&b=&orientation=`, `/clear_lines`, `/add_line?text=&ago=&dur=`,
-`/quick?l=&t=&r=&b=` (bubble quick lookup of a box), `/whats_new?reset=1|show=1` (update dialog),
+`/quick?l=&t=&r=&b=` (bubble quick lookup of a box), `/whats_new?reset=1|show=1` (update dialog), `/manga_ocr?file=` (Google Lens + Manatan bubble merge on a page image),
 `/card_contents` (Anki contents the current field mapping receives), `/install_ocr_models` (meikiocr download), `/ocr?engine=meiki|mlkit`, `/select_areas` (opens the area editor),
 `/install_dict?id=jitendex|jmnedict|pixiv-light` (background install; progress in `/state.dictInstall`),
 `/drive_list?url=` (public Drive folder listing), `/install_drive?url=` (public Drive file, same progress),
@@ -577,12 +577,19 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
 - **Never mine test cards into a personal AnkiDroid collection** unless using a dedicated test deck or
   `/preview_card`; Jitendex installs via the app's one-click button or
   `curl localhost:9099/install_dict?id=jitendex` (~40 s, 436,555 terms).
-- **Manga `.cbz` reader** (`manga/`, `ui/screens/Manga*.kt`, `ui/components/PanelCropper.kt`):
-  volumes and page OCR live in `manga.db` (separate from `dict.db`); archives copy to `files/manga/`.
-  Paired `.mokuro` JSON (`MokuroParser`, by normalized stem via `DriveLinks.stem` or embedded in `.cbz`)
-  populates `page_ocr` immediately (`hasMokuro = true`); otherwise `MangaOcrEngine` runs upscaled
-  ML Kit (`ImagePreprocessor.upscaleForOcr`) + pairwise `MangaOcrGrouping` so vertical speech-bubble
-  columns merge into one block instead of per-column fragments.
+- **Manga `.cbz` reader** (`manga/`, `ocr/ChromeLensOcr.kt`, `ui/screens/Manga*.kt`,
+  `ui/components/PanelCropper.kt`): volumes and page OCR live in `manga.db` (separate from
+  `dict.db`); archives copy to `files/manga/`. Paired `.mokuro` JSON (`MokuroParser`, by normalized
+  stem via `DriveLinks.stem` or embedded in `.cbz`) populates `page_ocr` immediately (`hasMokuro =
+  true`); otherwise `MangaOcrEngine` (respecting `Languages.current` and `DsmPrefs.mangaOcrMode`:
+  `AUTO` / `LENS` / `MLKIT`) runs Google Lens (`ChromeLensOcr`, `LensProtoWire`, `LensProtoGeometry`
+  against `lensfrontend-pa.googleapis.com/v1/crupload`) with offline fallback to upscaled ML Kit
+  (`ImagePreprocessor.upscaleForOcr`) or `PaddleOcr`, filtered and clustered via
+  `MangaOcrGrouping` (Manatan `merge.rs` noise/page-number/furigana filter + Union-Find column
+  merging). `MangaPreOcrQueue` runs 2-concurrent background volume pre-OCR. In `MangaReaderGestures`,
+  always call `change.consume()` on pointer-up when handling a text-box tap (consuming only the
+  initial `down` leaves UP unconsumed so parent `PagedMangaSlotView`/`VerticalMangaPageItem`
+  `detectTapGestures` still fires `onTapEmpty` and flips pages!).
   Full-screen `Dialog`s with `usePlatformDefaultWidth = false` (like `PanelCropperDialog`) on
   targetSdk 35 edge-to-edge / HyperOS must set `window.setLayout(MATCH_PARENT, MATCH_PARENT)`,
   `FLAG_LAYOUT_IN_SCREEN`, and `WindowCompat.setDecorFitsSystemWindows(window, false)` via
@@ -635,14 +642,14 @@ app/src/main/java/io/github/wilsonnet/droidsentenceminer/
 │   ├── en/    English module (word/phrase scan, suffix deinflector)
 │   └── de/    German module (GermanScanner, GermanDeinflector fallback rules, noun articles)
 ├── dict/      Yomitan import, Room storage, lookup, glossary rendering, IPA
-├── ocr/       meikiocr + PaddleOCR (ONNX) + ML Kit engines, preprocessing, GSM-style post-processing
+├── ocr/       meikiocr + PaddleOCR (ONNX) + ML Kit + Google Lens protobuf engines, preprocessing, post-processing
 ├── capture/   MediaProjection capture, auto OCR loop, text areas
 ├── textlog/   Text log DB, line tracker/consensus, clip windows
 ├── audio/     AudioPlaybackCapture, VAD, WAV/AAC encoders, PCM utils
 ├── overlay/   Foreground service, bubble, region selector, Compose panel
 ├── anki/      AnkiDroid + AnkiConnect bridges, card builder/miner
 ├── book/      Book mode: page photo loading, ML Kit page OCR, tategaki layout
-├── manga/     Manga .cbz reader: CBZ archive, .mokuro parser, upscaled ML Kit + bubble grouping, Room DB (manga.db), Drive/local import queue
+├── manga/     Manga .cbz reader: CBZ archive, .mokuro parser, Lens/ML Kit + Manatan grouping, batch pre-OCR, Room DB (manga.db), Drive/local import queue
 ├── ui/        Compose screens, theme, lookup dialogs, audio editor, panel cropper, What's new dialog
 ├── update/    In-app updater (GitHub releases), What's new (bundled CHANGELOG.md)
 └── core/      Settings (DataStore)

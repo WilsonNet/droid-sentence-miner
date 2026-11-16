@@ -16,7 +16,6 @@ import androidx.compose.ui.input.pointer.changedToUp
 import androidx.compose.ui.unit.IntSize
 import io.github.wilsonnet.droidsentenceminer.manga.MangaBlock
 import io.github.wilsonnet.droidsentenceminer.manga.MangaPageOcr
-import io.github.wilsonnet.droidsentenceminer.manga.glyphAt
 import io.github.wilsonnet.droidsentenceminer.ocr.BoundingBox
 import kotlin.math.max
 import kotlin.math.min
@@ -118,43 +117,6 @@ internal fun PageCoords.anchorForRange(block: MangaBlock, range: IntRange, windo
         right = windowOrigin.x + localRect.right * zoom,
         bottom = windowOrigin.y + localRect.bottom * zoom,
     )
-}
-
-internal fun hitGlyph(
-    blocks: List<MangaBlock>,
-    coords: PageCoords,
-    localPos: Offset,
-    slack: Float,
-    editMode: Boolean,
-): Pair<Int, Int>? {
-    val p = coords.screenToOcr(localPos)
-    var exact: Pair<Int, Int>? = null
-    for (b in blocks.indices) {
-        val glyph = blocks[b].glyphAt(x = p.x, y = p.y)
-        if (glyph != null) {
-            exact = b to glyph
-            break
-        }
-    }
-    var hit = exact
-    if (hit == null) {
-        for (b in blocks.indices) {
-            val glyph = blocks[b].glyphAt(x = p.x, y = p.y, slack = slack)
-            if (glyph != null) {
-                hit = b to glyph
-                break
-            }
-        }
-    }
-    if (hit == null && editMode) {
-        val boxHit =
-            blocks.indexOfFirst { block ->
-                val b = block.box
-                p.x in b.left - slack..b.right + slack && p.y in b.top - slack..b.bottom + slack
-            }
-        if (boxHit >= 0) hit = boxHit to 0
-    }
-    return hit
 }
 
 internal suspend fun AwaitPointerEventScope.handleSlotGestureLoop(
@@ -311,6 +273,7 @@ private suspend fun AwaitPointerEventScope.awaitTapOrLongPress(
                 }
 
                 change.changedToUp() -> {
+                    change.consume()
                     outcome = PageGestureOutcome.TAP
                     isResolved = true
                 }

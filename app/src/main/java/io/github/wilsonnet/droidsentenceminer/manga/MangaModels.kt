@@ -43,6 +43,18 @@ fun MangaBlock.glyphAt(x: Float, y: Float, slack: Float = 0f): Int? {
     }
 }
 
+/** Returns the index of the glyph inside this block closest to ([x], [y]), or null if empty. */
+fun MangaBlock.nearestGlyph(x: Float, y: Float): Int? {
+    val idx =
+        glyphs.indices.minByOrNull { i ->
+            val g = glyphs[i]
+            val cx = (g.left + g.right) / 2f
+            val cy = (g.top + g.bottom) / 2f
+            (cx - x) * (cx - x) + (cy - y) * (cy - y)
+        }
+    return idx ?: if (text.isNotEmpty()) 0 else null
+}
+
 /** Returns a copy with [newText], remapping characters proportionally onto existing glyph boxes. */
 fun MangaBlock.withText(newText: String): MangaBlock =
     if (glyphs.isEmpty() || newText.isEmpty() || newText.length == glyphs.size) {
@@ -100,11 +112,38 @@ data class MangaPageOcr(
         /** Parsed from a `.mokuro` JSON file. */
         const val SOURCE_MOKURO = "mokuro"
 
-        /** Generated on-device by ML Kit. */
+        /** Recognized via Google Lens (`ChromeLensOcr`), matching Manatan. */
+        const val SOURCE_LENS = "lens"
+
+        /** Generated on-device by ML Kit / PaddleOCR. */
         const val SOURCE_OCR = "ocr"
 
         /** Manually edited by the user inside the reader. */
         const val SOURCE_EDITED = "edited"
+    }
+}
+
+/** Preferred OCR backend for manga `.cbz` pages without a `.mokuro` file. */
+enum class MangaOcrMode(
+    /** Persistent preference identifier. */
+    val id: String,
+    /** Human-readable menu label. */
+    val label: String,
+) {
+    /** Uses Google Lens when online and seamlessly falls back to on-device OCR offline. */
+    AUTO("auto", "Auto (Lens + offline)"),
+
+    /** Always requests Google Lens (requires internet connection). */
+    LENS("lens", "Google Lens"),
+
+    /** Always runs on-device OCR offline (no network requests). */
+    MLKIT("mlkit", "On-device (Offline)"),
+    ;
+
+    /** Lookup helpers. */
+    companion object {
+        /** Resolves [id] or defaults to [AUTO]. */
+        fun fromId(id: String?): MangaOcrMode = entries.firstOrNull { it.id == id } ?: AUTO
     }
 }
 

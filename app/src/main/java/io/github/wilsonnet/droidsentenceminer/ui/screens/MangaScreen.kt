@@ -27,6 +27,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FolderOpen
@@ -69,6 +70,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.wilsonnet.droidsentenceminer.AppContainer
 import io.github.wilsonnet.droidsentenceminer.manga.MangaImportQueue
+import io.github.wilsonnet.droidsentenceminer.manga.MangaOcrMode
+import io.github.wilsonnet.droidsentenceminer.manga.MangaPreOcrQueue
 import io.github.wilsonnet.droidsentenceminer.manga.MangaVolumeEntity
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -97,6 +100,9 @@ fun MangaScreen(modifier: Modifier = Modifier, onReaderOpenChange: (Boolean) -> 
         remember { container.mangaDb.volumeDao().observeVolumes() }
             .collectAsState(initial = emptyList())
     val importState by container.mangaImports.state.collectAsState()
+    val preOcrMap by container.mangaPreOcr.progress.collectAsState()
+    val ocrModeId by container.prefs.mangaOcrMode.collectAsState(initial = null)
+    val ocrMode = MangaOcrMode.fromId(ocrModeId)
 
     var openVolumeId by rememberSaveable { mutableStateOf<Long?>(null) }
     var isDriveSheetOpen by remember { mutableStateOf(false) }
@@ -167,12 +173,14 @@ fun MangaScreen(modifier: Modifier = Modifier, onReaderOpenChange: (Boolean) -> 
         onDismissDelete = { deleteTarget = null },
         onConfirmDelete = { target ->
             deleteTarget = null
+            container.mangaPreOcr.cancel(target.id)
             scope.launch { container.mangaRepo.deleteVolume(target) }
         },
     )
 
     MangaShelfGrid(
         volumes = VolumeList(volumes),
+        preOcrMap = PreOcrProgressMap(preOcrMap),
         importState = importState,
         statusMessage = statusMessage,
         errorMessage = errorMessage,
@@ -182,6 +190,13 @@ fun MangaScreen(modifier: Modifier = Modifier, onReaderOpenChange: (Boolean) -> 
         onAttachMokuro = { volume ->
             attachTarget = volume
             mokuroPicker.launch(arrayOf("*/*"))
+        },
+        onTogglePreOcr = { volume ->
+            if (preOcrMap[volume.id]?.isRunning == true) {
+                container.mangaPreOcr.cancel(volume.id)
+            } else {
+                container.mangaPreOcr.start(volume = volume, mode = ocrMode)
+            }
         },
         onResetProgress = { volume ->
             scope.launch { container.mangaRepo.updateProgress(volume.id, 0) }
@@ -250,10 +265,14 @@ private fun MangaScreenDialogs(
 @Immutable
 private data class VolumeList(val items: List<MangaVolumeEntity>)
 
+@Immutable
+private data class PreOcrProgressMap(val items: Map<Long, MangaPreOcrQueue.VolumeProgress>)
+
 @Suppress("FunctionName")
 @Composable
 private fun MangaShelfGrid(
     volumes: VolumeList,
+    preOcrMap: PreOcrProgressMap,
     importState: MangaImportQueue.State,
     statusMessage: String?,
     errorMessage: String?,
@@ -261,6 +280,7 @@ private fun MangaShelfGrid(
     onOpenDrive: () -> Unit,
     onOpenVolume: (MangaVolumeEntity) -> Unit,
     onAttachMokuro: (MangaVolumeEntity) -> Unit,
+    onTogglePreOcr: (MangaVolumeEntity) -> Unit,
     onResetProgress: (MangaVolumeEntity) -> Unit,
     onRequestDelete: (MangaVolumeEntity) -> Unit,
     modifier: Modifier = Modifier,
@@ -287,8 +307,10 @@ private fun MangaShelfGrid(
         items(volumes.items, key = { it.id }) { volume ->
             VolumeGridCard(
                 volume = volume,
+                preOcr = preOcrMap.items[volume.id],
                 onOpen = { onOpenVolume(volume) },
                 onAttachMokuro = { onAttachMokuro(volume) },
+                onTogglePreOcr = { onTogglePreOcr(volume) },
                 onResetProgress = { onResetProgress(volume) },
                 onDelete = { onRequestDelete(volume) },
             )
@@ -409,8 +431,10 @@ private fun DeleteVolumeDialog(title: String, onDismiss: () -> Unit, onConfirm: 
 @Composable
 private fun VolumeGridCard(
     volume: MangaVolumeEntity,
+    preOcr: MangaPreOcrQueue.VolumeProgress?,
     onOpen: () -> Unit,
     onAttachMokuro: () -> Unit,
+    onTogglePreOcr: () -> Unit,
     onResetProgress: () -> Unit,
     onDelete: () -> Unit,
 ) {
@@ -421,7 +445,9 @@ private fun VolumeGridCard(
         Column {
             VolumeCoverBox(
                 volume = volume,
+                preOcr = preOcr,
                 onAttachMokuro = onAttachMokuro,
+                onTogglePreOcr = onTogglePreOcr,
                 onResetProgress = onResetProgress,
                 onDelete = onDelete,
             )
@@ -451,7 +477,9 @@ private fun VolumeGridCard(
 @Composable
 private fun VolumeCoverBox(
     volume: MangaVolumeEntity,
+    preOcr: MangaPreOcrQueue.VolumeProgress?,
     onAttachMokuro: () -> Unit,
+    onTogglePreOcr: () -> Unit,
     onResetProgress: () -> Unit,
     onDelete: () -> Unit,
 ) {
@@ -482,8 +510,15 @@ private fun VolumeCoverBox(
             )
         }
 
+        val isBatchRunning = preOcr?.isRunning == true
+        val badgeText =
+            when {
+                preOcr?.isRunning == true -> "OCR ${preOcr.done}/${preOcr.total}"
+                volume.hasMokuro -> "Mokuro"
+                else -> "Auto OCR"
+            }
         val badgeColor =
-            if (volume.hasMokuro) {
+            if (volume.hasMokuro || isBatchRunning) {
                 MaterialTheme.colorScheme.primary.copy(alpha = BADGE_PRIMARY_ALPHA)
             } else {
                 Color.Black.copy(alpha = BADGE_DARK_ALPHA)
@@ -494,7 +529,7 @@ private fun VolumeCoverBox(
             modifier = Modifier.align(Alignment.TopStart).padding(6.dp),
         ) {
             Text(
-                text = if (volume.hasMokuro) "Mokuro" else "Auto OCR",
+                text = badgeText,
                 style = MaterialTheme.typography.labelSmall,
                 color = Color.White,
                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
@@ -503,7 +538,10 @@ private fun VolumeCoverBox(
 
         Box(Modifier.align(Alignment.TopEnd)) {
             VolumeOverflowMenu(
+                hasMokuro = volume.hasMokuro,
+                preOcr = preOcr,
                 onAttachMokuro = onAttachMokuro,
+                onTogglePreOcr = onTogglePreOcr,
                 onResetProgress = onResetProgress,
                 onDelete = onDelete,
             )
@@ -513,7 +551,14 @@ private fun VolumeCoverBox(
 
 @Suppress("FunctionName")
 @Composable
-private fun VolumeOverflowMenu(onAttachMokuro: () -> Unit, onResetProgress: () -> Unit, onDelete: () -> Unit) {
+private fun VolumeOverflowMenu(
+    hasMokuro: Boolean,
+    preOcr: MangaPreOcrQueue.VolumeProgress?,
+    onAttachMokuro: () -> Unit,
+    onTogglePreOcr: () -> Unit,
+    onResetProgress: () -> Unit,
+    onDelete: () -> Unit,
+) {
     var isMenuOpen by remember { mutableStateOf(false) }
     IconButton(onClick = { isMenuOpen = true }) {
         Surface(shape = RoundedCornerShape(PILL_PERCENT), color = Color.Black.copy(alpha = MENU_CIRCLE_ALPHA)) {
@@ -526,6 +571,22 @@ private fun VolumeOverflowMenu(onAttachMokuro: () -> Unit, onResetProgress: () -
         }
     }
     DropdownMenu(expanded = isMenuOpen, onDismissRequest = { isMenuOpen = false }) {
+        if (!hasMokuro) {
+            val label =
+                if (preOcr?.isRunning == true) {
+                    "Stop OCR (${preOcr.done}/${preOcr.total})"
+                } else {
+                    "Prepare OCR (all pages)"
+                }
+            DropdownMenuItem(
+                text = { Text(label) },
+                leadingIcon = { Icon(Icons.Default.AutoAwesome, contentDescription = null) },
+                onClick = {
+                    isMenuOpen = false
+                    onTogglePreOcr()
+                },
+            )
+        }
         DropdownMenuItem(
             text = { Text("Attach .mokuro") },
             leadingIcon = { Icon(Icons.Default.Subtitles, contentDescription = null) },

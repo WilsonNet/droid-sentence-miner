@@ -36,14 +36,19 @@ MediaProjection ──► ScreenCaptureManager ──► AutoOcrController ─�
   blocks are kept as paragraphs; `PageLayout` decides vertical vs horizontal from line shapes,
   orders columns right→left (lines top→bottom when horizontal), drops thin kana-only ruby lines
   and non-Japanese blocks, and joins a block that ends mid-sentence with the adjacent one.
-- **Manga `.cbz` reader** (`manga/`, `ui/screens/Manga*.kt`, `ui/components/PanelCropper.kt`):
-  volumes copy into `files/manga/` and store metadata, progress, and cached page OCR (`manga_volumes`,
-  `page_ocr`) in `manga.db`. If a paired or embedded `.mokuro` file exists (`MokuroParser`,
-  `DriveLinks.stem`), its text blocks and per-character/line geometry load directly (`hasMokuro =
-  true`); otherwise `MangaOcrEngine` upscales the page via `ImagePreprocessor.upscaleForOcr`, runs
-  ML Kit text recognition, and merges vertical speech-bubble columns via `MangaOcrGrouping`.
-  `PanelCropperDialog` crops the bitmap in memory via `PanelCropMath` before passing it to the card
-  builder / Anki card flow.
+- **Manga `.cbz` reader** (`manga/`, `ui/screens/Manga*.kt`, `ui/components/PanelCropper.kt`,
+  `ocr/ChromeLensOcr.kt`): volumes copy into `files/manga/` and store metadata, progress, and cached
+  page OCR (`manga_volumes`, `page_ocr`) in `manga.db`. If a paired or embedded `.mokuro` file exists
+  (`MokuroParser`, `DriveLinks.stem`), its text blocks and per-character/line geometry load directly
+  (`hasMokuro = true`). Otherwise `MangaOcrEngine` (respecting `Languages.current` and pref
+  `manga_ocr_mode`: *Auto* / *Google Lens* / *On-device*) posts a JPEG up to 1500 px to Google
+  Lens's `crupload` protobuf API (`ChromeLensOcr`, `LensProtoWire`, `LensProtoGeometry`) and falls
+  back offline to upscaled ML Kit (vertical languages) or the study language's downloadable OCR pack
+  (`PaddleOcr` for Latin languages). `MangaOcrGrouping` mirrors Manatan's `merge.rs` (edge
+  page-number/noise/SFX filter, ghost deduplication, language-aware `isRubyChar` furigana removal,
+  and Union-Find tiered bubble clustering). `MangaPreOcrQueue` runs 2-concurrent background volume
+  pre-OCR into `manga.db`. `PanelCropperDialog` crops the bitmap in memory via `PanelCropMath` before
+  passing it to the card builder / Anki card flow.
 - **Matching**: the study language's module expands the OCR text into dictionary-form candidates
   (Japanese: every substring through `JapaneseDeinflector`, Yomitan/Jiten rules; English: whole
   words and phrases through suffix rules), a single batched SQL query resolves them, and longest-match-wins

@@ -3,12 +3,17 @@ package io.github.wilsonnet.droidsentenceminer.ui.screens
 import android.graphics.Bitmap
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.pager.PagerState
+import androidx.compose.ui.geometry.Offset
 import io.github.wilsonnet.droidsentenceminer.AppContainer
+import io.github.wilsonnet.droidsentenceminer.manga.MangaBlock
+import io.github.wilsonnet.droidsentenceminer.manga.MangaOcrMode
 import io.github.wilsonnet.droidsentenceminer.manga.MangaPageOcr
 import io.github.wilsonnet.droidsentenceminer.manga.MangaReadingMode
 import io.github.wilsonnet.droidsentenceminer.manga.MangaSpreadLayout
 import io.github.wilsonnet.droidsentenceminer.manga.MangaSpreadSlot
 import io.github.wilsonnet.droidsentenceminer.manga.MangaVolumeEntity
+import io.github.wilsonnet.droidsentenceminer.manga.glyphAt
+import io.github.wilsonnet.droidsentenceminer.manga.nearestGlyph
 import io.github.wilsonnet.droidsentenceminer.manga.withText
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -65,7 +70,12 @@ internal suspend fun syncPageAndPreload(
     }
 }
 
-internal suspend fun loadMangaPage(cache: MangaPageCacheState, idx: Int, forceReOcr: Boolean) {
+internal suspend fun loadMangaPage(
+    cache: MangaPageCacheState,
+    idx: Int,
+    forceReOcr: Boolean,
+    ocrMode: MangaOcrMode = MangaOcrMode.AUTO,
+) {
     if (idx !in cache.entries.indices) return
     val decoded = cache.bitmaps[idx] ?: cache.container.mangaRepo.decodePage(cache.volume, cache.entries, idx)
     val bmp = decoded?.also { cache.bitmaps[idx] = it } ?: return
@@ -75,9 +85,19 @@ internal suspend fun loadMangaPage(cache: MangaPageCacheState, idx: Int, forceRe
         try {
             cache.ocrs[idx] =
                 if (forceReOcr) {
-                    cache.container.mangaOcr.recognizeAndStore(cache.volume.id, idx, bmp)
+                    cache.container.mangaOcr.recognizeAndStore(
+                        volumeId = cache.volume.id,
+                        pageIndex = idx,
+                        bitmap = bmp,
+                        mode = ocrMode,
+                    )
                 } else {
-                    cache.container.mangaOcr.getOrRecognize(cache.volume.id, idx, bmp)
+                    cache.container.mangaOcr.getOrRecognize(
+                        volumeId = cache.volume.id,
+                        pageIndex = idx,
+                        bitmap = bmp,
+                        mode = ocrMode,
+                    )
                 }
         } finally {
             cache.ocrRunning[idx] = false
@@ -119,4 +139,42 @@ internal fun saveEditedMangaBox(ctx: MangaBoxEditContext, ocr: MangaPageOcr, cle
     val updated = ocr.copy(blocks = updatedBlocks, source = MangaPageOcr.SOURCE_EDITED)
     ctx.pageOcrs[ctx.target.pageIndex] = updated
     ctx.scope.launch { ctx.container.mangaOcr.save(ctx.volumeId, ctx.target.pageIndex, updated) }
+}
+
+internal fun hitGlyph(
+    blocks: List<MangaBlock>,
+    coords: PageCoords,
+    localPos: Offset,
+    slack: Float,
+    editMode: Boolean,
+): Pair<Int, Int>? {
+    val p = coords.screenToOcr(localPos)
+    return findGlyphHit(blocks = blocks, x = p.x, y = p.y, slack = 0f)
+        ?: findGlyphHit(blocks = blocks, x = p.x, y = p.y, slack = slack)
+        ?: findBubbleFallback(blocks = blocks, x = p.x, y = p.y, slack = slack, isEditMode = editMode)
+}
+
+private fun findGlyphHit(blocks: List<MangaBlock>, x: Float, y: Float, slack: Float): Pair<Int, Int>? {
+    for (b in blocks.indices) {
+        val glyph = blocks[b].glyphAt(x = x, y = y, slack = slack)
+        if (glyph != null) return b to glyph
+    }
+    return null
+}
+
+private fun findBubbleFallback(
+    blocks: List<MangaBlock>,
+    x: Float,
+    y: Float,
+    slack: Float,
+    isEditMode: Boolean,
+): Pair<Int, Int>? {
+    val boxIdx =
+        blocks.indexOfFirst { block ->
+            val b = block.box
+            x in b.left - slack..b.right + slack && y in b.top - slack..b.bottom + slack
+        }
+    if (boxIdx < 0) return null
+    val fallbackIdx = if (isEditMode) 0 else blocks[boxIdx].nearestGlyph(x = x, y = y) ?: 0
+    return boxIdx to fallbackIdx
 }

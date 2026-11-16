@@ -32,7 +32,7 @@ Ideas and known gaps, roughly in priority order. Shipped work moves to [CHANGELO
 - RNNoise (as OBS uses) for the microphone fallback instead of the device's voice suppressor
   (a simple STFT Wiener filter on top of the platform suppressor measured no better).
 - Vertical text for screen OCR (meikiocr ships a vertical recognizer; not wired up yet; Book mode
-  and `.cbz` manga auto-OCR use ML Kit).
+  and `.cbz` offline manga fallback use ML Kit, while `.cbz` online default uses Google Lens).
 - Skip the detector on visual novels: a simulation (static background, typewriter text) showed
   reusing the last line boxes, grown rightwards for typewriter text and verified by the
   recognizer, cuts detector runs by ~65 % with identical lines; on video it saves nothing (the

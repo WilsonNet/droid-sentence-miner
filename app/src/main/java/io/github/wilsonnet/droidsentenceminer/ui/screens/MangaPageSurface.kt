@@ -67,7 +67,7 @@ private data class BlockList(val items: List<MangaBlock>)
 private data class LineList(val items: List<String>)
 
 private const val DEFAULT_PAGE_ASPECT = 0.7f
-private const val HIT_SLACK_DP = 8
+private const val HIT_SLACK_DP = 14
 private const val EDIT_BORDER_ALPHA = 0.7f
 private const val NORMAL_BORDER_ALPHA = 0.28f
 private const val HIGHLIGHT_ALPHA = 0.36f

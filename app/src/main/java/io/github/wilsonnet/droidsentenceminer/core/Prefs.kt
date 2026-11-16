@@ -93,6 +93,7 @@ class DsmPrefs(private val context: Context) {
         val mangaTapZone = stringPreferencesKey("manga_tap_zone")
         val mangaCropPanelOnMine = booleanPreferencesKey("manga_crop_panel_on_mine")
         val mangaPreloadOcr = booleanPreferencesKey("manga_preload_ocr")
+        val mangaOcrMode = stringPreferencesKey("manga_ocr_mode")
     }
 
     /** The study language's code ([io.github.wilsonnet.droidsentenceminer.lang.Languages]); null until picked. */
@@ -198,8 +199,11 @@ class DsmPrefs(private val context: Context) {
     /** Opens the panel cropper automatically when mining from the manga reader (on by default). */
     val mangaCropPanelOnMine: Flow<Boolean> = context.dataStore.data.map { it[Keys.mangaCropPanelOnMine] != false }
 
-    /** Whether adjacent manga pages run on-device OCR ahead of time when no `.mokuro` is present. */
+    /** Whether adjacent manga pages run OCR ahead of time when no `.mokuro` is present. */
     val mangaPreloadOcr: Flow<Boolean> = context.dataStore.data.map { it[Keys.mangaPreloadOcr] != false }
+
+    /** Saved manga OCR engine mode id ([io.github.wilsonnet.droidsentenceminer.manga.MangaOcrMode]). */
+    val mangaOcrMode: Flow<String?> = context.dataStore.data.map { it[Keys.mangaOcrMode] }
     /** Live text window position in px, per orientation (a portrait spot is wrong in landscape). */
     fun liveWindowPosition(landscape: Boolean): Flow<Pair<Int, Int>?> = context.dataStore.data.map {
         val x = it[if (landscape) Keys.liveWindowXLand else Keys.liveWindowX] ?: return@map null
@@ -355,6 +359,11 @@ class DsmPrefs(private val context: Context) {
     /** Updates whether adjacent un-OCR'd manga pages are preloaded in the background. */
     suspend fun setMangaPreloadOcr(value: Boolean) {
         edit { it[Keys.mangaPreloadOcr] = value }
+    }
+
+    /** Updates the preferred OCR engine mode for raw manga pages. */
+    suspend fun setMangaOcrMode(value: String) {
+        edit { it[Keys.mangaOcrMode] = value }
     }
 
     private fun parseDriveRecent(raw: String?): List<Pair<String, String>> =

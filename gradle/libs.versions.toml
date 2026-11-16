@@ -22,7 +22,7 @@ documentfile = "1.0.1"
 detekt = "2.0.0-alpha.6"
 composeRules = "0.6.8"
 konsist = "1.0.0-beta.1"
-kotest = "6.2.6"
+kotest = "6.2.7"
 
 [libraries]
 detekt-ktlint-wrapper = { module = "dev.detekt:detekt-rules-ktlint-wrapper", version.ref = "detekt" }

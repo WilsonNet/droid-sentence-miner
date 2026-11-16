@@ -61,8 +61,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import io.github.wilsonnet.droidsentenceminer.manga.MangaDirection
+import io.github.wilsonnet.droidsentenceminer.manga.MangaOcrMode
 import io.github.wilsonnet.droidsentenceminer.manga.MangaOverlayStyle
 import io.github.wilsonnet.droidsentenceminer.manga.MangaPageOcr
+import io.github.wilsonnet.droidsentenceminer.manga.MangaPreOcrQueue
 import io.github.wilsonnet.droidsentenceminer.manga.MangaReadingMode
 import io.github.wilsonnet.droidsentenceminer.manga.MangaTapZone
 import kotlin.math.roundToInt
@@ -71,10 +73,10 @@ private const val HUD_SCRIM_ALPHA = 0.78f
 private const val BUSY_PILL_ALPHA = 0.7f
 private const val MUTED_ICON_ALPHA = 0.45f
 private const val SUBTITLE_ALPHA = 0.75f
-private const val EDGE_PREV_FRAC = 0.25f
-private const val EDGE_NEXT_FRAC = 0.75f
-private const val THIRD_LOW = 0.33f
-private const val THIRD_HIGH = 0.67f
+private const val EDGE_PREV_FRAC = 0.16f
+private const val EDGE_NEXT_FRAC = 0.84f
+private const val THIRD_LOW = 0.22f
+private const val THIRD_HIGH = 0.78f
 
 internal enum class TapZoneAction {
     PREV,
@@ -256,8 +258,9 @@ private fun ocrSourceLabel(ocrBusy: Boolean, ocrSource: String?): String {
         when {
             ocrBusy -> "Running OCR…"
             ocrSource == MangaPageOcr.SOURCE_MOKURO -> "Mokuro"
+            ocrSource == MangaPageOcr.SOURCE_LENS -> "Lens"
             ocrSource == MangaPageOcr.SOURCE_EDITED -> "Edited"
-            ocrSource == MangaPageOcr.SOURCE_OCR -> "Auto OCR"
+            ocrSource == MangaPageOcr.SOURCE_OCR -> "Offline OCR"
             else -> ""
         }
     return label
@@ -301,6 +304,8 @@ private fun ReaderBottomBar(
 @Composable
 internal fun ReaderSettingsSheet(
     prefsState: ReaderPrefsState,
+    hasMokuro: Boolean,
+    batchProgress: MangaPreOcrQueue.VolumeProgress?,
     onDismiss: () -> Unit,
     onReadingMode: (MangaReadingMode) -> Unit,
     onDirection: (MangaDirection) -> Unit,
@@ -308,6 +313,8 @@ internal fun ReaderSettingsSheet(
     onOverlayStyle: (MangaOverlayStyle) -> Unit,
     onShowBorders: (Boolean) -> Unit,
     onTapZone: (MangaTapZone) -> Unit,
+    onOcrMode: (MangaOcrMode) -> Unit,
+    onToggleBatchPreOcr: () -> Unit,
     onCropPanelOnMine: (Boolean) -> Unit,
     onPreloadOcr: (Boolean) -> Unit,
 ) {
@@ -335,6 +342,14 @@ internal fun ReaderSettingsSheet(
                 onTapZone = onTapZone,
             )
             HorizontalDivider()
+            ReaderOcrSettingsSection(
+                ocrMode = prefsState.ocrMode,
+                hasMokuro = hasMokuro,
+                batchProgress = batchProgress,
+                onOcrMode = onOcrMode,
+                onToggleBatchPreOcr = onToggleBatchPreOcr,
+            )
+            HorizontalDivider()
             SettingToggleRow(
                 title = "Crop panel on Add to Anki",
                 subtitle = "Let you crop the exact manga panel before sending the card (recommended)",
@@ -344,7 +359,7 @@ internal fun ReaderSettingsSheet(
             )
             SettingToggleRow(
                 title = "Pre-OCR next pages",
-                subtitle = "Run on-device OCR ahead of your current page when no .mokuro is attached",
+                subtitle = "Run OCR ahead of your current page when no .mokuro is attached",
                 checked = prefsState.isPreloadOcr,
                 onCheckedChange = onPreloadOcr,
             )

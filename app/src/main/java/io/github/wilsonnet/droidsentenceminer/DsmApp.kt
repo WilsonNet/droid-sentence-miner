@@ -17,6 +17,7 @@ import io.github.wilsonnet.droidsentenceminer.lang.Languages
 import io.github.wilsonnet.droidsentenceminer.manga.MangaDatabase
 import io.github.wilsonnet.droidsentenceminer.manga.MangaImportQueue
 import io.github.wilsonnet.droidsentenceminer.manga.MangaOcrEngine
+import io.github.wilsonnet.droidsentenceminer.manga.MangaPreOcrQueue
 import io.github.wilsonnet.droidsentenceminer.manga.MangaRepository
 import io.github.wilsonnet.droidsentenceminer.ocr.MlKitJapaneseOcr
 import io.github.wilsonnet.droidsentenceminer.ocr.OcrEngine
@@ -76,9 +77,12 @@ class AppContainer(private val context: Context) {
         MangaDatabase.build(context)
     }
 
-    /** On-demand OCR engine + cache for manga pages. */
+    /** OCR engine + cache for manga pages (Google Lens with offline fallback). */
     val mangaOcr: MangaOcrEngine by lazy {
-        MangaOcrEngine(mangaDb.pageOcrDao())
+        MangaOcrEngine(
+            dao = mangaDb.pageOcrDao(),
+            offlineSpacedProvider = { ocrEngine(twoPass = false, dropNoise = false) },
+        )
     }
 
     /** Manga volume library storage and `.mokuro`/OCR repository. */
@@ -94,6 +98,11 @@ class AppContainer(private val context: Context) {
             downloader = dictDownloader,
             scope = appScope,
         )
+    }
+
+    /** Background full-volume pre-OCR queue so reading later feels like a `.mokuro` file. */
+    val mangaPreOcr: MangaPreOcrQueue by lazy {
+        MangaPreOcrQueue(repository = mangaRepo, scope = appScope)
     }
 
     /** The last photographed page; kept here so it survives tab switches and rotation. */

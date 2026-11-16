@@ -1,9 +1,12 @@
 package io.github.wilsonnet.droidsentenceminer.debug
 
 import android.app.Application
+import android.graphics.BitmapFactory
 import io.github.wilsonnet.droidsentenceminer.AppContainer
 import io.github.wilsonnet.droidsentenceminer.anki.CardFields
 import io.github.wilsonnet.droidsentenceminer.lang.Languages
+import io.github.wilsonnet.droidsentenceminer.manga.MangaOcrEngine
+import io.github.wilsonnet.droidsentenceminer.ocr.ChromeLensOcr
 import io.github.wilsonnet.droidsentenceminer.update.WhatsNew
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -15,12 +18,21 @@ import org.json.JSONObject
  * baselined lint findings, see the dsm-lint skill). Add new endpoints here.
  */
 object DebugExtras {
+    private const val NANOS_PER_MS = 1_000_000L
+
     /** Paths answered by [handle]. */
-    val PATHS = setOf("/whats_new", "/card_contents")
+    val PATHS = setOf("/whats_new", "/card_contents", "/manga_ocr")
 
     /** Answers one request for a path in [PATHS]. */
-    fun handle(app: Application, path: String, params: Map<String, String>): JSONObject =
-        if (path == "/whats_new") whatsNew(app, params) else cardContents(app)
+    fun handle(app: Application, path: String, params: Map<String, String>): JSONObject {
+        val response =
+            when (path) {
+                "/whats_new" -> whatsNew(app, params)
+                "/card_contents" -> cardContents(app)
+                else -> mangaOcrFile(params)
+            }
+        return response
+    }
 
     // `/whats_new`: seen version and what the dialog would show; `?reset=1` looks like an update
     // (the next launch shows it), `?show=1` opens it now.
@@ -49,6 +61,39 @@ object DebugExtras {
                 .put("language", Languages.current.code)
                 .put("all", JSONArray(CardFields.current))
                 .put("enabled", JSONArray(container.miner.cardFields()))
+        }
+    }
+
+    // `/manga_ocr?file=<path>`: runs ChromeLensOcr + Manatan bubble merge on-device and reports ms + blocks.
+    private fun mangaOcrFile(params: Map<String, String>): JSONObject {
+        val path = params["file"]
+        val bitmap = path?.let(BitmapFactory::decodeFile)
+        return if (path == null) {
+            JSONObject().put("ok", false).put("error", "missing file")
+        } else if (bitmap == null) {
+            JSONObject().put("ok", false).put("error", "could not decode $path")
+        } else {
+            try {
+                val started = System.nanoTime()
+                val blocks =
+                    runBlocking {
+                        val raw = ChromeLensOcr().recognizeBlocks(bitmap, Languages.current.code)
+                        MangaOcrEngine.buildBlocks(rawBlocks = raw, pageWidth = bitmap.width, pageHeight = bitmap.height)
+                    }
+                val elapsedMs = (System.nanoTime() - started) / NANOS_PER_MS
+                val arr = JSONArray()
+                for (b in blocks) {
+                    arr.put(JSONObject().put("text", b.text).put("vertical", b.isVertical))
+                }
+                JSONObject()
+                    .put("ok", true)
+                    .put("ms", elapsedMs)
+                    .put("width", bitmap.width)
+                    .put("height", bitmap.height)
+                    .put("blocks", arr)
+            } finally {
+                bitmap.recycle()
+            }
         }
     }
 }

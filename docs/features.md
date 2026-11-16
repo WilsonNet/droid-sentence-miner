@@ -74,13 +74,18 @@ Everything the app does, in detail. The short version is in the [README](../READ
   `.cbz` volumes with cover thumbnails, reading progress, and *Mokuro* / *Auto OCR* badges.
   Import from local files (*From files*) or *Google Drive* (*Browse my Drive* or public Drive
   file/folder links); `.mokuro` JSON files selected alongside (same stem), embedded in the `.cbz`,
-  or attached later give instant Manatan/Mokuro-style overlays, while raw `.cbz` volumes run
-  upscaled on-device OCR with vertical speech-bubble grouping (`MangaOcrGrouping`) automatically per
-  page (plus optional *Pre-OCR next pages*). Inside the reader: Single-page, Double-page spread
-  (with *Cover page offset*), and Vertical-scroll modes; RTL / LTR direction; *Transparent*,
-  *Readable (Light)*, *Readable (Dark)*, and *Hidden* text overlays with optional subtle box borders;
-  pinch-to-zoom and pan; edge / L-shape / off tap zones; tap any character to look up or hold-and-drag
-  to select; and an inline *Edit text boxes* mode (tap pencil icon in HUD) to fix or delete any box.
+  or attached later give instant Manatan/Mokuro-style overlays, while raw `.cbz` volumes default to
+  Google Lens (*Auto*, matching Manatan) with automatic offline fallback to upscaled ML Kit
+  (Japanese) or the downloaded PaddleOCR pack (English/German). Noise, edge page numbers, and
+  furigana are filtered out and speech-bubble columns are clustered via Union-Find
+  (`MangaOcrGrouping`). Reader settings let you pick *Auto* / *Google Lens* / *On-device*, toggle
+  *Pre-OCR next pages*, or batch pre-OCR an entire volume (*Prepare OCR for all pages*, also in the
+  shelf menu with live `OCR X/Y` progress). Inside the reader: Single-page, Double-page spread (with
+  *Cover page offset*), and Vertical-scroll modes; RTL / LTR direction; *Transparent*, *Readable
+  (Light)*, *Readable (Dark)*, and *Hidden* text overlays with optional subtle box borders;
+  pinch-to-zoom and pan; narrowed edge / L-shape / off tap zones with nearest-glyph bubble
+  fallback so tapping words never turns pages; tap any character to look up or hold-and-drag to
+  select; and an inline *Edit text boxes* mode (tap pencil icon in HUD) to fix or delete any box.
 - **Panel cropper before *+ Anki*** — when *Crop panel on Add to Anki* is enabled (default on in
   reader settings), tapping *+ Anki* in the manga lookup popup (or the card editor) opens a
   full-screen interactive cropper with *Panel*, *Bubble*, and *Full page* quick presets, corner/edge

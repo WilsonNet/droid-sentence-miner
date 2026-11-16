@@ -99,7 +99,12 @@ What was measured, on which device, and how. Recipes and scripts: [`.opencode/sk
   compressor); on-device calibration matches the Python reference fit (each band within 2 dB, separate measurement runs). In
   Nightshade the 6.3 kHz resonance is gone from the clips. Cost: 1.3 % of one core while the mic
   is in use, nothing while device audio works.
-- 244 JVM unit tests (incl. `ArchitectureTest`): includes `.cbz` page inspection/decoding (`CbzArchiveTest`), `.mokuro` JSON parsing (`MokuroParserTest`), speech-bubble deduplication & column grouping (`MangaOcrEngineTest`), panel crop presets/clamping (`PanelCropMathTest`), Drive CBZ/Mokuro stem matching (`DriveLinksTest`), speaker-correction EQ (FFT, biquads, response from pink noise, fit of the
+- 284 JVM unit tests (incl. `ArchitectureTest`): includes Chrome Lens protobuf request/response &
+  rotated geometry decoding (`ChromeLensProtoTest`), `.cbz` page inspection/decoding
+  (`CbzArchiveTest`), `.mokuro` JSON parsing (`MokuroParserTest`), noise/furigana/page-number
+  removal, speech-bubble Union-Find clustering, and nearest-glyph tap fallback (`MangaOcrEngineTest`),
+  panel crop presets/clamping (`PanelCropMathTest`), Drive CBZ/Mokuro stem matching (`DriveLinksTest`),
+  speaker-correction EQ (FFT, biquads, response from pink noise, fit of the
   measured Pad 7 curve, chain), meikiocr detector/recognizer input sizing, frame change detection (one typewriter glyph counts; direct RGBA buffer with row stride), loudness
   normalization, popup placement (flip/size/shift), screen text layer (subtitle glyphs → screen fractions, signage skipped), book page layout (tategaki order, ruby filter incl. real manga ruby, split sentences, per-character photo positions), H→エ fix, pitch graphs (byte-identical to Yomitan), word audio sources, Anki field mapping, meikiocr decoding, OCR text fixes (一→ー), text areas, line consensus, replay buffer, voice trimming, line tracking, clip windows, subtitle-row
   filtering, deinflector (conjugations across godan/ichidan/suru/kuru/adjectives),
@@ -142,3 +147,21 @@ What was measured, on which device, and how. Recipes and scripts: [`.opencode/sk
   `Context Sentence` and cropped panel `Picture` media. Also verified paired `.cbz` + `.mokuro`
   multi-file import (*Mokuro* badge, instant `.mokuro` box rendering without running ML Kit OCR,
   and in-reader popup lookup).
+- Manga OCR 3-engine benchmark & Manatan pipeline on Xiaomi Pad 7 (`c2bd6564`, 5 real pages from
+  *Berserk* Vol 1: `p010`, `p011`, `p013`, `p016`, `p020`, `844×1200`):
+  - **meikiocr** (horizontal game model): 155–900 ms/page; returned empty on `p010`, garbled `1ラ作化光`
+    on `p013`, and missed dialogue bubbles on `p016`/`p020`.
+  - **ML Kit Japanese** (offline vertical): 93–202 ms/page; dropped `地獄へ` on `p010`
+    (`天国をあじわいながら` → `天国をあ:し、わいなから落ちるが`), scrambled column order on `p013`/`p016`,
+    and misread kanji on `p020` (`盗賊` → `盗競`, `ボス` → `茶ス`).
+  - **Google Lens** (`ChromeLensOcr` + Manatan `MangaOcrGrouping`, on-device `/manga_ocr`):
+    1232–1967 ms/page; cleanly grouped full speech bubbles (`かかったな小僧オオオ!!`,
+    `天国をあじわいながら地獄へ落ちるが`, `野郎ォ……誰だあ！！！`, `コカ城の盗賊だなあんた？`,
+    `それじゃあんたらのボスに言伝頼まれてくれないかな？`), filtered `18` edge page numbers
+    (`p016`/`p020`) and pure SFX (`p011` returned `[]`).
+  - **In-app verification (`c2bd6564`)**: shelf menu *Prepare OCR (all pages)* showed live progress
+    (`OCR 8/227` after 4 s) and cancelled back cleanly; *Re-run OCR on page* switched page 20 from
+    *Offline OCR* to `20 / 227 · Lens`; *Readable (Light)* overlay and *Reader settings* (`Auto` /
+    `Google Lens` / `On-device`) rendered cleanly; tapping `盗賊` near the right edge (`1610, 825`)
+    and tapping the whitespace gap between columns inside the bubble (`1630, 800`) both opened the
+    dictionary popup without turning pages, while tapping the empty left margin turned to page 21.

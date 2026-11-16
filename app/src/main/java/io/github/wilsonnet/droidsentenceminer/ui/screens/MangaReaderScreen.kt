@@ -36,8 +36,10 @@ import io.github.wilsonnet.droidsentenceminer.AppContainer
 import io.github.wilsonnet.droidsentenceminer.book.PageLayout
 import io.github.wilsonnet.droidsentenceminer.manga.MangaBlock
 import io.github.wilsonnet.droidsentenceminer.manga.MangaDirection
+import io.github.wilsonnet.droidsentenceminer.manga.MangaOcrMode
 import io.github.wilsonnet.droidsentenceminer.manga.MangaOverlayStyle
 import io.github.wilsonnet.droidsentenceminer.manga.MangaPageOcr
+import io.github.wilsonnet.droidsentenceminer.manga.MangaPreOcrQueue
 import io.github.wilsonnet.droidsentenceminer.manga.MangaReadingMode
 import io.github.wilsonnet.droidsentenceminer.manga.MangaSpreadLayout
 import io.github.wilsonnet.droidsentenceminer.manga.MangaSpreadSlot
@@ -63,6 +65,7 @@ internal data class ReaderPrefsState(
     val overlayStyle: MangaOverlayStyle,
     val hasBorders: Boolean,
     val tapZone: MangaTapZone,
+    val ocrMode: MangaOcrMode,
     val isCropPanelOnMine: Boolean,
     val isPreloadOcr: Boolean,
 )
@@ -127,8 +130,11 @@ fun MangaReaderScreen(volume: MangaVolumeEntity, onClose: () -> Unit, modifier: 
     var picked by remember { mutableStateOf<MangaPick?>(null) }
     var editingBox by remember { mutableStateOf<MangaEditingBox?>(null) }
 
+    val batchMap by container.mangaPreOcr.progress.collectAsState()
+    val batchProgress = batchMap[volume.id]
+
     val loadPage: suspend (Int, Boolean) -> Unit = { idx, force ->
-        loadMangaPage(cache = pageCache, idx = idx, forceReOcr = force)
+        loadMangaPage(cache = pageCache, idx = idx, forceReOcr = force, ocrMode = prefsState.ocrMode)
     }
 
     LaunchedEffect(key1 = currentPage, key2 = pageCount, key3 = prefsState.isPreloadOcr) {
@@ -276,6 +282,8 @@ fun MangaReaderScreen(volume: MangaVolumeEntity, onClose: () -> Unit, modifier: 
         editingOcr = editingBox?.let { pageOcrs[it.pageIndex] },
         settingsOpen = isSettingsOpen,
         prefsState = prefsState,
+        hasMokuro = volume.hasMokuro,
+        batchProgress = batchProgress,
         onDismissPick = { picked = null },
         onDismissEdit = { editingBox = null },
         onSaveEditedBox = { target, ocr, cleaned ->
@@ -291,6 +299,13 @@ fun MangaReaderScreen(volume: MangaVolumeEntity, onClose: () -> Unit, modifier: 
             editingBox = null
         },
         onDismissSettings = { isSettingsOpen = false },
+        onToggleBatchPreOcr = {
+            if (batchProgress?.isRunning == true) {
+                container.mangaPreOcr.cancel(volume.id)
+            } else {
+                container.mangaPreOcr.start(volume = volume, mode = prefsState.ocrMode)
+            }
+        },
         onUpdateSetting = { updater -> scope.launch { updater(container) } },
     )
 }
@@ -343,6 +358,7 @@ private fun rememberReaderPrefsState(container: AppContainer): ReaderPrefsState 
     val overlayStyleId by container.prefs.mangaOverlayStyle.collectAsState(initial = null)
     val hasBorders by container.prefs.mangaShowBorders.collectAsState(initial = true)
     val tapZoneId by container.prefs.mangaTapZone.collectAsState(initial = null)
+    val ocrModeId by container.prefs.mangaOcrMode.collectAsState(initial = null)
     val isCropPanelOnMine by container.prefs.mangaCropPanelOnMine.collectAsState(initial = true)
     val isPreloadOcr by container.prefs.mangaPreloadOcr.collectAsState(initial = true)
     return ReaderPrefsState(
@@ -352,6 +368,7 @@ private fun rememberReaderPrefsState(container: AppContainer): ReaderPrefsState 
         overlayStyle = MangaOverlayStyle.fromId(overlayStyleId),
         hasBorders = hasBorders,
         tapZone = MangaTapZone.fromId(tapZoneId),
+        ocrMode = MangaOcrMode.fromId(ocrModeId),
         isCropPanelOnMine = isCropPanelOnMine,
         isPreloadOcr = isPreloadOcr,
     )
@@ -527,10 +544,13 @@ private fun ReaderDialogs(
     editingOcr: MangaPageOcr?,
     settingsOpen: Boolean,
     prefsState: ReaderPrefsState,
+    hasMokuro: Boolean,
+    batchProgress: MangaPreOcrQueue.VolumeProgress?,
     onDismissPick: () -> Unit,
     onDismissEdit: () -> Unit,
     onSaveEditedBox: (MangaEditingBox, MangaPageOcr, String) -> Unit,
     onDismissSettings: () -> Unit,
+    onToggleBatchPreOcr: () -> Unit,
     onUpdateSetting: (suspend (AppContainer) -> Unit) -> Unit,
 ) {
     ReaderPickedPopup(
@@ -550,6 +570,8 @@ private fun ReaderDialogs(
     if (settingsOpen) {
         ReaderSettingsSheet(
             prefsState = prefsState,
+            hasMokuro = hasMokuro,
+            batchProgress = batchProgress,
             onDismiss = onDismissSettings,
             onReadingMode = { m -> onUpdateSetting { it.prefs.setMangaReadingMode(m.id) } },
             onDirection = { d -> onUpdateSetting { it.prefs.setMangaDirection(d.id) } },
@@ -557,6 +579,8 @@ private fun ReaderDialogs(
             onOverlayStyle = { s -> onUpdateSetting { it.prefs.setMangaOverlayStyle(s.id) } },
             onShowBorders = { v -> onUpdateSetting { it.prefs.setMangaShowBorders(v) } },
             onTapZone = { z -> onUpdateSetting { it.prefs.setMangaTapZone(z.id) } },
+            onOcrMode = { mode -> onUpdateSetting { it.prefs.setMangaOcrMode(mode.id) } },
+            onToggleBatchPreOcr = onToggleBatchPreOcr,
             onCropPanelOnMine = { v -> onUpdateSetting { it.prefs.setMangaCropPanelOnMine(v) } },
             onPreloadOcr = { v -> onUpdateSetting { it.prefs.setMangaPreloadOcr(v) } },
         )

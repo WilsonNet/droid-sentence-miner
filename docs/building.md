@@ -22,7 +22,7 @@ echo "sdk.dir=$ANDROID_HOME" > local.properties
 # 3. Lint, build & test (the same gate as PR CI, .github/workflows/ci.yml)
 ./gradlew detekt detektDebug detektDebugUnitTest   # detekt: every rule + ktlint + Compose rules
 ./gradlew lintDebug                  # Android Lint: every check, warnings are errors
-./gradlew testDebugUnitTest          # 278 JVM unit tests, incl. ArchitectureTest and property tests
+./gradlew testDebugUnitTest          # 284 JVM unit tests, incl. ArchitectureTest and property tests
 ./gradlew connectedDebugAndroidTest  # 4 on-device tests (VAD + AAC encoding)
 ./gradlew assembleDebug              # app/build/outputs/apk/debug/app-debug.apk
 
