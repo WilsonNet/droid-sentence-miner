@@ -22,6 +22,7 @@ import kotlin.math.roundToInt
  */
 class ChromeLensOcr(
     private val client: OkHttpClient = defaultClient(),
+    private val maxUploadDim: Int = MAX_UPLOAD_DIM,
     private val io: CoroutineDispatcher = Dispatchers.IO,
 ) {
     /**
@@ -71,8 +72,8 @@ class ChromeLensOcr(
     private fun encodeImageForUpload(bitmap: Bitmap): EncodedUpload {
         val maxSide = max(a = bitmap.width, b = bitmap.height)
         val prepared =
-            if (maxSide > MAX_UPLOAD_DIM) {
-                val ratio = MAX_UPLOAD_DIM.toFloat() / maxSide
+            if (maxSide > maxUploadDim) {
+                val ratio = maxUploadDim.toFloat() / maxSide
                 val targetW = (bitmap.width * ratio).roundToInt().coerceAtLeast(1)
                 val targetH = (bitmap.height * ratio).roundToInt().coerceAtLeast(1)
                 bitmap.scale(width = targetW, height = targetH, filter = true)

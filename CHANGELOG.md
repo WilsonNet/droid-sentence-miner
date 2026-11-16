@@ -6,6 +6,24 @@ versions are the `v*` tags that publish a signed APK on
 
 ## [Unreleased]
 
+### Added
+- **On-device manga OCR** (*Reader settings → Manga OCR engine → Download manga OCR models*, 34 MB):
+  PP-OCRv6_manga (a PaddleOCR line detector + recognizer trained on manga, vertical and horizontal
+  text) plus a speech-bubble detector that groups each bubble's columns. Offline, ~0.4–1 s per page
+  on a Xiaomi Pad 7, and on a hand-checked set of 99 bubbles (One Piece, Berserk) it reads 84–88
+  bubbles exactly — Google Lens read 65, ML Kit 21, a desktop mokuro run 89. *Auto* uses it once
+  downloaded; taps land on the right character (per-glyph boxes).
+
+### Changed
+- **Google Lens pages are grouped by the bubble detector** when the models are downloaded: 71 of 99
+  bubbles exact instead of 65 (thin kana columns next to kanji were dropped as furigana, and
+  bubbles split in two).
+- *Prepare OCR for all pages* redoes pages read by another engine than the selected one (mokuro
+  and hand-edited pages are kept), so switching engines and preparing the volume upgrades it.
+  A 227-page volume takes under 2 minutes on-device.
+- The reader's engine chips are *Auto*, *Manga OCR (on-device)*, *Google Lens* and *ML Kit (basic,
+  offline)*; the page label shows *Manga OCR* / *Lens* / *ML Kit* / *Mokuro*.
+
 ## [0.8.0] — 2026-11-16
 
 ### Added

@@ -29,6 +29,7 @@ import java.util.concurrent.atomic.AtomicInteger
 class MangaPreOcrQueue(
     private val repository: MangaRepository,
     private val scope: CoroutineScope,
+    private val hasLocalModels: () -> Boolean = { false },
     private val io: CoroutineDispatcher = Dispatchers.IO,
 ) {
     /** Progress snapshot for one active or finished volume pre-OCR job. */
@@ -150,13 +151,19 @@ class MangaPreOcrQueue(
         return result
     }
 
+    // Pages read by another engine than the one asked for are redone (picking an engine and
+    // preparing the volume is how a reader switches it); mokuro and hand edits are always kept.
     private fun isAlreadyPrepared(source: String?, mode: MangaOcrMode): Boolean {
+        val isAutoOnLens = mode == MangaOcrMode.AUTO && !hasLocalModels()
         val isReady =
             when (source) {
                 MangaPageOcr.SOURCE_MOKURO,
                 MangaPageOcr.SOURCE_EDITED,
-                MangaPageOcr.SOURCE_LENS,
                 -> true
+
+                MangaPageOcr.SOURCE_LOCAL -> mode == MangaOcrMode.LOCAL || mode == MangaOcrMode.AUTO
+
+                MangaPageOcr.SOURCE_LENS -> mode == MangaOcrMode.LENS || isAutoOnLens
 
                 MangaPageOcr.SOURCE_OCR -> mode == MangaOcrMode.MLKIT
 

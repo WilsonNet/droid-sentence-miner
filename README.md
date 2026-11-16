@@ -46,7 +46,8 @@ GIF for the MP4; recorded on a Xiaomi Pad 7).
 - **Sentence audio** — a replay buffer of the app's audio, a waveform editor, loudness
   normalization, and a calibrated microphone fallback for apps that block capture.
 - **Books and manga (`.cbz`)** — read `.cbz` manga from local files or Google Drive with
-  `.mokuro` overlays or Google Lens / on-device fallback OCR (plus background volume pre-OCR,
+  `.mokuro` overlays, on-device manga OCR (PP-OCRv6_manga + a bubble detector) or Google Lens (plus
+  background volume pre-OCR,
   single/double-page/vertical modes, readable text boxes, and panel cropping before sending to
   Anki), or photograph a printed page and tap the text to look it up.
 - **Multilingual, Japanese first** — pick the language you study on first launch: Japanese
@@ -107,6 +108,9 @@ This project stands on the shoulders of these projects — thank you:
   and **[Mokuro Reader](https://github.com/ZXY101/mokuro-reader)** — the manga reading UX, `.mokuro`
   JSON schema, Google Lens + `merge.rs` speech-bubble filtering/clustering pipeline, overlay style
   options, and reading mode layout that inspired our `.cbz` reader.
+- **[PP-OCRv6_manga](https://huggingface.co/Kellenok/PP-OCRv6_manga)** by Kellenok (Apache-2.0,
+  PaddleOCR fine-tuned on Manga109-s) and **[comic-text-and-bubble-detector](https://huggingface.co/ogkalu/comic-text-and-bubble-detector)**
+  by ogkalu (Apache-2.0) — the on-device manga OCR models, downloaded from Hugging Face at runtime.
 - **[GameSentenceMiner](https://github.com/bpwhelan/GameSentenceMiner)** (GPL-3.0) — the whole
   concept: OCR on untranslated games, popup lookups, one-press Anki cards with audio, the two-pass
   OCR pipeline and the sentence-audio editing workflow.

@@ -122,6 +122,31 @@ runs live in DroidDeck (`Nightshade.exe` ~75–82 % CPU, `surfaceflinger` ~36 %,
   ground-truth line (`score.lev` on `score.norm` text); a best match worse than 50 % CER = junk,
   two lines matching the same GT line = duplicate.
 
+## Manga (`.cbz` reader) OCR
+
+`tools/manga-eval/` scores whole manga pages per speech bubble against `data/gt.json` (99
+hand-checked bubbles, One Piece v99 + Berserk v1; SFX excluded). The page images are not in the
+repo: One Piece pages from the user's `~/ajatt/mokuro/one-piece/one-piece-99/` (042 064 086 103
+150), Berserk pages 13 16 20 30 45 80 from the cbz in the app's `files/manga/`
+(`adb exec-out run-as … cat` it), named `opNNN.jpg` / `bkNNN.jpg`.
+
+```bash
+# host engines (uv venv: onnxruntime opencv-python-headless numpy pyclipper pillow meikiocr)
+python -I tools/manga-eval/run_ppmanga.py PP_DIR out/pp.json pages/*.jpg        # PP-OCRv6_manga lines (+glyphs)
+python -I tools/manga-eval/run_bubbles.py det_s_int8.onnx out/regions.json pages/*.jpg
+python -I tools/manga-eval/group_regions.py out/pp.json out/regions.json out/pp_reg.json   # app's grouping prototype
+~/.local/share/pipx/venvs/mokuro/bin/python -I tools/manga-eval/run_mangaocr_regions.py out/regions.json pages out/mocr.json
+mokuro --disable_confirmation=True pages                                         # desktop reference -> pages.mokuro
+# device: pages into the app (run-as cp to files/manga-eval/), adb forward tcp:9099, then
+python -I tools/manga-eval/run_device.py local out/dev_local.json "" op042 op064 … bk080   # engine=local|lens|lensreg|mlkit
+MISSES=1 python -I tools/manga-eval/score.py tools/manga-eval/data/gt.json pages.mokuro out/dev_local.json
+```
+
+Results (2026-11-16, numbers in `docs/validation.md`): mokuro 89/99 exact, manga-ocr on bubble
+regions 88, PP-OCRv6_manga + regions 88 host / 84 on the Pad 7 (~0.7 s/page), Lens + regions 71,
+Lens + Manatan merge 65, meikiocr vertical rec 53, ML Kit 21. The GT was bootstrapped from mokuro's
+output and corrected by eye, so mokuro's 89 is slightly flattered.
+
 ## Latin-script / English OCR
 
 English (and any Latin-script module) is scored with case and punctuation, because a lookup

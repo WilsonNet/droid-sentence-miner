@@ -31,8 +31,12 @@ Ideas and known gaps, roughly in priority order. Shipped work moves to [CHANGELO
   and later sounds, and clipped speech under rain/music in the YouTube test.
 - RNNoise (as OBS uses) for the microphone fallback instead of the device's voice suppressor
   (a simple STFT Wiener filter on top of the platform suppressor measured no better).
-- Vertical text for screen OCR (meikiocr ships a vertical recognizer; not wired up yet; Book mode
-  and `.cbz` offline manga fallback use ML Kit, while `.cbz` online default uses Google Lens).
+- Vertical text for screen OCR and Book mode (both ML Kit). The manga reader's PP-OCRv6_manga +
+  bubble detector reads tategaki well (84–88/99 bubbles vs ML Kit's 21) and could serve them;
+  meikiocr's vertical recognizer (`meiki.text.rec.v0.vertical.32x480`) scored 53/99 on manga
+  line crops (game-trained), so it is not the candidate.
+- Manga reader: merge/split text boxes by hand (Manatan's merge anchor), and a per-page noise
+  filter for sound effects outside speech bubbles (they are kept and tappable today).
 - Skip the detector on visual novels: a simulation (static background, typewriter text) showed
   reusing the last line boxes, grown rightwards for typewriter text and verified by the
   recognizer, cuts detector runs by ~65 % with identical lines; on video it saves nothing (the

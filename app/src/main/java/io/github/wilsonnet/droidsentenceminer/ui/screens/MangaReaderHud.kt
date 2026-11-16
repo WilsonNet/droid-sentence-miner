@@ -259,8 +259,9 @@ private fun ocrSourceLabel(ocrBusy: Boolean, ocrSource: String?): String {
             ocrBusy -> "Running OCR…"
             ocrSource == MangaPageOcr.SOURCE_MOKURO -> "Mokuro"
             ocrSource == MangaPageOcr.SOURCE_LENS -> "Lens"
+            ocrSource == MangaPageOcr.SOURCE_LOCAL -> "Manga OCR"
             ocrSource == MangaPageOcr.SOURCE_EDITED -> "Edited"
-            ocrSource == MangaPageOcr.SOURCE_OCR -> "Offline OCR"
+            ocrSource == MangaPageOcr.SOURCE_OCR -> "ML Kit"
             else -> ""
         }
     return label

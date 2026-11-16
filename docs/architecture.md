@@ -41,12 +41,23 @@ MediaProjection ──► ScreenCaptureManager ──► AutoOcrController ─�
   page OCR (`manga_volumes`, `page_ocr`) in `manga.db`. If a paired or embedded `.mokuro` file exists
   (`MokuroParser`, `DriveLinks.stem`), its text blocks and per-character/line geometry load directly
   (`hasMokuro = true`). Otherwise `MangaOcrEngine` (respecting `Languages.current` and pref
-  `manga_ocr_mode`: *Auto* / *Google Lens* / *On-device*) posts a JPEG up to 1500 px to Google
-  Lens's `crupload` protobuf API (`ChromeLensOcr`, `LensProtoWire`, `LensProtoGeometry`) and falls
-  back offline to upscaled ML Kit (vertical languages) or the study language's downloadable OCR pack
-  (`PaddleOcr` for Latin languages). `MangaOcrGrouping` mirrors Manatan's `merge.rs` (edge
-  page-number/noise/SFX filter, ghost deduplication, language-aware `isRubyChar` furigana removal,
-  and Union-Find tiered bubble clustering). `MangaPreOcrQueue` runs 2-concurrent background volume
+  `manga_ocr_mode`: *Auto* / *Manga OCR* / *Google Lens* / *ML Kit*) reads the page:
+  - *Manga OCR* (`MangaLocalOcr`, models from `MangaOcrModels` in `files/models/manga`, pinned HF
+    commits + SHA-256): `BubbleDetector` (ogkalu comic-text-and-bubble-detector v4-s int8, RT-DETR,
+    640² RGB input, `images` + `orig_target_sizes` → labels/boxes/scores) finds text regions;
+    `MangaPaddleOcr` (PP-OCRv6_manga FP32: DB detector at long side 960, thresh 0.15/0.25, unclip
+    1.4; CTC recognizer at height 48 with vertical crops rotated 90° CCW) reads lines with per-glyph
+    boxes from the CTC timesteps; `MangaRegionGrouping` drops furigana (kana-only, ≤0.68× the
+    thickness of an adjacent kanji line), cuts lines whose glyphs cross into another region
+    (`MangaRegionAssignment`), assigns each line to the region holding most of it (smallest on a
+    tie), orders columns right→left by cross-axis overlap and leaves lines outside every region to
+    `MangaOcrGrouping`. `buildOrderedBlocks` keeps that order.
+  - *Google Lens*: posts a JPEG up to 1500 px to Lens's `crupload` protobuf API (`ChromeLensOcr`,
+    `LensProtoWire`, `LensProtoGeometry`); its lines go through `MangaRegionGrouping` when the
+    detector is downloaded, else `MangaOcrGrouping` (Manatan's `merge.rs`: edge page-number/noise/SFX
+    filter, ghost deduplication, furigana removal, Union-Find tiered bubble clustering).
+  - *Auto*: Manga OCR when downloaded, else Lens, falling back offline to upscaled ML Kit (vertical
+    languages) or the study language's OCR pack (`PaddleOcr` for Latin languages). `MangaPreOcrQueue` runs 2-concurrent background volume
   pre-OCR into `manga.db`. `PanelCropperDialog` crops the bitmap in memory via `PanelCropMath` before
   passing it to the card builder / Anki card flow.
 - **Matching**: the study language's module expands the OCR text into dictionary-form candidates

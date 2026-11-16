@@ -21,13 +21,16 @@ import java.io.IOException
 import kotlin.math.max
 
 /**
- * Manga page OCR engine with Room persistence (`manga.db`):
- * defaults to Manatan's Google Lens pipeline (`ChromeLensOcr` + noise/furigana filtering +
- * tiered Union-Find speech-bubble merging) with seamless fallback to upscaled on-device OCR
- * (PaddleOCR for spaced study languages when installed, or ML Kit Japanese).
+ * Manga page OCR engine with Room persistence (`manga.db`). Engines ([MangaOcrMode]):
+ * - on-device manga OCR ([MangaLocalOcr]: PP-OCRv6_manga lines grouped by detected text regions,
+ *   offline, ~0.5 s/page) — Auto's choice once its models are downloaded,
+ * - Google Lens (`ChromeLensOcr`, like Manatan), grouped by the same regions when the models are
+ *   there, else by Manatan's geometric Union-Find merge,
+ * - upscaled ML Kit / PaddleOCR as the last offline fallback.
  */
 class MangaOcrEngine(
     private val dao: MangaPageOcrDao,
+    private val localOcr: () -> MangaLocalOcr? = { null },
     private val mlKitRecognizer: MlKitJapaneseOcr = MlKitJapaneseOcr(twoPass = false),
     private val lensOcr: ChromeLensOcr = ChromeLensOcr(),
     private val offlineSpacedProvider: (suspend () -> OcrEngine)? = null,
@@ -56,30 +59,73 @@ class MangaOcrEngine(
         bitmap: Bitmap,
         mode: MangaOcrMode = MangaOcrMode.AUTO,
     ): MangaPageOcr {
+        val pageOcr = recognize(bitmap = bitmap, mode = mode)
+        save(volumeId, pageIndex, pageOcr)
+        return pageOcr
+    }
+
+    /** Runs [mode]'s engine on [bitmap] without touching the cache. */
+    suspend fun recognize(bitmap: Bitmap, mode: MangaOcrMode = MangaOcrMode.AUTO): MangaPageOcr {
         val language = Languages.current
+        val local = if (language.usesSpaces) null else withContext(io) { localOcr() }
         val pageOcr =
             when (mode) {
                 MangaOcrMode.MLKIT -> {
                     recognizeOffline(bitmap = bitmap, language = language)
                 }
 
+                MangaOcrMode.LOCAL -> {
+                    if (local == null) throw IOException("Manga OCR models are not downloaded")
+                    recognizeLocal(local = local, bitmap = bitmap, language = language)
+                }
+
                 MangaOcrMode.LENS -> {
-                    recognizeWithLens(bitmap = bitmap, language = language)
+                    recognizeWithLens(bitmap = bitmap, language = language, local = local)
                 }
 
                 MangaOcrMode.AUTO -> {
-                    try {
-                        recognizeWithLens(bitmap = bitmap, language = language)
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (e: IOException) {
-                        Log.w(TAG, "Lens OCR failed for page $pageIndex, falling back offline", e)
-                        recognizeOffline(bitmap = bitmap, language = language)
+                    if (local != null) {
+                        recognizeLocal(local = local, bitmap = bitmap, language = language)
+                    } else {
+                        recognizeLensOrOffline(bitmap = bitmap, language = language)
                     }
                 }
             }
-        save(volumeId, pageIndex, pageOcr)
         return pageOcr
+    }
+
+    private suspend fun recognizeLensOrOffline(bitmap: Bitmap, language: LanguageModule): MangaPageOcr {
+        val page =
+            try {
+                recognizeWithLens(bitmap = bitmap, language = language, local = null)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: IOException) {
+                Log.w(TAG, "Lens OCR failed, falling back offline", e)
+                recognizeOffline(bitmap = bitmap, language = language)
+            }
+        return page
+    }
+
+    private suspend fun recognizeLocal(local: MangaLocalOcr, bitmap: Bitmap, language: LanguageModule): MangaPageOcr {
+        val page = withContext(compute) { local.recognize(bitmap) }
+        if (Log.isLoggable(TAG, Log.DEBUG)) {
+            Log.d(TAG, "Local manga OCR: regions ${page.regionMs} ms, det ${page.detMs} ms, rec ${page.recMs} ms, ${page.lines.size} lines")
+        }
+        val groups =
+            MangaRegionGrouping.group(
+                lines = page.lines,
+                regions = page.regions,
+                pageWidth = bitmap.width,
+                pageHeight = bitmap.height,
+                language = language,
+            )
+        return MangaPageOcr(
+            imgWidth = bitmap.width,
+            imgHeight = bitmap.height,
+            blocks = buildOrderedBlocks(groups = groups, language = language),
+            source = MangaPageOcr.SOURCE_LOCAL,
+        )
     }
 
     /** Persists edited or freshly recognized blocks for a page. */
@@ -105,15 +151,32 @@ class MangaOcrEngine(
         return entity?.let(::decodeEntity)
     }
 
-    private suspend fun recognizeWithLens(bitmap: Bitmap, language: LanguageModule): MangaPageOcr {
+    private suspend fun recognizeWithLens(
+        bitmap: Bitmap,
+        language: LanguageModule,
+        local: MangaLocalOcr?,
+    ): MangaPageOcr {
         val rawBlocks = lensOcr.recognizeBlocks(bitmap = bitmap, languageCode = language.code)
+        val regions = local?.let { withContext(compute) { it.regions(bitmap) } }
         val blocks =
-            buildBlocks(
-                rawBlocks = rawBlocks,
-                pageWidth = bitmap.width,
-                pageHeight = bitmap.height,
-                language = language,
-            )
+            if (regions != null) {
+                val groups =
+                    MangaRegionGrouping.group(
+                        lines = rawBlocks.flatten(),
+                        regions = regions,
+                        pageWidth = bitmap.width,
+                        pageHeight = bitmap.height,
+                        language = language,
+                    )
+                buildOrderedBlocks(groups = groups, language = language)
+            } else {
+                buildBlocks(
+                    rawBlocks = rawBlocks,
+                    pageWidth = bitmap.width,
+                    pageHeight = bitmap.height,
+                    language = language,
+                )
+            }
         return MangaPageOcr(
             imgWidth = bitmap.width,
             imgHeight = bitmap.height,
@@ -199,6 +262,34 @@ class MangaOcrEngine(
                     language = language,
                 )
             return grouped.mapNotNull { rawBlock -> buildSingleBlock(rawBlock, language) }
+        }
+
+        /**
+         * Turns already grouped, reading-ordered, furigana-free line groups
+         * ([MangaRegionGrouping.group]) into [MangaBlock]s.
+         */
+        fun buildOrderedBlocks(
+            groups: List<List<OcrLine>>,
+            language: LanguageModule = Languages.current,
+        ): List<MangaBlock> {
+            val blocks =
+                groups.mapNotNull { group ->
+                    val isVertical = !language.usesSpaces && MangaRegionGrouping.isVerticalGroup(group)
+                    val thicknesses = group.map { if (isVertical) it.box.width else it.box.height }.sorted()
+                    val cleaned = cleanLines(group, isVertical)
+                    if (cleaned.isEmpty()) {
+                        null
+                    } else {
+                        assembleBlock(
+                            ordered = group,
+                            cleaned = cleaned,
+                            isVertical = isVertical,
+                            medianThickness = thicknesses.getOrNull(thicknesses.size / 2) ?: 0,
+                            language = language,
+                        )
+                    }
+                }
+            return blocks
         }
 
         private fun buildSingleBlock(rawBlock: List<OcrLine>, language: LanguageModule): MangaBlock? {

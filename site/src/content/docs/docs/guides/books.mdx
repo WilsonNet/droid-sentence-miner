@@ -69,6 +69,25 @@ The project tests Book mode with pages from *Black Jack ni Yoroshiku*, available
 tategaki page.
 :::
 
+## Manga volumes (`.cbz`)
+
+The **Manga** tab reads digital volumes: import `.cbz` files from your phone or Google Drive and
+tap any word on the page to look it up.
+
+- **Manga OCR (recommended).** Open a volume, tap ⚙ (*Reader settings*) and **Download manga OCR
+  models** (34 MB, once). Pages are then read on the device, offline, in about a second: a
+  speech-bubble detector finds the bubbles and a manga-trained recognizer reads vertical and
+  horizontal text, skipping furigana. On our test pages it read 84–88 of 99 bubbles exactly, close
+  to a desktop mokuro run.
+- **Google Lens** is used until the models are downloaded (needs internet), and ML Kit when offline.
+- **Prepare OCR for all pages** reads the whole volume in the background (a 227-page volume takes
+  under two minutes on a recent tablet), so every page opens instantly.
+- **mokuro files.** If you run [mokuro](https://github.com/kha-white/mokuro) on a computer
+  (`mokuro volume.cbz`), import the `volume.mokuro` it writes together with the `.cbz` — still the
+  most accurate text.
+
+Fix a misread box with ✎ in the top bar; *+ Anki* lets you crop the panel or bubble for the card.
+
 ## Related
 
 - [Screen dictionary](screen-dictionary/) — the same tap-on-text idea for games and videos.

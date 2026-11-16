@@ -165,3 +165,27 @@ What was measured, on which device, and how. Recipes and scripts: [`.opencode/sk
     `Google Lens` / `On-device`) rendered cleanly; tapping `盗賊` near the right edge (`1610, 825`)
     and tapping the whitespace gap between columns inside the bubble (`1630, 800`) both opened the
     dictionary popup without turning pages, while tapping the empty left margin turned to page 21.
+- Manga OCR engines vs hand-checked ground truth (2026-11-16, `tools/manga-eval`, 11 pages: One Piece
+  v99 color 1370×2160 ×5, Berserk v1 844×1200 ×6; 99 dialogue/narration bubbles, SFX and
+  punctuation-only bubbles excluded, scored punctuation-insensitive; best single block per bubble).
+  On-device = Xiaomi Pad 7 `c2bd6564` via `/manga_ocr`, host = 16-core x86 CPU:
+
+  | Engine | exact | CER ≤ 0.1 | bubble CER | char recall | ms/page (median) |
+  | --- | --- | --- | --- | --- | --- |
+  | mokuro 0.2.4 (desktop: comic-text-detector + manga-ocr) | 89 | 95 | 0.015 | 0.991 | ~7000 host |
+  | manga-ocr on bubble-detector regions (host) | 88 | 92 | 0.032 | 0.993 | 1944 host |
+  | PP-OCRv6_manga + region grouping (host prototype) | 88 | 88 | 0.040 | 0.987 | 264 host |
+  | **Manga OCR on-device** (`engine=local`) | **84** | **87** | **0.044** | 0.986 | **696** (343–1530) |
+  | Google Lens + region grouping (`lensreg`) | 71 | 75 | 0.128 | 0.967 | 1521 |
+  | Google Lens + Manatan merge (0.8.0 default) | 65 | 69 | 0.150 | 0.949 | 1505 |
+  | Google Lens at 3000 px upload | 67 | 69 | 0.143 | 0.951 | 1607 |
+  | PP-OCRv6_manga + Manatan merge (no regions) | 72 | 72 | 0.144 | 0.975 | 270 host |
+  | meikiocr vertical rec on PP line crops | 53 | 64 | 0.148 | 0.921 | 216 host |
+  | ML Kit Japanese | 21 | 31 | 0.314 | 0.850 | 229 |
+
+  The bubble detector alone (region grouping) is worth +6 bubbles on Lens and +16 on PP lines; the
+  0.8.0 furigana filter dropped thin kana columns next to kanji (あれ?, ウイルスを, うわー). Device
+  stage times: regions 170–195 ms, PP det 82–146 ms, rec 425–650 ms. The FP16 exports broke on the
+  Pad 7 (one blob for a whole page, rec 3.4 s) while the same files ran fine on the x86 host — the
+  app downloads FP32. *Prepare OCR for all pages* with Manga OCR: 227 Berserk pages in < 105 s
+  (~500 % CPU), then a tap on 頼 highlighted 頼ん and opened 頼む.

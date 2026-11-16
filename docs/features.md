@@ -74,13 +74,18 @@ Everything the app does, in detail. The short version is in the [README](../READ
   `.cbz` volumes with cover thumbnails, reading progress, and *Mokuro* / *Auto OCR* badges.
   Import from local files (*From files*) or *Google Drive* (*Browse my Drive* or public Drive
   file/folder links); `.mokuro` JSON files selected alongside (same stem), embedded in the `.cbz`,
-  or attached later give instant Manatan/Mokuro-style overlays, while raw `.cbz` volumes default to
-  Google Lens (*Auto*, matching Manatan) with automatic offline fallback to upscaled ML Kit
-  (Japanese) or the downloaded PaddleOCR pack (English/German). Noise, edge page numbers, and
-  furigana are filtered out and speech-bubble columns are clustered via Union-Find
-  (`MangaOcrGrouping`). Reader settings let you pick *Auto* / *Google Lens* / *On-device*, toggle
+  or attached later give instant Manatan/Mokuro-style overlays. Raw `.cbz` volumes are read by the
+  on-device *Manga OCR* (download once in *Reader settings*, 34 MB: PP-OCRv6_manga lines grouped
+  into bubbles by a speech-bubble detector; offline, ~0.4–1 s/page, about as accurate as a desktop
+  mokuro run) — until it is downloaded *Auto* uses Google Lens (like Manatan) with offline fallback
+  to upscaled ML Kit (Japanese) or the downloaded PaddleOCR pack (English/German). Furigana, noise
+  and edge page numbers are filtered out; Lens pages are grouped by the same bubble detector when it
+  is installed (else Manatan's Union-Find merge, `MangaOcrGrouping`). Reader settings let you pick
+  *Auto* / *Manga OCR (on-device)* / *Google Lens* / *ML Kit*, download or remove the models, toggle
   *Pre-OCR next pages*, or batch pre-OCR an entire volume (*Prepare OCR for all pages*, also in the
-  shelf menu with live `OCR X/Y` progress). Inside the reader: Single-page, Double-page spread (with
+  shelf menu with live `OCR X/Y` progress; pages read by another engine are redone, hand edits and
+  mokuro pages kept). Desktop `mokuro volume.cbz` writes a `volume.mokuro` that imports alongside the
+  `.cbz` — still the most accurate option (89 vs 84–88 of 99 bubbles). Inside the reader: Single-page, Double-page spread (with
   *Cover page offset*), and Vertical-scroll modes; RTL / LTR direction; *Transparent*, *Readable
   (Light)*, *Readable (Dark)*, and *Hidden* text overlays with optional subtle box borders;
   pinch-to-zoom and pan; narrowed edge / L-shape / off tap zones with nearest-glyph bubble

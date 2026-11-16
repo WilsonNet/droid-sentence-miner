@@ -150,7 +150,7 @@ Endpoints: `/state`, `/scan`, `/frame.png`, `/ocr` (`l,t,r,b` crops the file fir
 `/language?set=ja|en&setup=1` (study language; `setup=1` reshows the first-run screen), `/lang_pack?install=1|remove=1`,
 `/word_audio?term=`, `/autoocr?on=1|0`, `/lines?limit=`, `/clip.wav?id=&trim=0|1`, `/line_shot.jpg?id=`, `/mine_line?id=&word=`,
 `/set_region?l=&t=&r=&b=&orientation=`, `/clear_lines`, `/add_line?text=&ago=&dur=`,
-`/quick?l=&t=&r=&b=` (bubble quick lookup of a box), `/whats_new?reset=1|show=1` (update dialog), `/manga_ocr?file=` (Google Lens + Manatan bubble merge on a page image),
+`/quick?l=&t=&r=&b=` (bubble quick lookup of a box), `/whats_new?reset=1|show=1` (update dialog), `/manga_ocr?file=&engine=local|lens|lensreg|mlkit&raw=1` (manga page OCR; `?models=install|status` downloads the manga models),
 `/card_contents` (Anki contents the current field mapping receives), `/install_ocr_models` (meikiocr download), `/ocr?engine=meiki|mlkit`, `/select_areas` (opens the area editor),
 `/install_dict?id=jitendex|jmnedict|pixiv-light` (background install; progress in `/state.dictInstall`),
 `/drive_list?url=` (public Drive folder listing), `/install_drive?url=` (public Drive file, same progress),
@@ -597,6 +597,17 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   clamps the Dialog window frame below the status bar (`frame=[0,90][2136,3156]`) while Compose
   still measures full display height (`3201`), clipping bottom buttons off-screen.
   Also remember tablet orientation (`svc power stayon usb`) and test with real `.cbz` + `.mokuro` volumes.
+- **Manga OCR engine** (`manga/MangaLocalOcr.kt`, `MangaOcrModels`, `ocr/MangaPaddleOcr.kt`,
+  `ocr/BubbleDetector.kt`, `manga/MangaRegionGrouping.kt`; mode `LOCAL`, source `local`): grouping,
+  not recognition, was what lost Lens bubbles — ogkalu's bubble detector regions decide the bubble,
+  PP-OCRv6_manga reads lines. Download the **FP32** models: the FP16 exports ran fine on the x86
+  host but on the Pad 7 the detector map came out as one page-sized blob (1 box) and rec took 3.4 s.
+  The detector's `orig_target_sizes` input makes it return page-pixel xyxy boxes (same contract as
+  meikiocr's). Vertical crops are rotated 90° CCW for the recognizer (rotated x = original y), so
+  CTC timesteps give glyph boxes along the column. Furigana = kana-only line ≤ 0.68× the thickness
+  of a kanji line beside it — the 0.8.0 filter (0.78, any kana neighbour) ate real kana columns.
+  Measure any change with `tools/manga-eval` (`run_device.py local` + `score.py data/gt.json`):
+  84/99 exact on-device; never tune on the GT pages alone without looking at the misses.
 
 - **German** (`lang/de/`): wty's `wty-de-en` lists ~600 k entries, most of them inflected forms
   pointing at their lemma, so `GermanDeinflector` is only a fallback for regular endings; surfaces
@@ -649,13 +660,14 @@ app/src/main/java/io/github/wilsonnet/droidsentenceminer/
 ├── overlay/   Foreground service, bubble, region selector, Compose panel
 ├── anki/      AnkiDroid + AnkiConnect bridges, card builder/miner
 ├── book/      Book mode: page photo loading, ML Kit page OCR, tategaki layout
-├── manga/     Manga .cbz reader: CBZ archive, .mokuro parser, Lens/ML Kit + Manatan grouping, batch pre-OCR, Room DB (manga.db), Drive/local import queue
+├── manga/     Manga .cbz reader: CBZ archive, .mokuro parser, on-device manga OCR (models, region grouping), Lens/ML Kit + Manatan grouping, batch pre-OCR, Room DB (manga.db), Drive/local import queue
 ├── ui/        Compose screens, theme, lookup dialogs, audio editor, panel cropper, What's new dialog
 ├── update/    In-app updater (GitHub releases), What's new (bundled CHANGELOG.md)
 └── core/      Settings (DataStore)
 
 tools/lang-packs/ builds per-language data zips (OCR models) for GitHub Releases `lang-<code>-<n>`
 tools/ocr-eval/   OCR benchmark scripts (desktop meikiocr, on-device runner/A-B timing, scorer, subtitle burner, hand GT)
+tools/manga-eval/ manga OCR benchmark: hand-checked bubble GT (data/gt.json), scorer, PP-OCRv6_manga/bubble-detector/manga-ocr host runners, Manatan merge port, region-grouping prototype, device runner
 tools/mic-eval/   microphone fallback scoring (LTAS/PESQ/STOI vs clean speech) + Python port of the EQ fit
 tools/meiki-variants/  builds the meikiocr model cuts in app/src/main/assets/meiki (make_assets.py)
 site/             Astro/Starlight marketing site + docs (Node 24, pnpm 12)

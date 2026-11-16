@@ -115,6 +115,9 @@ data class MangaPageOcr(
         /** Recognized via Google Lens (`ChromeLensOcr`), matching Manatan. */
         const val SOURCE_LENS = "lens"
 
+        /** Recognized on-device by PP-OCRv6_manga + bubble regions ([MangaLocalOcr]). */
+        const val SOURCE_LOCAL = "local"
+
         /** Generated on-device by ML Kit / PaddleOCR. */
         const val SOURCE_OCR = "ocr"
 
@@ -130,14 +133,17 @@ enum class MangaOcrMode(
     /** Human-readable menu label. */
     val label: String,
 ) {
-    /** Uses Google Lens when online and seamlessly falls back to on-device OCR offline. */
-    AUTO("auto", "Auto (Lens + offline)"),
+    /** On-device manga OCR once downloaded; until then Google Lens, falling back to ML Kit offline. */
+    AUTO("auto", "Auto"),
+
+    /** On-device manga OCR (PP-OCRv6_manga + bubble detector, needs the ~23 MB models). */
+    LOCAL("local", "Manga OCR (on-device)"),
 
     /** Always requests Google Lens (requires internet connection). */
     LENS("lens", "Google Lens"),
 
     /** Always runs on-device OCR offline (no network requests). */
-    MLKIT("mlkit", "On-device (Offline)"),
+    MLKIT("mlkit", "ML Kit (basic, offline)"),
     ;
 
     /** Lookup helpers. */
