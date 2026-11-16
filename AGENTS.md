@@ -1,5 +1,11 @@
 # AGENTS.md — working on Droid Sentence Miner
 
+> **Feedback loop above everything:** we value the real-device feedback loop more than anything in
+> this codebase — without real tests on a physical device (`Xiaomi Pad 7` `c2bd6564` or Galaxy
+> phone), everything is just speculation. Always build, install, exercise the feature on real
+> data (via the Debug API or `uiautomator` + `screencap`), inspect the visual/Anki result, and fix
+> any glitches before considering work done.
+
 Notes for CLI/agent-driven development of this Android app. No Android Studio is used.
 
 ## Every task ends with a docs pass
@@ -173,6 +179,8 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   `files/lang/en`.
 - **Linters are strict on purpose** (`config/detekt/detekt.yml` allRules + ktlint_official +
   Compose rules; Android Lint `checkAllWarnings`/`warningsAsErrors`; Konsist `ArchitectureTest`).
+  **Read `.opencode/skills/dsm-lint/SKILL.md` before writing Kotlin/Compose code** so it passes
+  on the first run without wasted iterations.
   Old findings live in `app/detekt-baseline*.xml` / `app/lint-baseline.xml`; touching an old file
   resurfaces its findings — fix them, don't regenerate the baseline over new code. Two ktlint
   rules disagree on expression bodies (`FunctionSignature` vs `MultilineExpressionWrapping`):
@@ -569,6 +577,19 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
 - **Never mine test cards into a personal AnkiDroid collection** unless using a dedicated test deck or
   `/preview_card`; Jitendex installs via the app's one-click button or
   `curl localhost:9099/install_dict?id=jitendex` (~40 s, 436,555 terms).
+- **Manga `.cbz` reader** (`manga/`, `ui/screens/Manga*.kt`, `ui/components/PanelCropper.kt`):
+  volumes and page OCR live in `manga.db` (separate from `dict.db`); archives copy to `files/manga/`.
+  Paired `.mokuro` JSON (`MokuroParser`, by normalized stem via `DriveLinks.stem` or embedded in `.cbz`)
+  populates `page_ocr` immediately (`hasMokuro = true`); otherwise `MangaOcrEngine` runs upscaled
+  ML Kit (`ImagePreprocessor.upscaleForOcr`) + pairwise `MangaOcrGrouping` so vertical speech-bubble
+  columns merge into one block instead of per-column fragments.
+  Full-screen `Dialog`s with `usePlatformDefaultWidth = false` (like `PanelCropperDialog`) on
+  targetSdk 35 edge-to-edge / HyperOS must set `window.setLayout(MATCH_PARENT, MATCH_PARENT)`,
+  `FLAG_LAYOUT_IN_SCREEN`, and `WindowCompat.setDecorFitsSystemWindows(window, false)` via
+  `DialogWindowProvider` plus `.windowInsetsPadding(WindowInsets.safeDrawing)` — otherwise Android
+  clamps the Dialog window frame below the status bar (`frame=[0,90][2136,3156]`) while Compose
+  still measures full display height (`3201`), clipping bottom buttons off-screen.
+  Also remember tablet orientation (`svc power stayon usb`) and test with real `.cbz` + `.mokuro` volumes.
 
 - **German** (`lang/de/`): wty's `wty-de-en` lists ~600 k entries, most of them inflected forms
   pointing at their lemma, so `GermanDeinflector` is only a fallback for regular endings; surfaces
@@ -621,7 +642,8 @@ app/src/main/java/io/github/wilsonnet/droidsentenceminer/
 ├── overlay/   Foreground service, bubble, region selector, Compose panel
 ├── anki/      AnkiDroid + AnkiConnect bridges, card builder/miner
 ├── book/      Book mode: page photo loading, ML Kit page OCR, tategaki layout
-├── ui/        Compose screens, theme, lookup dialogs, audio editor, What's new dialog
+├── manga/     Manga .cbz reader: CBZ archive, .mokuro parser, upscaled ML Kit + bubble grouping, Room DB (manga.db), Drive/local import queue
+├── ui/        Compose screens, theme, lookup dialogs, audio editor, panel cropper, What's new dialog
 ├── update/    In-app updater (GitHub releases), What's new (bundled CHANGELOG.md)
 └── core/      Settings (DataStore)
 

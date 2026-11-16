@@ -6,6 +6,22 @@ versions are the `v*` tags that publish a signed APK on
 
 ## [Unreleased]
 
+### Added
+- **Manga `.cbz` reader** (inspired by Manatan and Mokuro Reader): read `.cbz` manga volumes from
+  local storage (*From files*) or *Google Drive* (*Browse my Drive* or public Drive links/folders),
+  displayed on a cover shelf with reading progress and `Mokuro` / `Auto OCR` badges.
+- **`.mokuro` support & automatic on-device manga OCR:** attaches paired `.mokuro` JSON files
+  (side-by-side at import, embedded inside the `.cbz`, or attached later from the shelf menu) for
+  instant Manatan/Mokuro-style text boxes, and falls back to upscaled ML Kit OCR with vertical
+  speech-bubble column grouping (`MangaOcrGrouping`) when no `.mokuro` is present. Supports
+  Single-page, Double-page spread (with cover offset), and Vertical-scroll reading modes, RTL/LTR
+  direction, Transparent / Readable (Light) / Readable (Dark) / Hidden overlays, tap/drag lookup,
+  and inline text-box editing (edit or delete misreads).
+- **Interactive panel cropper on *+ Anki*:** when mining from the manga reader (`Crop panel on Add
+  to Anki`, on by default), a full-screen cropper opens with *Panel*, *Bubble*, and *Full page*
+  presets and corner/edge handles or outside redraw so your Anki card gets only the exact panel or
+  speech bubble you want instead of the whole page.
+
 ### Changed
 - **Home screen floating overlay controls & getting started instructions:** Replaced the confusing "Scan now" button on the home screen with in-app floating bubble mode selection (*Quick lookup* vs *Scan region*). When the overlay is running, the button now reads *Stop floating bubble*. Added prominent tips clarifying that the user should switch to their game or app before tapping the bubble, and that holding (long-pressing) the floating bubble opens the full menu (Auto OCR, text areas, live text window, and audio options).
 

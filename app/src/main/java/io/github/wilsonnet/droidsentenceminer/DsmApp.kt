@@ -14,6 +14,10 @@ import io.github.wilsonnet.droidsentenceminer.dict.DictDownloader
 import io.github.wilsonnet.droidsentenceminer.dict.TermLookup
 import io.github.wilsonnet.droidsentenceminer.dict.YomitanImporter
 import io.github.wilsonnet.droidsentenceminer.lang.Languages
+import io.github.wilsonnet.droidsentenceminer.manga.MangaDatabase
+import io.github.wilsonnet.droidsentenceminer.manga.MangaImportQueue
+import io.github.wilsonnet.droidsentenceminer.manga.MangaOcrEngine
+import io.github.wilsonnet.droidsentenceminer.manga.MangaRepository
 import io.github.wilsonnet.droidsentenceminer.ocr.MlKitJapaneseOcr
 import io.github.wilsonnet.droidsentenceminer.ocr.OcrEngine
 import io.github.wilsonnet.droidsentenceminer.textlog.TextLog
@@ -66,6 +70,31 @@ class AppContainer(private val context: Context) {
     val textLog: TextLog by lazy { TextLog(context, TextLogDatabase.build(context), prefs) }
     val miner: CardMiner by lazy { CardMiner(context, db, lookup, ankiClient, prefs, textLog) }
     val bookOcr: BookOcr by lazy { BookOcr() }
+
+    /** Room database for `.cbz` manga volumes and cached OCR blocks. */
+    val mangaDb: MangaDatabase by lazy {
+        MangaDatabase.build(context)
+    }
+
+    /** On-demand OCR engine + cache for manga pages. */
+    val mangaOcr: MangaOcrEngine by lazy {
+        MangaOcrEngine(mangaDb.pageOcrDao())
+    }
+
+    /** Manga volume library storage and `.mokuro`/OCR repository. */
+    val mangaRepo: MangaRepository by lazy {
+        MangaRepository(context, mangaDb, mangaOcr)
+    }
+
+    /** Background import queue for local and Google Drive manga volumes. */
+    val mangaImports: MangaImportQueue by lazy {
+        MangaImportQueue(
+            context = context,
+            repository = mangaRepo,
+            downloader = dictDownloader,
+            scope = appScope,
+        )
+    }
 
     /** The last photographed page; kept here so it survives tab switches and rotation. */
     val bookPage = MutableStateFlow<BookPage?>(null)

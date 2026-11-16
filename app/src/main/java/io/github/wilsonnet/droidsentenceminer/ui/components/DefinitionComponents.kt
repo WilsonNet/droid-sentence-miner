@@ -29,6 +29,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -40,19 +41,22 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import io.github.wilsonnet.droidsentenceminer.AppContainer
 import io.github.wilsonnet.droidsentenceminer.anki.AnkiResult
 import io.github.wilsonnet.droidsentenceminer.anki.CardEdits
 import io.github.wilsonnet.droidsentenceminer.audio.AudioSegment
 import io.github.wilsonnet.droidsentenceminer.dict.TermLookup
+import io.github.wilsonnet.droidsentenceminer.ocr.BoundingBox
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.compose.ui.graphics.Color as ComposeColor
 
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
@@ -348,7 +352,15 @@ private fun mineAction(
         state.status = null
         // App scope, not the popup's: closing the popup right after tapping must not drop the card.
         container.appScope.launch {
-            val result = onMine?.invoke(details, edits) ?: container.miner.mine(word, edits?.sentence ?: sentence, image, details)
+            val chosenImage = edits?.image ?: image
+            val result =
+                onMine?.invoke(details, edits)
+                    ?: container.miner.mine(
+                        word = word,
+                        sentence = edits?.sentence ?: sentence,
+                        image = chosenImage,
+                        details = details,
+                    )
             withContext(Dispatchers.Main) {
                 state.entryStates[index] = if (result is AnkiResult.Success) EntryState.ADDED else EntryState.FAILED
                 state.status = when (result) {
@@ -492,6 +504,8 @@ private fun editorAction(
     state: WordLookupState,
     word: String,
     sentence: String,
+    image: Bitmap?,
+    cropFocusBox: BoundingBox?,
     loadAudio: (suspend () -> AudioSegment?)?,
     mine: (Int, CardEdits?) -> Unit,
     openEditor: ((CardEditRequest) -> Unit)?,
@@ -507,12 +521,15 @@ private fun editorAction(
     }
     return { index ->
         val headword = state.details?.entries?.getOrNull(index)?.terms?.firstOrNull()?.expression
-        val r = CardEditRequest(
-            word = word.takeIf { it in sentence } ?: headword ?: word,
-            sentence = sentence,
-            loadAudio = loadAudio,
-            submit = { edits -> mine(index, edits) },
-        )
+        val r =
+            CardEditRequest(
+                word = word.takeIf { it in sentence } ?: headword ?: word,
+                sentence = sentence,
+                loadAudio = loadAudio,
+                submit = { edits -> mine(index, edits) },
+                image = image,
+                cropFocusBox = cropFocusBox,
+            )
         if (openEditor != null) openEditor(r) else request = r
     }
 }
@@ -538,7 +555,17 @@ fun WordLookupDialog(
     val state = rememberWordLookup(entry.word, dark)
     // A word reached from a definition gets that definition's sentence, and no line audio/screenshot.
     val mine = mineAction(state, entry.word, entry.sentence, image.takeIf { stack.size == 1 }, onMine.takeIf { stack.size == 1 })
-    val edit = editorAction(state, entry.word, entry.sentence, loadAudio.takeIf { stack.size == 1 }, mine, openEditor = null)
+    val edit =
+        editorAction(
+            state = state,
+            word = entry.word,
+            sentence = entry.sentence,
+            image = image.takeIf { stack.size == 1 },
+            cropFocusBox = null,
+            loadAudio = loadAudio.takeIf { stack.size == 1 },
+            mine = mine,
+            openEditor = null,
+        )
     val onTap = recursiveTap(stack)
     if (stack.size > 1) androidx.activity.compose.BackHandler { stack.removeAt(stack.lastIndex) }
 
@@ -576,6 +603,8 @@ fun WordLookupPopup(
     onDismiss: () -> Unit,
     onMine: MineCallback? = null,
     loadAudio: (suspend () -> AudioSegment?)? = null,
+    cropOnMine: Boolean = false,
+    cropFocusBox: BoundingBox? = null,
 ) {
     val density = androidx.compose.ui.platform.LocalDensity.current
     val config = androidx.compose.ui.platform.LocalConfiguration.current
@@ -585,10 +614,10 @@ fun WordLookupPopup(
         with(density) { config.screenWidthDp.dp.toPx() },
         with(density) { config.screenHeightDp.dp.toPx() },
     )
-    androidx.compose.ui.window.Popup(
+    Popup(
         popupPositionProvider = remember(anchor, gap, plan) { AnchoredPopupPosition(anchor, gap, plan.side) },
         onDismissRequest = onDismiss,
-        properties = androidx.compose.ui.window.PopupProperties(focusable = false, dismissOnClickOutside = false),
+        properties = PopupProperties(focusable = false, dismissOnClickOutside = false),
     ) {
         WordLookupCard(
             word = word,
@@ -599,6 +628,8 @@ fun WordLookupPopup(
             loadAudio = loadAudio,
             maxHeight = with(density) { plan.maxHeight.toDp() },
             handleBack = true,
+            cropOnMine = cropOnMine,
+            cropFocusBox = cropFocusBox,
         )
     }
 }
@@ -654,21 +685,62 @@ fun WordLookupCard(
     loadAudio: (suspend () -> AudioSegment?)? = null,
     /** Hosts the card editor itself (overlay windows can't show a Compose dialog); null: a dialog. */
     openEditor: ((CardEditRequest) -> Unit)? = null,
+    cropOnMine: Boolean = false,
+    cropFocusBox: BoundingBox? = null,
 ) {
     val dark = androidx.compose.foundation.isSystemInDarkTheme()
     val stack = rememberLookupStack(word, sentence)
     val entry = stack.last()
     val state = rememberWordLookup(entry.word, dark)
-    val mine = mineAction(state, entry.word, entry.sentence, image.takeIf { stack.size == 1 }, onMine.takeIf { stack.size == 1 })
-    val edit = editorAction(state, entry.word, entry.sentence, loadAudio.takeIf { stack.size == 1 }, mine, openEditor)
+    val pageImage = image.takeIf { stack.size == 1 }
+    val focusBox = cropFocusBox.takeIf { stack.size == 1 }
+    val mine =
+        mineAction(
+            state = state,
+            word = entry.word,
+            sentence = entry.sentence,
+            image = pageImage,
+            onMine = onMine.takeIf { stack.size == 1 },
+        )
+    val edit =
+        editorAction(
+            state = state,
+            word = entry.word,
+            sentence = entry.sentence,
+            image = pageImage,
+            cropFocusBox = focusBox,
+            loadAudio = loadAudio.takeIf { stack.size == 1 },
+            mine = mine,
+            openEditor = openEditor,
+        )
     val onTap = recursiveTap(stack)
+    var pendingCropEntry by remember { mutableStateOf<Int?>(null) }
+    val triggerMine: (Int) -> Unit = { idx ->
+        if (cropOnMine && pageImage != null) {
+            pendingCropEntry = idx
+        } else {
+            mine(idx, null)
+        }
+    }
+
+    WordLookupCropDialog(
+        cropEntryIdx = pendingCropEntry,
+        pageImage = pageImage,
+        focusBox = focusBox,
+        sentence = entry.sentence,
+        onConfirm = { idx, edits ->
+            pendingCropEntry = null
+            mine(idx, edits)
+        },
+        onDismiss = { pendingCropEntry = null },
+    )
 
     if (handleBack) {
         androidx.activity.compose.BackHandler {
             if (stack.size > 1) stack.removeAt(stack.lastIndex) else onDismiss()
         }
     }
-    androidx.compose.material3.Surface(
+    Surface(
         modifier = Modifier
             .width(width)
             .heightIn(max = maxHeight),
@@ -685,7 +757,7 @@ fun WordLookupCard(
                     Modifier.weight(1f).padding(top = 6.dp),
                     onBack = if (stack.size > 1) ({ stack.removeAt(stack.lastIndex) }) else null,
                 )
-                MineButton(state, onClick = { mine(0, null) }, onEdit = { edit(0) })
+                MineButton(state, onClick = { triggerMine(0) }, onEdit = { edit(0) })
                 androidx.compose.material3.IconButton(onClick = onDismiss) {
                     Icon(Icons.Default.Close, contentDescription = "Close")
                 }
@@ -697,10 +769,39 @@ fun WordLookupCard(
             // The rest of the card, whatever the header took: a fixed guess for the header clipped the
             // bottom of the definition when the header was taller (deinflection line, error, back).
             Box(Modifier.weight(1f, fill = false).padding(end = 8.dp)) {
-                LookupBody(state, dark, maxHeight = maxHeight, onTextTap = onTap, onEntryMine = { mine(it, null) }, onEntryEdit = edit)
+                LookupBody(
+                    state = state,
+                    dark = dark,
+                    maxHeight = maxHeight,
+                    onTextTap = onTap,
+                    onEntryMine = triggerMine,
+                    onEntryEdit = edit,
+                )
             }
         }
     }
+}
+
+@Suppress("FunctionName")
+@Composable
+private fun WordLookupCropDialog(
+    cropEntryIdx: Int?,
+    pageImage: Bitmap?,
+    focusBox: BoundingBox?,
+    sentence: String,
+    onConfirm: (Int, CardEdits) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    if (cropEntryIdx == null || pageImage == null) return
+    PanelCropperDialog(
+        bitmap = pageImage,
+        initialFocus = focusBox,
+        confirmLabel = "Add to Anki",
+        onConfirm = { cropped ->
+            onConfirm(cropEntryIdx, CardEdits(sentence.replace(oldValue = "\n", newValue = ""), null, cropped))
+        },
+        onDismiss = onDismiss,
+    )
 }
 
 /** Places the measured popup on [side] of [anchor] (window px), shifted to stay on screen. */

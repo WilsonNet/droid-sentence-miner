@@ -84,6 +84,15 @@ class DsmPrefs(private val context: Context) {
         val overlayRunning = booleanPreferencesKey("overlay_running")
         val lastScan = stringPreferencesKey("last_scan")
         val driveRecent = stringPreferencesKey("drive_recent")
+        val mangaDriveRecent = stringPreferencesKey("manga_drive_recent")
+        val mangaReadingMode = stringPreferencesKey("manga_reading_mode")
+        val mangaDirection = stringPreferencesKey("manga_direction")
+        val mangaCoverOffset = booleanPreferencesKey("manga_cover_offset")
+        val mangaOverlayStyle = stringPreferencesKey("manga_overlay_style")
+        val mangaShowBorders = booleanPreferencesKey("manga_show_borders")
+        val mangaTapZone = stringPreferencesKey("manga_tap_zone")
+        val mangaCropPanelOnMine = booleanPreferencesKey("manga_crop_panel_on_mine")
+        val mangaPreloadOcr = booleanPreferencesKey("manga_preload_ocr")
     }
 
     /** The study language's code ([io.github.wilsonnet.droidsentenceminer.lang.Languages]); null until picked. */
@@ -163,6 +172,34 @@ class DsmPrefs(private val context: Context) {
     val clipAfterMs: Flow<Int> = context.dataStore.data.map { it[Keys.clipAfterMs] ?: 500 }
     val autoOcrIntervalMs: Flow<Int> = context.dataStore.data.map { it[Keys.autoOcrIntervalMs] ?: 400 }
     val liveTextWindow: Flow<Boolean> = context.dataStore.data.map { it[Keys.liveTextWindow] ?: true }
+
+    /** Google Drive links opened on the Manga page, newest first, as (link, name). */
+    val mangaDriveRecent: Flow<List<Pair<String, String>>> =
+        context.dataStore.data.map { parseDriveRecent(it[Keys.mangaDriveRecent]) }
+
+    /** Saved manga reader layout mode id ([io.github.wilsonnet.droidsentenceminer.manga.MangaReadingMode]). */
+    val mangaReadingMode: Flow<String?> = context.dataStore.data.map { it[Keys.mangaReadingMode] }
+
+    /** Saved manga reader paging direction id ([io.github.wilsonnet.droidsentenceminer.manga.MangaDirection]). */
+    val mangaDirection: Flow<String?> = context.dataStore.data.map { it[Keys.mangaDirection] }
+
+    /** Whether page 1 stands alone in double-page manga spreads. */
+    val mangaCoverOffset: Flow<Boolean> = context.dataStore.data.map { it[Keys.mangaCoverOffset] != false }
+
+    /** Saved manga text overlay style id ([io.github.wilsonnet.droidsentenceminer.manga.MangaOverlayStyle]). */
+    val mangaOverlayStyle: Flow<String?> = context.dataStore.data.map { it[Keys.mangaOverlayStyle] }
+
+    /** Whether subtle borders outline clickable OCR bubbles in the manga reader. */
+    val mangaShowBorders: Flow<Boolean> = context.dataStore.data.map { it[Keys.mangaShowBorders] != false }
+
+    /** Saved manga tap-zone navigation preset id ([io.github.wilsonnet.droidsentenceminer.manga.MangaTapZone]). */
+    val mangaTapZone: Flow<String?> = context.dataStore.data.map { it[Keys.mangaTapZone] }
+
+    /** Opens the panel cropper automatically when mining from the manga reader (on by default). */
+    val mangaCropPanelOnMine: Flow<Boolean> = context.dataStore.data.map { it[Keys.mangaCropPanelOnMine] != false }
+
+    /** Whether adjacent manga pages run on-device OCR ahead of time when no `.mokuro` is present. */
+    val mangaPreloadOcr: Flow<Boolean> = context.dataStore.data.map { it[Keys.mangaPreloadOcr] != false }
     /** Live text window position in px, per orientation (a portrait spot is wrong in landscape). */
     fun liveWindowPosition(landscape: Boolean): Flow<Pair<Int, Int>?> = context.dataStore.data.map {
         val x = it[if (landscape) Keys.liveWindowXLand else Keys.liveWindowX] ?: return@map null
@@ -262,6 +299,62 @@ class DsmPrefs(private val context: Context) {
     suspend fun removeDriveRecent(link: String) = edit {
         val list = parseDriveRecent(it[Keys.driveRecent]).filter { (l, _) -> l != link }
         it[Keys.driveRecent] = Json.encodeToString(list.map { (l, n) -> listOf(l, n) })
+    }
+
+    /** Records a Google Drive link opened from the Manga sheet. */
+    suspend fun addMangaDriveRecent(link: String, name: String) {
+        edit { prefs ->
+            val list = listOf(link to name) + parseDriveRecent(prefs[Keys.mangaDriveRecent]).filter { (l, _) -> l != link }
+            prefs[Keys.mangaDriveRecent] = Json.encodeToString(list.take(MAX_DRIVE_RECENT).map { (l, n) -> listOf(l, n) })
+        }
+    }
+
+    /** Removes a previously saved Manga Google Drive link. */
+    suspend fun removeMangaDriveRecent(link: String) {
+        edit { prefs ->
+            val list = parseDriveRecent(prefs[Keys.mangaDriveRecent]).filter { (l, _) -> l != link }
+            prefs[Keys.mangaDriveRecent] = Json.encodeToString(list.map { (l, n) -> listOf(l, n) })
+        }
+    }
+
+    /** Updates the manga reader layout mode preference. */
+    suspend fun setMangaReadingMode(value: String) {
+        edit { it[Keys.mangaReadingMode] = value }
+    }
+
+    /** Updates the manga reader direction preference. */
+    suspend fun setMangaDirection(value: String) {
+        edit { it[Keys.mangaDirection] = value }
+    }
+
+    /** Updates whether double-page spreads treat the first page as a solo cover. */
+    suspend fun setMangaCoverOffset(value: Boolean) {
+        edit { it[Keys.mangaCoverOffset] = value }
+    }
+
+    /** Updates the manga reader text overlay style preference. */
+    suspend fun setMangaOverlayStyle(value: String) {
+        edit { it[Keys.mangaOverlayStyle] = value }
+    }
+
+    /** Updates whether manga OCR bubbles draw an outline border. */
+    suspend fun setMangaShowBorders(value: Boolean) {
+        edit { it[Keys.mangaShowBorders] = value }
+    }
+
+    /** Updates the manga reader tap-zone preset preference. */
+    suspend fun setMangaTapZone(value: String) {
+        edit { it[Keys.mangaTapZone] = value }
+    }
+
+    /** Updates whether `+ Anki` opens the panel cropper automatically in the manga reader. */
+    suspend fun setMangaCropPanelOnMine(value: Boolean) {
+        edit { it[Keys.mangaCropPanelOnMine] = value }
+    }
+
+    /** Updates whether adjacent un-OCR'd manga pages are preloaded in the background. */
+    suspend fun setMangaPreloadOcr(value: Boolean) {
+        edit { it[Keys.mangaPreloadOcr] = value }
     }
 
     private fun parseDriveRecent(raw: String?): List<Pair<String, String>> =

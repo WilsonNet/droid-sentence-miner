@@ -9,7 +9,6 @@ import java.net.URLDecoder
  * instead, where the Google Drive app is a document provider.
  */
 object DriveLinks {
-
     sealed class Link {
         abstract val id: String
 
@@ -20,6 +19,15 @@ object DriveLinks {
     /** One row of a public folder listing. */
     data class Entry(val id: String, val name: String, val isFolder: Boolean, val modified: String? = null) {
         val isZip: Boolean get() = !isFolder && name.endsWith(".zip", ignoreCase = true)
+
+        /** True for `.cbz` or `.zip` manga comic archives. */
+        val isCbz: Boolean get() = !isFolder && (name.endsWith(".cbz", ignoreCase = true) || isZip)
+
+        /** True for `.mokuro` OCR sidecar JSON files. */
+        val isMokuro: Boolean get() = !isFolder && name.endsWith(".mokuro", ignoreCase = true)
+
+        /** Lowercased filename without extension, used to pair `.cbz` and `.mokuro` files. */
+        val stem: String get() = name.substringBeforeLast('.').trim().lowercase()
     }
 
     private val ID = "[A-Za-z0-9_-]{10,}"

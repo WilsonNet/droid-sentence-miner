@@ -5,7 +5,6 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 class DriveLinksTest {
-
     @Test
     fun parsesShareLinks() {
         assertEquals(
@@ -34,16 +33,43 @@ class DriveLinksTest {
 
     @Test
     fun parsesFolderListing() {
-        val html = """<html><head><title>Yomichan &amp; more</title></head><body><div class="flip-entries">""" +
-            entry("1zXCHcxesRwNAFFqdoaFe57G8Bvkcan_8", "https://drive.google.com/drive/folders/1zXCHcxesRwNAFFqdoaFe57G8Bvkcan_8", "src", "8/7/21") +
-            entry("137gaEvCxw54ffVadAAjzDxDWywAiTlJh", "https://drive.google.com/file/d/137gaEvCxw54ffVadAAjzDxDWywAiTlJh/view?usp=drive_web", "Words.hk C-E.zip", "4/12/23") +
-            entry("1n5vzMURfkXrTSTm7fdKZeocktVbRit0K", "https://drive.google.com/file/d/1n5vzMURfkXrTSTm7fdKZeocktVbRit0K/view?usp=drive_web", "[JA] 明鏡 &#39;用例&#39;.zip", "4/12/23") +
-            entry("14k4t-erVGCac0Tf9QeZ8LB5xezr7BZBU", "https://drive.google.com/file/d/14k4t-erVGCac0Tf9QeZ8LB5xezr7BZBU/view?usp=drive_web", "info-changelog.txt", "1/1/24") +
-            "</div></body></html>"
+        val html =
+            """<html><head><title>Yomichan &amp; more</title></head><body><div class="flip-entries">""" +
+                entry("1zXCHcxesRwNAFFqdoaFe57G8Bvkcan_8", "https://drive.google.com/drive/folders/1zXCHcxesRwNAFFqdoaFe57G8Bvkcan_8", "src", "8/7/21") +
+                entry("137gaEvCxw54ffVadAAjzDxDWywAiTlJh", "https://drive.google.com/file/d/137gaEvCxw54ffVadAAjzDxDWywAiTlJh/view?usp=drive_web", "Words.hk C-E.zip", "4/12/23") +
+                entry("1n5vzMURfkXrTSTm7fdKZeocktVbRit0K", "https://drive.google.com/file/d/1n5vzMURfkXrTSTm7fdKZeocktVbRit0K/view?usp=drive_web", "[JA] 明鏡 &#39;用例&#39;.zip", "4/12/23") +
+                entry("14k4t-erVGCac0Tf9QeZ8LB5xezr7BZBU", "https://drive.google.com/file/d/14k4t-erVGCac0Tf9QeZ8LB5xezr7BZBU/view?usp=drive_web", "info-changelog.txt", "1/1/24") +
+                entry(
+                    id = "15555-cbz-id",
+                    href = "https://drive.google.com/file/d/15555-cbz-id/view?usp=drive_web",
+                    title = "Yotsuba 01.cbz",
+                    modified = "1/2/24",
+                ) +
+                entry(
+                    id = "16666-mokuro-id",
+                    href = "https://drive.google.com/file/d/16666-mokuro-id/view?usp=drive_web",
+                    title = "Yotsuba 01.mokuro",
+                    modified = "1/2/24",
+                ) +
+                "</div></body></html>"
         val entries = DriveLinks.parseFolder(html)!!
-        assertEquals(listOf("src", "[JA] 明鏡 '用例'.zip", "info-changelog.txt", "Words.hk C-E.zip"), entries.map { it.name })
-        assertEquals(listOf(true, false, false, false), entries.map { it.isFolder })
-        assertEquals(listOf(false, true, false, true), entries.map { it.isZip })
+        assertEquals(
+            listOf(
+                "src",
+                "[JA] 明鏡 '用例'.zip",
+                "info-changelog.txt",
+                "Words.hk C-E.zip",
+                "Yotsuba 01.cbz",
+                "Yotsuba 01.mokuro",
+            ),
+            entries.map { it.name },
+        )
+        assertEquals(listOf(true, false, false, false, false, false), entries.map { it.isFolder })
+        assertEquals(listOf(false, true, false, true, false, false), entries.map { it.isZip })
+        assertEquals(listOf(false, true, false, true, true, false), entries.map { it.isCbz })
+        assertEquals(listOf(false, false, false, false, false, true), entries.map { it.isMokuro })
+        assertEquals("yotsuba 01", entries[4].stem)
+        assertEquals("yotsuba 01", entries[5].stem)
         assertEquals("8/7/21", entries[0].modified)
         assertEquals("Yomichan & more", DriveLinks.folderTitle(html))
     }

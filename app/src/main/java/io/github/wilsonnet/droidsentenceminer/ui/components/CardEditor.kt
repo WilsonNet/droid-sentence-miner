@@ -1,5 +1,7 @@
 package io.github.wilsonnet.droidsentenceminer.ui.components
 
+import android.graphics.Bitmap
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -15,10 +17,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ContentCut
+import androidx.compose.material.icons.filled.Crop
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Surface
@@ -33,6 +37,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -45,18 +52,22 @@ import io.github.wilsonnet.droidsentenceminer.anki.CardEdits
 import io.github.wilsonnet.droidsentenceminer.audio.AudioPcm
 import io.github.wilsonnet.droidsentenceminer.audio.AudioSegment
 import io.github.wilsonnet.droidsentenceminer.audio.VoiceTrimmer
+import io.github.wilsonnet.droidsentenceminer.ocr.BoundingBox
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
  * What the card editor opens with: the [word] being mined, its [sentence], the sentence audio
- * ([loadAudio], null when the source has none) and where the edited card goes ([submit]).
+ * ([loadAudio], null when the source has none), an optional [image] (and [cropFocusBox] for
+ * panel cropping), and where the edited card goes ([submit]).
  */
 class CardEditRequest(
     val word: String,
     val sentence: String,
     val loadAudio: (suspend () -> AudioSegment?)?,
     val submit: (CardEdits) -> Unit,
+    val image: Bitmap? = null,
+    val cropFocusBox: BoundingBox? = null,
 )
 
 /**
@@ -70,6 +81,8 @@ fun CardEditor(request: CardEditRequest, onClose: () -> Unit, modifier: Modifier
     // and the logged line (what an unedited card gets) has none.
     val original = remember(request) { request.sentence.replace("\n", "") }
     var sentence by remember(request) { mutableStateOf(original) }
+    var editedImage by remember(request) { mutableStateOf(request.image) }
+    var isCropping by remember { mutableStateOf(false) }
     var audio by remember(request) { mutableStateOf<AudioSegment?>(null) }
     var audioLoading by remember(request) { mutableStateOf(request.loadAudio != null) }
     var includeAudio by remember(request) { mutableStateOf(true) }
@@ -173,6 +186,39 @@ fun CardEditor(request: CardEditRequest, onClose: () -> Unit, modifier: Modifier
                 )
             }
 
+            request.image?.let { sourceBitmap ->
+                val shown = editedImage ?: sourceBitmap
+                SectionLabel("Picture") {
+                    if (editedImage !== sourceBitmap) {
+                        TextButton(onClick = { editedImage = sourceBitmap }) { Text("Reset") }
+                    }
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Image(
+                        bitmap = remember(shown) { shown.asImageBitmap() },
+                        contentDescription = "Card picture",
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier.size(width = 112.dp, height = 84.dp).clip(MaterialTheme.shapes.small),
+                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            "${shown.width} × ${shown.height} px",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        OutlinedButton(onClick = { isCropping = true }) {
+                            Icon(Icons.Default.Crop, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Crop panel")
+                        }
+                    }
+                }
+            }
+
             Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.End) {
                 TextButton(onClick = onClose) { Text("Cancel") }
                 Spacer(Modifier.width(8.dp))
@@ -180,7 +226,7 @@ fun CardEditor(request: CardEditRequest, onClose: () -> Unit, modifier: Modifier
                     enabled = !audioLoading && sentence.isNotBlank(),
                     onClick = {
                         val clip = segment?.takeIf { includeAudio }?.let { trimmed(it, range) ?: it }
-                        request.submit(CardEdits(sentence.trim(), clip))
+                        request.submit(CardEdits(sentence.trim(), clip, editedImage))
                         onClose()
                     },
                 ) {
@@ -190,6 +236,19 @@ fun CardEditor(request: CardEditRequest, onClose: () -> Unit, modifier: Modifier
                 }
             }
         }
+    }
+
+    if (isCropping && request.image != null) {
+        PanelCropperDialog(
+            bitmap = request.image,
+            initialFocus = request.cropFocusBox,
+            confirmLabel = "Use crop",
+            onConfirm = { cropped ->
+                editedImage = cropped
+                isCropping = false
+            },
+            onDismiss = { isCropping = false },
+        )
     }
 }
 

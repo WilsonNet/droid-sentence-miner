@@ -70,6 +70,22 @@ Everything the app does, in detail. The short version is in the [README](../READ
   fullscreen always reopens as the normal window.
 - **App focus** — share "A single app" (Android 14+) and pick the game: only it is read, and
   auto OCR pauses while you are in other apps or in Droid Sentence Miner itself.
+- **Manga `.cbz` reader (Manatan / Mokuro style)** — the *Manga* tab opens a dedicated shelf of
+  `.cbz` volumes with cover thumbnails, reading progress, and *Mokuro* / *Auto OCR* badges.
+  Import from local files (*From files*) or *Google Drive* (*Browse my Drive* or public Drive
+  file/folder links); `.mokuro` JSON files selected alongside (same stem), embedded in the `.cbz`,
+  or attached later give instant Manatan/Mokuro-style overlays, while raw `.cbz` volumes run
+  upscaled on-device OCR with vertical speech-bubble grouping (`MangaOcrGrouping`) automatically per
+  page (plus optional *Pre-OCR next pages*). Inside the reader: Single-page, Double-page spread
+  (with *Cover page offset*), and Vertical-scroll modes; RTL / LTR direction; *Transparent*,
+  *Readable (Light)*, *Readable (Dark)*, and *Hidden* text overlays with optional subtle box borders;
+  pinch-to-zoom and pan; edge / L-shape / off tap zones; tap any character to look up or hold-and-drag
+  to select; and an inline *Edit text boxes* mode (tap pencil icon in HUD) to fix or delete any box.
+- **Panel cropper before *+ Anki*** — when *Crop panel on Add to Anki* is enabled (default on in
+  reader settings), tapping *+ Anki* in the manga lookup popup (or the card editor) opens a
+  full-screen interactive cropper with *Panel*, *Bubble*, and *Full page* quick presets, corner/edge
+  resize handles, inside move, and outside redraw so the Anki card's picture contains only the
+  panel or bubble you want rather than the whole page.
 - **Book mode (paper books, manga)** — the *Book* tab takes a photo with Samsung Camera on Galaxy
   phones (any camera app elsewhere) or picks one from the gallery, reads the page with ML Kit — vertical (tategaki, columns right to left)
   and horizontal print — and outlines each paragraph on the photo. Tap a paragraph, tap a word,

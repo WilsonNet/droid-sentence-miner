@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.MenuBook
+import androidx.compose.material.icons.filled.AutoStories
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Subject
@@ -26,6 +27,7 @@ import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -44,6 +46,7 @@ import io.github.wilsonnet.droidsentenceminer.ui.screens.AnkiScreen
 import io.github.wilsonnet.droidsentenceminer.ui.screens.BookScreen
 import io.github.wilsonnet.droidsentenceminer.ui.screens.DictionaryScreen
 import io.github.wilsonnet.droidsentenceminer.ui.screens.HomeScreen
+import io.github.wilsonnet.droidsentenceminer.ui.screens.MangaScreen
 import io.github.wilsonnet.droidsentenceminer.ui.screens.SettingsScreen
 import io.github.wilsonnet.droidsentenceminer.ui.screens.TextsScreen
 import io.github.wilsonnet.droidsentenceminer.ui.theme.DsmTheme
@@ -73,77 +76,146 @@ class MainActivity : ComponentActivity() {
 
 private data class Tab(val label: String, val icon: ImageVector)
 
-private val TABS = listOf(
-    Tab("Home", Icons.Default.Home),
-    Tab("Book", Icons.AutoMirrored.Filled.MenuBook),
-    Tab("Texts", Icons.Default.Subject),
-    Tab("Settings", Icons.Default.Settings),
-)
+private const val TAB_MANGA = 1
+private const val TAB_BOOK = 2
+private const val TAB_TEXTS = 3
+private const val TAB_SETTINGS = 4
 
+private val TABS =
+    listOf(
+        Tab("Home", Icons.Default.Home),
+        Tab("Manga", Icons.Default.AutoStories),
+        Tab("Book", Icons.AutoMirrored.Filled.MenuBook),
+        Tab("Texts", Icons.Default.Subject),
+        Tab("Settings", Icons.Default.Settings),
+    )
+
+@Suppress("FunctionName")
 @Composable
 private fun AppRoot() {
     var tab by rememberSaveable { mutableIntStateOf(0) }
+    var isMangaReaderOpen by rememberSaveable { mutableStateOf(false) }
     val context = androidx.compose.ui.platform.LocalContext.current
-    val sharedPhoto by remember { AppContainer.from(context).sharedBookPhoto }.collectAsState()
-    androidx.compose.runtime.LaunchedEffect(sharedPhoto) { if (sharedPhoto != null) tab = 1 }
-    // Dictionaries and Anki setup live under Settings; null = the settings list itself.
-    var settingsPage by rememberSaveable { mutableStateOf<String?>(null) }
-    // Tablets and landscape phones: tabs in a side rail, so the bottom bar doesn't eat the short side.
-    val wide = LocalConfiguration.current.screenWidthDp >= 600
     val container = remember { AppContainer.from(context) }
+    val sharedPhoto by remember { container.sharedBookPhoto }.collectAsState()
+    LaunchedEffect(sharedPhoto) {
+        if (sharedPhoto != null) {
+            isMangaReaderOpen = false
+            tab = TAB_BOOK
+        }
+    }
     val setupNeeded by container.languageSetupNeeded.collectAsState()
     if (setupNeeded) {
         io.github.wilsonnet.droidsentenceminer.ui.screens.LanguageSetupScreen(onDone = { tab = 0 })
         return
     }
     WhatsNewOnUpdate(container)
+    MainTabsScaffold(
+        tab = tab,
+        hideChrome = isMangaReaderOpen && tab == TAB_MANGA,
+        onTabChange = { tab = it },
+        onMangaReaderOpenChange = { isMangaReaderOpen = it },
+    )
+}
+
+@Suppress("FunctionName")
+@Composable
+private fun MainTabsScaffold(
+    tab: Int,
+    hideChrome: Boolean,
+    onTabChange: (Int) -> Unit,
+    onMangaReaderOpenChange: (Boolean) -> Unit,
+) {
+    var settingsPage by rememberSaveable { mutableStateOf<String?>(null) }
+    val wide = LocalConfiguration.current.screenWidthDp >= 600
     val select = { index: Int ->
-        if (index == 3 && tab == 3) settingsPage = null
-        tab = index
+        if (index != TAB_MANGA) onMangaReaderOpenChange(false)
+        if (index == TAB_SETTINGS && tab == TAB_SETTINGS) settingsPage = null
+        onTabChange(index)
     }
 
     Scaffold(
-        bottomBar = {
-            if (!wide) {
-                NavigationBar {
-                    TABS.forEachIndexed { index, item ->
-                        NavigationBarItem(
-                            selected = tab == index,
-                            onClick = { select(index) },
-                            icon = { Icon(item.icon, contentDescription = null) },
-                            label = { Text(item.label) },
-                        )
-                    }
-                }
-            }
-        },
+        bottomBar = { if (!wide && !hideChrome) AppBottomBar(tab = tab, onSelect = select) },
     ) { padding ->
-        Row(Modifier.padding(padding)) {
-            if (wide) {
-                NavigationRail(windowInsets = WindowInsets(0)) {
-                    Spacer(Modifier.weight(1f))
-                    TABS.forEachIndexed { index, item ->
-                        NavigationRailItem(
-                            selected = tab == index,
-                            onClick = { select(index) },
-                            icon = { Icon(item.icon, contentDescription = null) },
-                            label = { Text(item.label) },
-                        )
-                    }
-                    Spacer(Modifier.weight(1f))
-                }
+        Row(if (hideChrome) Modifier else Modifier.padding(padding)) {
+            if (wide && !hideChrome) {
+                AppSideRail(tab = tab, onSelect = select)
             }
-            val modifier = Modifier.weight(1f)
-            when (tab) {
-                0 -> ReadableWidth(modifier) { HomeScreen(it) }
-                1 -> BookScreen(modifier)
-                2 -> ReadableWidth(modifier) { TextsScreen(it) }
-                else -> ReadableWidth(modifier) { inner ->
-                    when (settingsPage) {
-                        PAGE_DICTIONARIES -> SettingsSubPage({ settingsPage = null }, inner) { DictionaryScreen(it) }
-                        PAGE_ANKI -> SettingsSubPage({ settingsPage = null }, inner) { AnkiScreen(it) }
-                        else -> SettingsScreen(inner, onOpen = { settingsPage = it })
-                    }
+            AppTabContent(
+                tab = tab,
+                settingsPage = settingsPage,
+                onOpenSettingsPage = { settingsPage = it },
+                onMangaReaderOpenChange = onMangaReaderOpenChange,
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
+}
+
+@Suppress("FunctionName")
+@Composable
+private fun AppBottomBar(tab: Int, onSelect: (Int) -> Unit) {
+    NavigationBar {
+        TABS.forEachIndexed { index, item ->
+            NavigationBarItem(
+                selected = tab == index,
+                onClick = { onSelect(index) },
+                icon = { Icon(item.icon, contentDescription = null) },
+                label = { Text(item.label) },
+            )
+        }
+    }
+}
+
+@Suppress("FunctionName")
+@Composable
+private fun AppSideRail(tab: Int, onSelect: (Int) -> Unit) {
+    NavigationRail(windowInsets = WindowInsets(0)) {
+        Spacer(Modifier.weight(1f))
+        TABS.forEachIndexed { index, item ->
+            NavigationRailItem(
+                selected = tab == index,
+                onClick = { onSelect(index) },
+                icon = { Icon(item.icon, contentDescription = null) },
+                label = { Text(item.label) },
+            )
+        }
+        Spacer(Modifier.weight(1f))
+    }
+}
+
+@Suppress("FunctionName")
+@Composable
+private fun AppTabContent(
+    tab: Int,
+    settingsPage: String?,
+    onOpenSettingsPage: (String?) -> Unit,
+    onMangaReaderOpenChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    when (tab) {
+        0 -> {
+            ReadableWidth(modifier) { HomeScreen(it) }
+        }
+
+        TAB_MANGA -> {
+            MangaScreen(modifier) { onMangaReaderOpenChange(it) }
+        }
+
+        TAB_BOOK -> {
+            BookScreen(modifier)
+        }
+
+        TAB_TEXTS -> {
+            ReadableWidth(modifier) { TextsScreen(it) }
+        }
+
+        else -> {
+            ReadableWidth(modifier) { inner ->
+                when (settingsPage) {
+                    PAGE_DICTIONARIES -> SettingsSubPage({ onOpenSettingsPage(null) }, inner) { DictionaryScreen(it) }
+                    PAGE_ANKI -> SettingsSubPage({ onOpenSettingsPage(null) }, inner) { AnkiScreen(it) }
+                    else -> SettingsScreen(inner, onOpen = { onOpenSettingsPage(it) })
                 }
             }
         }

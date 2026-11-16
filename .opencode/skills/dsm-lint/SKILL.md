@@ -92,6 +92,9 @@ flagged by ExpressionBodySyntax/FunctionExpressionBody).
 | OptionalUnit | an empty branch is `{ // comment }`, not `Unit` |
 | ImportOrdering | lexicographic, `java`/`javax`/`kotlin` last, no blank lines; no fully qualified names in code (UnnecessaryFullyQualifiedName) |
 | Composable `FunctionName` | the config's `ignoreWhenAnnotatedWith` doesn't reach the ktlint rule: `@Suppress("FunctionName") // Composables are PascalCase.` |
+| `ComposableLambdaParameterNaming` | custom secondary slots must not be `@Composable () -> Unit` unless named `content`; pass data/vectors (`iconVector: ImageVector? = null`) instead |
+| `LabeledExpression` | avoid labeled `return@SideEffect` or `break@loop`; use normal `if (x != null) { ... }` checks |
+| Android Lint `UseKtx` | use `bitmap.scale(w, h)` (`androidx.core.graphics.scale`) instead of `Bitmap.createScaledBitmap`, `uri.toFile()`, and `getSystemService<T>()` |
 | ComposeUnstableCollections | no `List` params on composables: wrap in an `@Immutable data class` (see `ChangelogNotes`) — kotlinx-collections-immutable isn't a dependency |
 | Compose mutable params | don't pass `MutableStateFlow`/`MutableState`; pass the owner (`AppContainer`) or a read-only `StateFlow` + callback |
 

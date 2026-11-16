@@ -45,7 +45,10 @@ GIF for the MP4; recorded on a Xiaomi Pad 7).
   screenshot, sentence audio, word audio, pitch graph, mapped to your existing note type.
 - **Sentence audio** — a replay buffer of the app's audio, a waveform editor, loudness
   normalization, and a calibrated microphone fallback for apps that block capture.
-- **Books and manga** — photograph a page and tap the printed text to look it up.
+- **Books and manga (`.cbz`)** — read `.cbz` manga from local files or Google Drive with
+  `.mokuro` overlays or automatic on-device OCR (plus single/double-page/vertical modes, readable
+  text boxes, and panel cropping before sending to Anki), or photograph a printed page and tap
+  the text to look it up.
 - **Multilingual, Japanese first** — pick the language you study on first launch: Japanese
   (main focus), English or German (Wiktionary dictionaries, inflections, IPA, German articles on
   cards, optional PaddleOCR pack); each language has its own Anki deck, note type and card
@@ -100,6 +103,9 @@ in the same commit ([checklist](.opencode/skills/dsm-docs/SKILL.md)). The websit
 
 This project stands on the shoulders of these projects — thank you:
 
+- **[Manatan](https://github.com/KolbyML/Manatan)**, **[Mokuro](https://github.com/kha-white/mokuro)**,
+  and **[Mokuro Reader](https://github.com/ZXY101/mokuro-reader)** — the manga reading UX, `.mokuro`
+  JSON schema, overlay style options, and reading mode layout that inspired our `.cbz` reader.
 - **[GameSentenceMiner](https://github.com/bpwhelan/GameSentenceMiner)** (GPL-3.0) — the whole
   concept: OCR on untranslated games, popup lookups, one-press Anki cards with audio, the two-pass
   OCR pipeline and the sentence-audio editing workflow.

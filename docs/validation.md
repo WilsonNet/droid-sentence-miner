@@ -99,7 +99,7 @@ What was measured, on which device, and how. Recipes and scripts: [`.opencode/sk
   compressor); on-device calibration matches the Python reference fit (each band within 2 dB, separate measurement runs). In
   Nightshade the 6.3 kHz resonance is gone from the clips. Cost: 1.3 % of one core while the mic
   is in use, nothing while device audio works.
-- 191 JVM unit tests: speaker-correction EQ (FFT, biquads, response from pink noise, fit of the
+- 244 JVM unit tests (incl. `ArchitectureTest`): includes `.cbz` page inspection/decoding (`CbzArchiveTest`), `.mokuro` JSON parsing (`MokuroParserTest`), speech-bubble deduplication & column grouping (`MangaOcrEngineTest`), panel crop presets/clamping (`PanelCropMathTest`), Drive CBZ/Mokuro stem matching (`DriveLinksTest`), speaker-correction EQ (FFT, biquads, response from pink noise, fit of the
   measured Pad 7 curve, chain), meikiocr detector/recognizer input sizing, frame change detection (one typewriter glyph counts; direct RGBA buffer with row stride), loudness
   normalization, popup placement (flip/size/shift), screen text layer (subtitle glyphs → screen fractions, signage skipped), book page layout (tategaki order, ruby filter incl. real manga ruby, split sentences, per-character photo positions), H→エ fix, pitch graphs (byte-identical to Yomitan), word audio sources, Anki field mapping, meikiocr decoding, OCR text fixes (一→ー), text areas, line consensus, replay buffer, voice trimming, line tracking, clip windows, subtitle-row
   filtering, deinflector (conjugations across godan/ichidan/suru/kuru/adjectives),
@@ -131,3 +131,14 @@ What was measured, on which device, and how. Recipes and scripts: [`.opencode/sk
   (20 matched words, deinflection of 走れ → 走る), popup lookup, mining into a real AnkiDroid
   installation (card verified with image), and mining through AnkiConnect against a mock server
   (note + media verified), plus MediaProjection consent flow.
+- Manga `.cbz` reader on Xiaomi Pad 7 (`c2bd6564`): imported a real 227-page Japanese manga
+  volume (`berserk-v01-1990-digital-sd-kg-manga.cbz`, 86 MB) from the user's Google Drive via
+  *Browse my Drive*; verified cover shelf & reading progress, single-page, double-page RTL spread,
+  and vertical-scroll reading modes, Transparent / Readable (Light) / Readable (Dark) overlays,
+  inline *Edit text boxes* dialog, and tap-to-lookup inside grouped vertical speech bubbles. Tapping
+  *+ Anki* on `天国` opened `PanelCropperDialog` with *Panel* / *Bubble* / *Full page* presets and
+  unclipped bottom actions above the HyperOS navigation bar (`Cancel`/`Add to Anki` at `y = 3036..3168`),
+  and `/anki_notes` confirmed the resulting *Anime Cards* note received the merged bubble
+  `Context Sentence` and cropped panel `Picture` media. Also verified paired `.cbz` + `.mokuro`
+  multi-file import (*Mokuro* badge, instant `.mokuro` box rendering without running ML Kit OCR,
+  and in-reader popup lookup).

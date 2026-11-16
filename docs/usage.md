@@ -66,5 +66,11 @@ Step by step from a fresh install. The website has the same flow with screenshot
    After a photo the page opens in the overlay reader: tap the printed text itself to look it up,
    pinch to zoom; ✕ or Back returns to the paragraph view (*Read on the photo* reopens it).
    Arrows step through paragraphs; ✎ corrects the OCR text.
-8. **Test drive** — the Home tab has a built-in sample (a public-domain Aozora Bunko passage) and
+8. **Manga (`.cbz`)** — open the *Manga* tab and import `.cbz` (optionally paired with `.mokuro`
+   files of the same name) via *From files* or *Google Drive* (*Browse my Drive* or public Drive
+   links/folders). Tap any volume to read; tap a character in a speech bubble for instant definitions,
+   and tap *+ Anki* to crop the exact panel or bubble before sending the card. Use the top bar
+   icons to re-OCR a page, cycle *Transparent / Light / Dark / Hidden* overlays, edit OCR text boxes,
+   or switch between *Single page*, *Double page*, and *Vertical scroll*.
+9. **Test drive** — the Home tab has a built-in sample (a public-domain Aozora Bunko passage) and
    an image picker to test OCR + lookup without a game.

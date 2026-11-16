@@ -1,5 +1,6 @@
 package io.github.wilsonnet.droidsentenceminer.anki
 
+import android.graphics.Bitmap
 import io.github.wilsonnet.droidsentenceminer.audio.AudioSegment
 import io.github.wilsonnet.droidsentenceminer.dict.GlossaryHtml
 import io.github.wilsonnet.droidsentenceminer.dict.TermLookup
@@ -7,10 +8,16 @@ import io.github.wilsonnet.droidsentenceminer.lang.LanguageModule
 import io.github.wilsonnet.droidsentenceminer.lang.Languages
 
 /**
- * The card editor's result: the sentence as the user trimmed it and the sentence audio as trimmed
- * (null = no audio on the card). Replaces the line's text and clip when mining.
+ * The card editor's result: the sentence as the user trimmed it, the sentence audio as trimmed
+ * (null = no audio on the card), and an optional cropped picture. Replaces the source's
+ * text, clip, and image when mining.
  */
-data class CardEdits(val sentence: String, val audio: AudioSegment?)
+data class CardEdits(
+    val sentence: String,
+    val audio: AudioSegment?,
+    /** Optional cropped card image replacing the original full screenshot when set. */
+    val image: Bitmap? = null,
+)
 
 /** Data needed to create one Anki note. */
 data class AnkiCard(
