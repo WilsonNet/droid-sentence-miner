@@ -1,6 +1,5 @@
 package io.github.wilsonnet.droidsentenceminer.ui.screens
 
-import io.github.wilsonnet.droidsentenceminer.core.GlossaryMode
 import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -22,11 +21,12 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,6 +34,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -41,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import io.github.wilsonnet.droidsentenceminer.AppContainer
 import io.github.wilsonnet.droidsentenceminer.BuildConfig
 import io.github.wilsonnet.droidsentenceminer.audio.AudioCaptureManager
+import io.github.wilsonnet.droidsentenceminer.core.GlossaryMode
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -472,6 +474,7 @@ private fun SettingSwitch(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+        Spacer(Modifier.width(16.dp))
         Switch(checked = checked, onCheckedChange = onChange)
     }
 }
@@ -499,6 +502,8 @@ private fun SettingSlider(
             onValueChangeFinished = { onChange(local) },
             valueRange = range,
             steps = steps,
+            // A dot per step drew 20 ticks across the track; the value label already says where it is.
+            colors = SliderDefaults.colors(activeTickColor = Color.Transparent, inactiveTickColor = Color.Transparent),
         )
     }
 }

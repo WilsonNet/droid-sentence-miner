@@ -2,8 +2,6 @@ package io.github.wilsonnet.droidsentenceminer.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -14,12 +12,11 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -38,7 +35,6 @@ private const val BYTES_PER_MB = 1_000_000L
 private const val PERCENT = 100f
 
 /** Manga OCR backend selector, model download and full-volume background preparation in Reader Settings. */
-@OptIn(ExperimentalLayoutApi::class)
 @Suppress("FunctionName") // Composables are PascalCase.
 @Composable
 internal fun ReaderOcrSettingsSection(
@@ -52,21 +48,17 @@ internal fun ReaderOcrSettingsSection(
     val download by MangaModelDownloads.state.collectAsState()
     LaunchedEffect(Unit) { MangaModelDownloads.refresh(context) }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Manga OCR engine", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        ReaderSectionTitle("OCR")
+        Column {
             MangaOcrMode.entries.forEach { mode ->
-                FilterChip(
+                SettingRadioRow(
+                    title = engineTitle(mode),
+                    subtitle = engineHint(mode = mode, isInstalled = download.isInstalled),
                     selected = ocrMode == mode,
-                    onClick = { onOcrMode(mode) },
-                    label = { Text(mode.label) },
+                    onSelect = { onOcrMode(mode) },
                 )
             }
         }
-        Text(
-            engineHint(mode = ocrMode, isInstalled = download.isInstalled),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
         ModelDownloadRow(
             state = download,
             onDownload = { MangaModelDownloads.start(context, AppContainer.from(context).appScope) },
@@ -78,14 +70,25 @@ internal fun ReaderOcrSettingsSection(
     }
 }
 
+private fun engineTitle(mode: MangaOcrMode): String {
+    val title =
+        when (mode) {
+            MangaOcrMode.AUTO -> "Auto"
+            MangaOcrMode.LOCAL -> "Manga OCR"
+            MangaOcrMode.LENS -> "Google Lens"
+            MangaOcrMode.MLKIT -> "ML Kit"
+        }
+    return title
+}
+
 private fun engineHint(mode: MangaOcrMode, isInstalled: Boolean): String {
     val hint =
         when {
-            mode == MangaOcrMode.AUTO && isInstalled -> "Auto reads pages on-device with the manga OCR models (offline, close to mokuro)."
-            mode == MangaOcrMode.AUTO -> "Auto uses Google Lens until the manga OCR models are downloaded, and ML Kit when offline."
-            mode == MangaOcrMode.LOCAL -> "PP-OCRv6 manga + a speech-bubble detector, fully offline. Best for Japanese manga."
-            mode == MangaOcrMode.LENS -> "Google Lens (online, like Manatan). Bubbles are grouped with the bubble detector once downloaded."
-            else -> "Basic offline OCR. Misses ruby and often scrambles vertical columns."
+            mode == MangaOcrMode.AUTO && isInstalled -> "Manga OCR on this device"
+            mode == MangaOcrMode.AUTO -> "Google Lens until the models below are downloaded"
+            mode == MangaOcrMode.LOCAL -> "On-device and offline, best for Japanese manga"
+            mode == MangaOcrMode.LENS -> "Online, like Manatan"
+            else -> "Basic and offline; often scrambles vertical text"
         }
     return hint
 }
@@ -105,11 +108,12 @@ private fun ModelDownloadRow(state: MangaModelDownloads.State, onDownload: () ->
             state.isInstalled -> {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        "Manga OCR models installed ($sizeMb MB)",
-                        style = MaterialTheme.typography.bodySmall,
+                        text = "Manga OCR models · $sizeMb MB",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.weight(1f),
                     )
-                    OutlinedButton(onClick = onRemove) { Text("Remove") }
+                    TextButton(onClick = onRemove) { Text("Remove") }
                 }
             }
 
@@ -154,8 +158,7 @@ private fun BatchPreOcrButtonRow(batchProgress: MangaPreOcrQueue.VolumeProgress?
             )
         }
         Text(
-            "Reads every page in the background with the engine above, so pages open instantly (like a .mokuro file). " +
-                "Pages read by another engine are redone; hand edits are kept.",
+            "Reads the whole volume in the background so pages open instantly. Hand edits are kept.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

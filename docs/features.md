@@ -81,16 +81,16 @@ Everything the app does, in detail. The short version is in the [README](../READ
   to upscaled ML Kit (Japanese) or the downloaded PaddleOCR pack (English/German). Furigana, noise
   and edge page numbers are filtered out; Lens pages are grouped by the same bubble detector when it
   is installed (else Manatan's Union-Find merge, `MangaOcrGrouping`). Reader settings let you pick
-  *Auto* / *Manga OCR (on-device)* / *Google Lens* / *ML Kit*, download or remove the models, toggle
-  *Pre-OCR next pages*, or batch pre-OCR an entire volume (*Prepare OCR for all pages*, also in the
+  *Auto* / *Manga OCR* / *Google Lens* / *ML Kit*, download or remove the models, toggle
+  *Read ahead*, or batch pre-OCR an entire volume (*Prepare OCR for all pages*, also in the
   shelf menu with live `OCR X/Y` progress; pages read by another engine are redone, hand edits and
   mokuro pages kept). Desktop `mokuro volume.cbz` writes a `volume.mokuro` that imports alongside the
   `.cbz` — still the most accurate option (89 vs 84–88 of 99 bubbles). Inside the reader: Single-page, Double-page spread (with
-  *Cover page offset*), and Vertical-scroll modes; RTL / LTR direction; *Transparent*, *Readable
-  (Light)*, *Readable (Dark)*, and *Hidden* text overlays with optional subtle box borders;
+  *Cover page offset*), and Vertical-scroll modes; RTL / LTR direction; *Clear*, *Light*,
+  *Dark*, and *Hidden* text boxes (the eye icon cycles them) with optional box outlines;
   pinch-to-zoom and pan; narrowed edge / L-shape / off tap zones with nearest-glyph bubble
   fallback so tapping words never turns pages; tap any character to look up or hold-and-drag to
-  select; and an inline *Edit text boxes* mode (tap pencil icon in HUD) to fix or delete any box.
+  select; and an inline *Edit text boxes* mode (top bar ⋮ menu, next to *Re-read this page* and *Reader settings*) to fix or delete any box.
 - **Panel cropper before *+ Anki*** — when *Crop panel on Add to Anki* is enabled (default on in
   reader settings), tapping *+ Anki* in the manga lookup popup (or the card editor) opens a
   full-screen interactive cropper with *Panel*, *Bubble*, and *Full page* quick presets, corner/edge

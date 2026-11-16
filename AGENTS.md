@@ -635,6 +635,11 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   Fresh install (`firstInstallTime == lastUpdateTime`) records silently; no seen version = only the
   current notes; Markdown link definitions (`[0.6.0]: https://…`) are dropped (they leaked into
   the oldest section). Debug builds are always 0.1.0, so they show the 0.1.0 notes once.
+- **Theme sets every Material role** (`ui/theme/Theme.kt`): a role left out falls back to M3's
+  baseline purple (tonal buttons, chips, segmented buttons, sheets, cards turned lilac). Keep
+  `secondaryContainer` visibly lighter than `surfaceContainerHighest`, or tonal buttons vanish on
+  cards. Phone checks: the Pad 7 at S24 size `wm size 1080x2340 && wm density 480` (360 dp), then
+  `wm size reset; wm density reset`. Reader settings controls live in `ReaderSettingsControls.kt`.
 - **New debug endpoints go in `debug/DebugExtras.kt`** (routed by one `if` before `DebugApi`'s
   `when`): adding a `when` branch, or editing any branch, resurfaces ~90 baselined findings.
 

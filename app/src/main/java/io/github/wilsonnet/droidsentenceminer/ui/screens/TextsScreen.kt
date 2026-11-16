@@ -131,10 +131,18 @@ fun TextsScreen(modifier: Modifier = Modifier) {
         verticalArrangement = Arrangement.spacedBy(8.dp),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 16.dp),
     ) {
+        item(key = "title") {
+            Text(
+                text = "Texts",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(start = 4.dp, top = 4.dp, bottom = 4.dp),
+            )
+        }
         item(key = "auto") {
             Card(
                 Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
             ) {
                 Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -168,7 +176,7 @@ fun TextsScreen(modifier: Modifier = Modifier) {
                             !audioEnabled -> "Sentence audio is off (Settings)"
                             !hasAudioPermission -> "Audio capture needs the microphone permission"
                             live -> "Replay buffer: ${formatDuration(bufferedSec)} of ${formatDuration(buffer.capacitySeconds.toLong())}"
-                            else -> "Replay buffer idle — starts with screen capture"
+                            else -> "Replay buffer starts with screen capture"
                         },
                         style = MaterialTheme.typography.bodySmall,
                     )
@@ -185,7 +193,7 @@ fun TextsScreen(modifier: Modifier = Modifier) {
                         "for portrait and landscape. When sharing the screen, pick \"A single app\" → " +
                         "your game to ignore everything else.",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 if (audioEnabled && !hasAudioPermission) {
                         FilledTonalButton(onClick = { audioPermission.launch(Manifest.permission.RECORD_AUDIO) }) {
@@ -439,6 +447,6 @@ private class ClipPlayer(private val context: Context) {
 private fun hasRecordAudio(context: Context): Boolean =
     ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
 
-private const val HEADER_ITEMS = 2
+private const val HEADER_ITEMS = 3
 
 private fun formatDuration(seconds: Long): String = "%d:%02d".format(seconds / 60, seconds % 60)

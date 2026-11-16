@@ -31,6 +31,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -355,6 +356,8 @@ fun HomeScreen(modifier: Modifier = Modifier) {
                 Text("Test OCR & lookup", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilledTonalButton(
+                        modifier = Modifier.weight(1f),
+                        contentPadding = ButtonDefaults.TextButtonContentPadding,
                         enabled = !testing,
                         onClick = {
                             scope.launch {
@@ -363,13 +366,15 @@ fun HomeScreen(modifier: Modifier = Modifier) {
                                 else testInfo = "Sample image missing from assets"
                             }
                         },
-                    ) { Text("Run built-in sample") }
+                    ) { Text("Built-in sample", maxLines = 1) }
                     FilledTonalButton(
+                        modifier = Modifier.weight(1f),
+                        contentPadding = ButtonDefaults.TextButtonContentPadding,
                         enabled = !testing,
                         onClick = {
                             imagePicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                         },
-                    ) { Text("Pick image") }
+                    ) { Text("Pick image", maxLines = 1) }
                 }
                 if (testing) {
                     Row(verticalAlignment = Alignment.CenterVertically) {

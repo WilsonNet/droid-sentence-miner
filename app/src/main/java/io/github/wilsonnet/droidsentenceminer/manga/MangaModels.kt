@@ -136,7 +136,7 @@ enum class MangaOcrMode(
     /** On-device manga OCR once downloaded; until then Google Lens, falling back to ML Kit offline. */
     AUTO("auto", "Auto"),
 
-    /** On-device manga OCR (PP-OCRv6_manga + bubble detector, needs the ~23 MB models). */
+    /** On-device manga OCR (PP-OCRv6_manga + bubble detector, needs the ~34 MB models). */
     LOCAL("local", "Manga OCR (on-device)"),
 
     /** Always requests Google Lens (requires internet connection). */

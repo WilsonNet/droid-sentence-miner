@@ -78,8 +78,6 @@ import kotlinx.coroutines.launch
 import java.io.IOException
 
 private const val COVER_ASPECT_RATIO = 0.70f
-private const val BADGE_PRIMARY_ALPHA = 0.9f
-private const val BADGE_DARK_ALPHA = 0.65f
 private const val MENU_CIRCLE_ALPHA = 0.55f
 private const val PILL_PERCENT = 50
 
@@ -286,7 +284,7 @@ private fun MangaShelfGrid(
     modifier: Modifier = Modifier,
 ) {
     LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 156.dp),
+        columns = GridCells.Adaptive(minSize = 140.dp),
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -336,15 +334,27 @@ private fun MangaHeader(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            FilledTonalButton(enabled = !importState.isRunning, onClick = onPickFiles, modifier = Modifier.weight(1f)) {
+            // Tighter padding than the default 24 dp keeps both labels on one line at 360 dp.
+            val padding = PaddingValues(horizontal = 12.dp, vertical = 10.dp)
+            FilledTonalButton(
+                enabled = !importState.isRunning,
+                onClick = onPickFiles,
+                contentPadding = padding,
+                modifier = Modifier.weight(1f),
+            ) {
                 Icon(Icons.Default.FolderOpen, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
-                Text("From files")
+                Text("From files", maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            FilledTonalButton(enabled = !importState.isRunning, onClick = onOpenDrive, modifier = Modifier.weight(1f)) {
+            FilledTonalButton(
+                enabled = !importState.isRunning,
+                onClick = onOpenDrive,
+                contentPadding = padding,
+                modifier = Modifier.weight(1f),
+            ) {
                 Icon(Icons.Default.Cloud, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
-                Text("Google Drive")
+                Text("Google Drive", maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
         if (importState.isRunning) ImportProgressCard(importState)
@@ -467,6 +477,8 @@ private fun VolumeGridCard(
                 LinearProgressIndicator(
                     progress = { fraction.coerceIn(minimumValue = 0f, maximumValue = 1f) },
                     modifier = Modifier.fillMaxWidth().height(3.dp).clip(RoundedCornerShape(2.dp)),
+                    gapSize = 0.dp,
+                    drawStopIndicator = {},
                 )
             }
         }
@@ -510,31 +522,7 @@ private fun VolumeCoverBox(
             )
         }
 
-        val isBatchRunning = preOcr?.isRunning == true
-        val badgeText =
-            when {
-                preOcr?.isRunning == true -> "OCR ${preOcr.done}/${preOcr.total}"
-                volume.hasMokuro -> "Mokuro"
-                else -> "Auto OCR"
-            }
-        val badgeColor =
-            if (volume.hasMokuro || isBatchRunning) {
-                MaterialTheme.colorScheme.primary.copy(alpha = BADGE_PRIMARY_ALPHA)
-            } else {
-                Color.Black.copy(alpha = BADGE_DARK_ALPHA)
-            }
-        Surface(
-            shape = RoundedCornerShape(6.dp),
-            color = badgeColor,
-            modifier = Modifier.align(Alignment.TopStart).padding(6.dp),
-        ) {
-            Text(
-                text = badgeText,
-                style = MaterialTheme.typography.labelSmall,
-                color = Color.White,
-                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-            )
-        }
+        MangaVolumeBadge(isMokuro = volume.hasMokuro, preOcr = preOcr, modifier = Modifier.align(Alignment.TopStart))
 
         Box(Modifier.align(Alignment.TopEnd)) {
             VolumeOverflowMenu(

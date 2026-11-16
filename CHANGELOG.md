@@ -21,8 +21,21 @@ versions are the `v*` tags that publish a signed APK on
 - *Prepare OCR for all pages* redoes pages read by another engine than the selected one (mokuro
   and hand-edited pages are kept), so switching engines and preparing the volume upgrades it.
   A 227-page volume takes under 2 minutes on-device.
-- The reader's engine chips are *Auto*, *Manga OCR (on-device)*, *Google Lens* and *ML Kit (basic,
-  offline)*; the page label shows *Manga OCR* / *Lens* / *ML Kit* / *Mokuro*.
+- The reader's engine choice is a list (*Auto*, *Manga OCR*, *Google Lens*, *ML Kit*) with one line
+  on each; the page label shows *Manga OCR* / *Lens* / *ML Kit* / *Mokuro*.
+- **Tidier on phones** (checked at Galaxy S24 size, 360 dp wide):
+  - Reader top bar: back, title, text-overlay toggle and a ⋮ menu (*Re-read this page*, *Edit text
+    boxes*, *Reader settings*), so the volume title and page label fit on one line each.
+  - Reader settings: segmented buttons for layout, page order, text boxes and tap zones instead of
+    wrapping chips; whole rows toggle their switch; grouped as Layout, Text & taps, OCR, Anki &
+    loading.
+  - Manga shelf shows two volumes per row, the import buttons stay on one line, and the cover badge
+    only appears for *Mokuro* or a running full-volume OCR.
+  - The Texts tab has a title like the other tabs; its *Auto OCR text areas* button is visible
+    again; Home's test buttons no longer wrap; settings switches keep a gap from their text and the
+    auto OCR interval slider lost its row of tick dots.
+  - The colour theme sets every Material role, so buttons, chips, cards and sheets are green-grey
+    instead of Material's default lilac.
 
 ## [0.8.0] — 2026-11-16
 

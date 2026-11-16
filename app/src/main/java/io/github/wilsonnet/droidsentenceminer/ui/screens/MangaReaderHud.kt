@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -23,17 +22,19 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.NavigateBefore
 import androidx.compose.material.icons.automirrored.filled.NavigateNext
-import androidx.compose.material.icons.filled.Crop
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.EditOff
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -41,7 +42,6 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -54,7 +54,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -71,7 +70,6 @@ import kotlin.math.roundToInt
 
 private const val HUD_SCRIM_ALPHA = 0.78f
 private const val BUSY_PILL_ALPHA = 0.7f
-private const val MUTED_ICON_ALPHA = 0.45f
 private const val SUBTITLE_ALPHA = 0.75f
 private const val EDGE_PREV_FRAC = 0.16f
 private const val EDGE_NEXT_FRAC = 0.84f
@@ -224,31 +222,78 @@ private fun ReaderTopBar(
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    if (sourceLabel.isNotEmpty()) "$pageLabel · $sourceLabel" else pageLabel,
-                    style = MaterialTheme.typography.labelSmall,
+                    text = if (sourceLabel.isNotEmpty()) "$pageLabel · $sourceLabel" else pageLabel,
+                    style = MaterialTheme.typography.labelMedium,
                     color = Color.White.copy(alpha = SUBTITLE_ALPHA),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
-            IconButton(onClick = onReOcr, enabled = !ocrBusy) {
-                Icon(Icons.Default.Refresh, contentDescription = "Re-run OCR on page", tint = Color.White)
+            if (editMode) {
+                IconButton(onClick = onToggleEdit) {
+                    Icon(Icons.Default.EditOff, contentDescription = "Stop editing text boxes", tint = MaterialTheme.colorScheme.primary)
+                }
             }
             IconButton(onClick = onCycleOverlay) {
                 Icon(
-                    Icons.Default.Visibility,
+                    if (overlayStyle == MangaOverlayStyle.HIDDEN) Icons.Default.VisibilityOff else Icons.Default.Visibility,
                     contentDescription = "Cycle text overlay (${overlayStyle.label})",
-                    tint = if (overlayStyle == MangaOverlayStyle.HIDDEN) Color.White.copy(alpha = MUTED_ICON_ALPHA) else Color.White,
+                    tint = Color.White,
                 )
             }
-            IconButton(onClick = onToggleEdit) {
-                Icon(
-                    Icons.Default.Edit,
-                    contentDescription = "Edit text boxes",
-                    tint = if (editMode) MaterialTheme.colorScheme.primary else Color.White,
-                )
-            }
-            IconButton(onClick = onOpenSettings) {
-                Icon(Icons.Default.Settings, contentDescription = "Reader settings", tint = Color.White)
-            }
+            ReaderOverflowMenu(
+                ocrBusy = ocrBusy,
+                editMode = editMode,
+                onReOcr = onReOcr,
+                onToggleEdit = onToggleEdit,
+                onOpenSettings = onOpenSettings,
+            )
+        }
+    }
+}
+
+@Suppress("FunctionName")
+@Composable
+private fun ReaderOverflowMenu(
+    ocrBusy: Boolean,
+    editMode: Boolean,
+    onReOcr: () -> Unit,
+    onToggleEdit: () -> Unit,
+    onOpenSettings: () -> Unit,
+) {
+    var isOpen by remember { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { isOpen = true }) {
+            Icon(Icons.Default.MoreVert, contentDescription = "More reader actions", tint = Color.White)
+        }
+        DropdownMenu(expanded = isOpen, onDismissRequest = { isOpen = false }) {
+            DropdownMenuItem(
+                text = { Text("Re-read this page") },
+                leadingIcon = { Icon(Icons.Default.Refresh, contentDescription = null) },
+                enabled = !ocrBusy,
+                onClick = {
+                    isOpen = false
+                    onReOcr()
+                },
+            )
+            DropdownMenuItem(
+                text = { Text(if (editMode) "Stop editing boxes" else "Edit text boxes") },
+                leadingIcon = {
+                    Icon(if (editMode) Icons.Default.EditOff else Icons.Default.Edit, contentDescription = null)
+                },
+                onClick = {
+                    isOpen = false
+                    onToggleEdit()
+                },
+            )
+            DropdownMenuItem(
+                text = { Text("Reader settings") },
+                leadingIcon = { Icon(Icons.Default.Settings, contentDescription = null) },
+                onClick = {
+                    isOpen = false
+                    onOpenSettings()
+                },
+            )
         }
     }
 }
@@ -328,21 +373,19 @@ internal fun ReaderSettingsSheet(
             .padding(horizontal = 20.dp, vertical = 8.dp)
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column(modifier = sheetModifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("Reader settings", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text("Reader settings", style = MaterialTheme.typography.titleLarge)
             ReaderLayoutSettings(
                 prefsState = prefsState,
                 onReadingMode = onReadingMode,
                 onDirection = onDirection,
                 onCoverOffset = onCoverOffset,
             )
-            HorizontalDivider()
             ReaderOverlaySettings(
                 prefsState = prefsState,
                 onOverlayStyle = onOverlayStyle,
                 onShowBorders = onShowBorders,
                 onTapZone = onTapZone,
             )
-            HorizontalDivider()
             ReaderOcrSettingsSection(
                 ocrMode = prefsState.ocrMode,
                 hasMokuro = hasMokuro,
@@ -350,21 +393,21 @@ internal fun ReaderSettingsSheet(
                 onOcrMode = onOcrMode,
                 onToggleBatchPreOcr = onToggleBatchPreOcr,
             )
-            HorizontalDivider()
-            SettingToggleRow(
-                title = "Crop panel on Add to Anki",
-                subtitle = "Let you crop the exact manga panel before sending the card (recommended)",
-                checked = prefsState.isCropPanelOnMine,
-                onCheckedChange = onCropPanelOnMine,
-                iconVector = Icons.Default.Crop,
-            )
-            SettingToggleRow(
-                title = "Pre-OCR next pages",
-                subtitle = "Run OCR ahead of your current page when no .mokuro is attached",
-                checked = prefsState.isPreloadOcr,
-                onCheckedChange = onPreloadOcr,
-            )
-            Spacer(Modifier.height(8.dp))
+            Column {
+                ReaderSectionTitle("Anki & loading")
+                SettingToggleRow(
+                    title = "Crop panel on Add to Anki",
+                    subtitle = "Pick the exact panel for the card's picture",
+                    checked = prefsState.isCropPanelOnMine,
+                    onCheckedChange = onCropPanelOnMine,
+                )
+                SettingToggleRow(
+                    title = "Read ahead",
+                    subtitle = "OCR the next pages while you read (no .mokuro)",
+                    checked = prefsState.isPreloadOcr,
+                    onCheckedChange = onPreloadOcr,
+                )
+            }
         }
     }
 }
@@ -378,32 +421,16 @@ private fun ReaderLayoutSettings(
     onCoverOffset: (Boolean) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Reading mode", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MangaReadingMode.entries.forEach { mode ->
-                FilterChip(
-                    selected = prefsState.readingMode == mode,
-                    onClick = { onReadingMode(mode) },
-                    label = { Text(mode.label) },
-                )
-            }
-        }
+        ReaderSectionTitle("Layout")
+        ReadingModeSegments(selected = prefsState.readingMode, onSelect = onReadingMode)
         if (prefsState.readingMode != MangaReadingMode.VERTICAL_SCROLL) {
-            Text("Direction", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                MangaDirection.entries.forEach { dir ->
-                    FilterChip(
-                        selected = prefsState.direction == dir,
-                        onClick = { onDirection(dir) },
-                        label = { Text(dir.label) },
-                    )
-                }
-            }
+            ReaderFieldLabel("Page order", modifier = Modifier.padding(top = 4.dp))
+            DirectionSegments(selected = prefsState.direction, onSelect = onDirection)
         }
         if (prefsState.readingMode == MangaReadingMode.DOUBLE_PAGE) {
             SettingToggleRow(
                 title = "Cover page offset",
-                subtitle = "Show page 1 alone before pairing 2-page spreads",
+                subtitle = "Show page 1 alone before pairing spreads",
                 checked = prefsState.isCoverOffset,
                 onCheckedChange = onCoverOffset,
             )
@@ -420,68 +447,17 @@ private fun ReaderOverlaySettings(
     onTapZone: (MangaTapZone) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Text overlay", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            MangaOverlayStyle.entries.take(2).forEach { style ->
-                FilterChip(
-                    selected = prefsState.overlayStyle == style,
-                    onClick = { onOverlayStyle(style) },
-                    label = { Text(style.label) },
-                )
-            }
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            MangaOverlayStyle.entries.drop(2).forEach { style ->
-                FilterChip(
-                    selected = prefsState.overlayStyle == style,
-                    onClick = { onOverlayStyle(style) },
-                    label = { Text(style.label) },
-                )
-            }
-        }
+        ReaderSectionTitle("Text & taps")
+        ReaderFieldLabel("Text boxes")
+        OverlayStyleSegments(selected = prefsState.overlayStyle, onSelect = onOverlayStyle)
         SettingToggleRow(
-            title = "Show text box borders",
-            subtitle = "Subtle outlines around detected speech bubbles",
+            title = "Box outlines",
+            subtitle = "Faint borders around detected bubbles",
             checked = prefsState.hasBorders,
             onCheckedChange = onShowBorders,
         )
-        Text("Tap zones", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MangaTapZone.entries.forEach { zone ->
-                FilterChip(
-                    selected = prefsState.tapZone == zone,
-                    onClick = { onTapZone(zone) },
-                    label = { Text(zone.label.substringBefore(" (")) },
-                )
-            }
-        }
-    }
-}
-
-@Suppress("FunctionName")
-@Composable
-private fun SettingToggleRow(
-    title: String,
-    subtitle: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-    iconVector: ImageVector? = null,
-) {
-    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        if (iconVector != null) {
-            Icon(
-                imageVector = iconVector,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-            )
-            Spacer(Modifier.width(10.dp))
-        }
-        Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge)
-            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        Spacer(Modifier.width(8.dp))
-        Switch(checked = checked, onCheckedChange = onCheckedChange)
+        ReaderFieldLabel("Tap to turn pages")
+        TapZoneSegments(selected = prefsState.tapZone, onSelect = onTapZone)
     }
 }
 
