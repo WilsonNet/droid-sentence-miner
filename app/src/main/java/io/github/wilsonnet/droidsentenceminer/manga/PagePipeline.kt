@@ -72,7 +72,18 @@ object PagePipeline {
         val isMono = PageLevels.isMonochrome(pixels = pixels, width = width, height = height, step = MONO_STEP, points = points)
         val planes = toPlanes(pixels = pixels, size = width to height, lut = lut, isMono = isMono, rows = rows)
         val isAi = upscaler != null && dstWidth >= width * AI_FROM
-        val base = if (isAi && upscaler != null) upscaler.upscale2x(planes = planes, width = width, height = height) else planes
+        val base =
+            if (isAi && upscaler != null) {
+                val doubled = upscaler.upscale2x(planes = planes, width = width, height = height)
+                planes.indices.forEach { c ->
+                    rows.run(height * 2) { range ->
+                        clampToSource(src = planes[c], out = doubled[c], width = width, height = height, range = range)
+                    }
+                }
+                doubled
+            } else {
+                planes
+            }
         val baseWidth = if (isAi) width * 2 else width
         val baseHeight = if (isAi) height * 2 else height
         val isShrinking = dstWidth < baseWidth * SHRINK_BELOW
@@ -127,6 +138,29 @@ object PagePipeline {
                 }
             }
         return planes
+    }
+
+    // Anti-ringing for the AI step: no 2x pixel gets brighter than the 2x2 source pixels around it.
+    // That removes the white rims the CNN drew beside dark lines; darker is allowed, since deblurred
+    // thin lines rightly end up darker than any blurred source pixel (a two-sided clamp cost SSIM
+    // 0.820 → 0.805 and edge sharpness 0.73 → 0.64 on the benchmark).
+    private fun clampToSource(src: ByteArray, out: ByteArray, width: Int, height: Int, range: IntRange) {
+        val outWidth = width * 2
+        for (oy in range) {
+            val y0 = ((oy - 1) / 2).coerceIn(minimumValue = 0, maximumValue = height - 1)
+            val y1 = (y0 + 1).coerceAtMost(height - 1)
+            for (ox in 0 until outWidth) {
+                val x0 = ((ox - 1) / 2).coerceIn(minimumValue = 0, maximumValue = width - 1)
+                val x1 = (x0 + 1).coerceAtMost(width - 1)
+                val a = src[y0 * width + x0].toInt() and BYTE
+                val b = src[y0 * width + x1].toInt() and BYTE
+                val c = src[y1 * width + x0].toInt() and BYTE
+                val d = src[y1 * width + x1].toInt() and BYTE
+                val hi = maxOf(a, b, c, d)
+                val i = oy * outWidth + ox
+                out[i] = (out[i].toInt() and BYTE).coerceAtMost(hi).toByte()
+            }
+        }
     }
 
     private fun fillGray(pixels: IntArray, gray: ByteArray, width: Int, lut: IntArray, range: IntRange) {

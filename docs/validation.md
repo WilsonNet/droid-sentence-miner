@@ -205,8 +205,16 @@ What was measured, on which device, and how. Recipes and scripts: [`.opencode/sk
   | *Soft* | 19.51 | 0.771 | 0.495 |
   | *Crisp* | 19.64 | 0.781 | 0.524 |
   | *Strong* | 19.31 | 0.780 | 0.557 |
-  | Lanczos + CAS + AI (Anime4K Restore-M + x2-M) | 20.99 | 0.817 | 0.716 |
-  | **Crisp + AI** (default) | 20.87 | **0.820** | **0.730** |
+  | Lanczos + CAS + AI (Anime4K Restore-M + x2-M) | 20.92 | 0.816 | 0.694 |
+  | **Crisp + AI** (default) | 20.79 | **0.819** | **0.710** |
+
+  The AI rows are with the 0.9.1 halo fix. 0.9.0 drew thin white rims beside dark lines on real
+  pages (a Black Jack close-up at phone size; the averaged scores didn't show it): Lanczos only
+  clamped ringing when growing, and the AI page is shrunk to the screen, plus the CNN itself
+  overshoots. Now the resampler clamps in both directions and no AI pixel may be brighter than its
+  2×2 source pixels. A two-sided AI clamp also removed the rims but cost SSIM 0.820 → 0.805 and edge
+  sharpness 0.73 → 0.64 (deblurred lines are rightly darker than the blurred source); the one-sided
+  clamp keeps 0.819 / 0.71.
 
   Host-only (numpy, same weights): Anime4K x2 alone S/M/L/VL 19.80/19.77/19.84/19.90 dB, SSIM
   0.778–0.788 (the bigger nets barely help); *Restore-M + x2-VL* 20.95 / 0.815 — M is kept, half the

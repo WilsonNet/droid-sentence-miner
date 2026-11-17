@@ -648,7 +648,9 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   MangaScale) are NonCommercial, waifu2x/Real-ESRGAN cost 15 s+/page on CPU. ONNX Runtime stays in
   `ocr/` (Konsist `ArchitectureTest`). Cache key = sampled-pixel fingerprint: an identity key missed
   every prefetched page. Run ONNX on the host in tiles — a full page OOM-killed the terminal.
-  Benchmark: `/manga_enhance` + `tools/manga-eval/enhance_bench.py`.
+  Benchmark: `/manga_enhance` + `tools/manga-eval/enhance_bench.py`. Always also *look* at a real
+  page at phone size: 0.9.0 scored well but drew white halos (fixed in 0.9.1 by clamping Lanczos
+  ringing when shrinking and AI pixels brighter than their 2×2 source).
 - **New debug endpoints go in `debug/DebugExtras.kt`** (routed by one `if` before `DebugApi`'s
   `when`): adding a `when` branch, or editing any branch, resurfaces ~90 baselined findings.
 

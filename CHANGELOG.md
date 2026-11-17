@@ -6,6 +6,13 @@ versions are the `v*` tags that publish a signed APK on
 
 ## [Unreleased]
 
+## [0.9.1] — 2026-11-16
+
+### Fixed
+- **No more white halos around lines with AI upscaling**: the AI page was shrunk to the screen with
+  a filter that could ring, and the network brightened pixels beside dark strokes. Both are clamped
+  now (sharpness is kept: SSIM 0.819 vs 0.712 for a plain stretch on the test pages).
+
 ## [0.9.0] — 2026-11-16
 
 ### Added
@@ -263,7 +270,8 @@ First release.
 - Microphone fallback for apps that block audio capture; typewriter-text handling for visual novels.
 - Tablet/landscape layout with a navigation rail.
 
-[Unreleased]: https://github.com/WilsonNet/droid-sentence-miner/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/WilsonNet/droid-sentence-miner/compare/v0.9.1...HEAD
+[0.9.1]: https://github.com/WilsonNet/droid-sentence-miner/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/WilsonNet/droid-sentence-miner/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/WilsonNet/droid-sentence-miner/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/WilsonNet/droid-sentence-miner/compare/v0.6.0...v0.7.0
