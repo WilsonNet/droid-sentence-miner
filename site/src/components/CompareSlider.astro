@@ -1,0 +1,44 @@
+---
+import { Image } from "astro:assets";
+import type { ImageMetadata } from "astro";
+
+interface Props {
+  after: ImageMetadata;
+  afterLabel: string;
+  alt: string;
+  before: ImageMetadata;
+  beforeLabel: string;
+  class?: string;
+}
+
+const { after, afterLabel, alt, before, beforeLabel, class: className = "" } = Astro.props;
+const widths = [480, 720, 960, 1280];
+const sizes = "(min-width: 1024px) 560px, 92vw";
+---
+
+<figure class:list={["compare", className]} data-compare style="--pos: 50%">
+  <Image src={before} alt={alt} widths={widths} sizes={sizes} quality={86} class="compare-img" />
+  <div class="compare-after" aria-hidden="true">
+    <Image src={after} alt="" widths={widths} sizes={sizes} quality={86} class="compare-img" />
+  </div>
+  <span class="compare-line" aria-hidden="true"><span class="compare-knob"></span></span>
+  <span class="compare-tag compare-tag-before" aria-hidden="true">{beforeLabel}</span>
+  <span class="compare-tag compare-tag-after" aria-hidden="true">{afterLabel}</span>
+  <input
+    class="compare-range"
+    type="range"
+    min="0"
+    max="100"
+    value="50"
+    aria-label={`Drag to compare: left of the line is ${beforeLabel}, right is ${afterLabel}`}
+  />
+</figure>
+
+<script>
+  for (const figure of document.querySelectorAll<HTMLElement>("[data-compare]")) {
+    const range = figure.querySelector<HTMLInputElement>(".compare-range");
+    range?.addEventListener("input", () => {
+      figure.style.setProperty("--pos", `${range.value}%`);
+    });
+  }
+</script>

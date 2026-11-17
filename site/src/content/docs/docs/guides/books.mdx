@@ -86,7 +86,24 @@ tap any word on the page to look it up.
   (`mokuro volume.cbz`), import the `volume.mokuro` it writes together with the `.cbz` — still the
   most accurate text.
 
-Fix a misread box with ✎ in the top bar; *+ Anki* lets you crop the panel or bubble for the card.
+Fix a misread box with *Edit text boxes* in the top bar's ⋮ menu; *+ Anki* lets you crop the panel or
+bubble for the card.
+
+### Crisp pages and AI upscaling
+
+Scans are often grey, yellowed or soft. *Reader settings → Image* cleans the page up as you read:
+
+- **Page filter** — *Off*, *Soft*, *Crisp* (default) or *Strong*. Paper turns white and ink black
+  (yellowed or sepia black-and-white scans become pure grey), the page is resized to your exact
+  screen with a sharp filter instead of a soft stretch, and line art is sharpened.
+- **AI upscaling** (default on) — pages that are smaller than your screen first go through a small
+  neural network ([Anime4K](https://github.com/bloc97/Anime4K)) that rebuilds lines at twice the
+  size. It is bundled in the app; nothing is downloaded. A black-and-white page takes about a
+  second on a recent tablet, and the next pages are prepared while you read, so turning a page is
+  instant. Phones holding big pages skip it, since the page shrinks to fit anyway.
+
+The filter only changes how the page looks: OCR, text box positions and the Anki panel crop always
+use the original page. Set it to *Off* to see the scan exactly as it is in the file.
 
 ## Related
 

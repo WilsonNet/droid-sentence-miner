@@ -1,7 +1,12 @@
 ---
 import bookReader from "../assets/screenshots/book-reader.jpg";
+import mangaAfter from "../assets/screenshots/manga-after.jpg";
+import mangaBefore from "../assets/screenshots/manga-before.jpg";
+import mangaLookup from "../assets/screenshots/manga-lookup.jpg";
+import mangaSettings from "../assets/screenshots/manga-settings.jpg";
 import settingsAudio from "../assets/screenshots/settings-audio.jpg";
 import texts from "../assets/screenshots/texts.jpg";
+import CompareSlider from "../components/CompareSlider.astro";
 import Icon from "../components/Icon.astro";
 import PhoneFrame from "../components/PhoneFrame.astro";
 import SiteFooter from "../components/SiteFooter.astro";
@@ -46,7 +51,7 @@ const faqs = [
   },
   {
     answer:
-      "Book mode is built for paper: it reads tategaki columns right to left, filters ruby, joins split sentences and lays the text back over the page so you can tap the printed characters. Live screen OCR is tuned for horizontal game text and subtitles.",
+      "Yes. The Manga tab reads .cbz volumes with on-device manga OCR (vertical and horizontal text, furigana skipped) or a .mokuro file, and cleans up blurry scans with a page filter and AI upscaling. Book mode does the same for photos of paper pages: tategaki columns right to left, ruby filtered, split sentences joined. Live screen OCR is tuned for horizontal game text and subtitles.",
     question: "Can it read vertical Japanese and manga?",
   },
   {
@@ -56,7 +61,7 @@ const faqs = [
   },
   {
     answer:
-      "Japanese is the focus, and English is supported too: Wiktionary dictionaries, phrasal verbs, IPA and an optional PaddleOCR pack. Pick the language on first launch; only that language downloads dictionaries and models. Other languages can be added as small modules.",
+      "Japanese is the focus, and English and German are supported too: Wiktionary dictionaries, inflections, IPA, German articles on cards and an optional PaddleOCR pack. Pick the language on first launch; only that language downloads dictionaries and models. Other languages can be added as small modules.",
     question: "Is it only for Japanese?",
   },
 ] as const;
@@ -77,7 +82,9 @@ const jsonLd = {
         "Yomitan dictionary lookup",
         "AnkiDroid and AnkiConnect mining",
         "Sentence audio capture and replay buffer",
-        "Manga and book page OCR",
+        "Manga .cbz reader with on-device OCR and Mokuro support",
+        "Manga page filter and Anime4K AI upscaling",
+        "Book page OCR",
         "Floating screen dictionary",
       ],
       image: "https://wilsonnet.github.io/droid-sentence-miner/og.png",
@@ -828,7 +835,7 @@ const installationSteps = [
                 class="transition-transform duration-300 ease-apple group-hover:translate-x-1"
               />
             </a>
-            <span class="text-xs text-white/55 sm:ml-auto">137 JVM unit tests · 4 on-device tests</span>
+            <span class="text-xs text-white/55 sm:ml-auto">297 JVM unit tests · 4 on-device tests</span>
           </div>
         </div>
       </div>
@@ -917,6 +924,101 @@ const installationSteps = [
             />
           </div>
         </div>
+      </div>
+    </section>
+
+    <section id="manga" class="scroll-mt-24 overflow-hidden py-24 sm:py-32">
+      <div class="shell">
+        <div class="max-w-2xl" data-reveal>
+          <h2 class="text-4xl font-semibold tracking-[-0.04em] sm:text-5xl">
+            Read manga. Tap any bubble.
+          </h2>
+          <p class="mt-5 text-lg leading-8 text-muted">
+            Open a <code class="font-mono text-base">.cbz</code> volume and every speech bubble is
+            text you can tap. The words come from OCR that runs on your phone, not a server; blurry,
+            low-resolution scans are cleaned up while you read.
+          </p>
+        </div>
+
+        <div class="mt-14 grid items-center gap-14 lg:grid-cols-[1.15fr_0.85fr] lg:gap-20">
+          <div data-reveal>
+            <CompareSlider
+              before={mangaBefore}
+              after={mangaAfter}
+              beforeLabel="Plain stretch"
+              afterLabel="Crisp + AI upscaling"
+              alt="The same 849×1200 manga panel at phone size: a soft, grey stretch on the left and the cleaned-up page with white paper, solid ink and sharp lines on the right."
+            />
+            <p class="mt-4 text-xs leading-5 text-muted">
+              Part of an 849×1200 scan drawn at phone size, shown at full size. Drag the line to
+              compare. Page from <em>Black Jack ni Yoroshiku</em> by Shuho Sato, free for secondary use.
+            </p>
+          </div>
+
+          <div class="relative flex justify-center gap-5 py-6 sm:gap-8" data-reveal>
+            <div
+              class="pointer-events-none absolute top-1/2 left-1/2 size-[22rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-pine-200/35 blur-3xl"
+              aria-hidden="true"
+            >
+            </div>
+            <PhoneFrame
+              image={mangaLookup}
+              alt="Manga reader: tapping 寝 in a speech bubble opens the dictionary popup for 寝る with an Anki button."
+              class="relative z-10 w-[46%] -translate-y-4 sm:w-[15rem] rotate-[-2deg]"
+              sizes="(min-width: 640px) 240px, 46vw"
+            />
+            <PhoneFrame
+              image={mangaSettings}
+              alt="Reader settings: page filter Off, Soft, Crisp or Strong, AI upscaling, text boxes, tap zones and the OCR engine."
+              class="relative z-10 w-[46%] translate-y-8 sm:w-[15rem] rotate-[2deg]"
+              sizes="(min-width: 640px) 240px, 46vw"
+            />
+          </div>
+        </div>
+
+        <ul class="mt-16 grid gap-x-10 gap-y-8 text-sm sm:grid-cols-2 lg:grid-cols-4" data-reveal>
+          <li>
+            <strong class="block font-semibold text-ink">On-device manga OCR</strong>
+            <span class="mt-1.5 block leading-6 text-muted">
+              A bubble detector and a manga-trained recognizer read vertical text offline, about a
+              second a page: 84–88 of 99 test bubbles exact. Google Lens is there as a fallback.
+            </span>
+          </li>
+          <li>
+            <strong class="block font-semibold text-ink">Mokuro, too</strong>
+            <span class="mt-1.5 block leading-6 text-muted">
+              Import a <code class="font-mono text-xs">.mokuro</code> file with the volume and the text
+              is there instantly. Single page, spreads or vertical scroll; right to left or left to right.
+            </span>
+          </li>
+          <li>
+            <strong class="block font-semibold text-ink">Crisp pages, AI upscaling</strong>
+            <span class="mt-1.5 block leading-6 text-muted">
+              Paper to white, ink to black, a sharp resize to your exact screen, and Anime4K upscaling
+              for small scans, prepared for the next pages so turning is instant.
+            </span>
+          </li>
+          <li>
+            <strong class="block font-semibold text-ink">The panel on the card</strong>
+            <span class="mt-1.5 block leading-6 text-muted">
+              Before a word goes to Anki, crop the panel or the bubble; the card gets the sentence,
+              the picture and the word audio.
+            </span>
+          </li>
+        </ul>
+
+        <a
+          href={`${docsUrl}guides/books/#manga-volumes-cbz`}
+          class="group mt-10 inline-flex items-center gap-2 text-sm font-semibold text-pine-800 transition-colors hover:text-pine-600"
+          data-reveal
+        >
+          Reading manga
+          <Icon
+            name="arrow-right"
+            size={15}
+            class="transition-transform duration-300 ease-apple group-hover:translate-x-1"
+          />
+        </a>
       </div>
     </section>
 

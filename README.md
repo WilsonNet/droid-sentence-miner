@@ -30,6 +30,26 @@ with [Yomitan](https://github.com/yomidevs/yomitan) dictionary compatibility.
 Both cards got the sentence, a screenshot, word audio and the sentence's voice clip (click a
 GIF for the MP4; recorded on a Xiaomi Pad 7).
 
+## Manga reader
+
+Open `.cbz` volumes, tap any word in a speech bubble, and send it to Anki with the panel as the
+picture. Raw volumes are read by on-device manga OCR (no account, no upload); `.mokuro` files load
+instantly. Blurry, low-resolution scans are cleaned up as you read: whiter paper, solid ink,
+sharp lines, and AI upscaling for small pages.
+
+<p align="center">
+  <img src="docs/screenshots/manga-reader.jpg" width="30%" alt="Manga reader: a page with OCR text boxes and the reader bar" />
+  <img src="docs/screenshots/manga-lookup.jpg" width="30%" alt="Manga reader: tapping 寝 opens the dictionary popup" />
+  <img src="docs/screenshots/manga-settings.jpg" width="30%" alt="Reader settings: page filter, AI upscaling, text boxes, OCR engine" />
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/manga-filter.jpg" width="80%" alt="The same 849×1200 page at phone size: plain stretch versus Crisp + AI upscaling" />
+</p>
+
+An 849×1200 scan at phone size: the reader's old plain stretch (left) and the default *Crisp* filter
+with AI upscaling (right). Pages: *Black Jack ni Yoroshiku* by Shuho Sato (free for secondary use).
+
 ## What it does
 
 - **Auto OCR** — box the game's dialogue or a video's subtitles once; every new line is logged
@@ -47,9 +67,9 @@ GIF for the MP4; recorded on a Xiaomi Pad 7).
   normalization, and a calibrated microphone fallback for apps that block capture.
 - **Books and manga (`.cbz`)** — read `.cbz` manga from local files or Google Drive with
   `.mokuro` overlays, on-device manga OCR (PP-OCRv6_manga + a bubble detector) or Google Lens (plus
-  background volume pre-OCR,
-  single/double-page/vertical modes, readable text boxes, and panel cropping before sending to
-  Anki), or photograph a printed page and tap the text to look it up.
+  background volume pre-OCR, single/double-page/vertical modes, readable text boxes, a page filter
+  with Anime4K AI upscaling for blurry scans, and panel cropping before sending to Anki), or
+  photograph a printed page and tap the text to look it up.
 - **Multilingual, Japanese first** — pick the language you study on first launch: Japanese
   (main focus), English or German (Wiktionary dictionaries, inflections, IPA, German articles on
   cards, optional PaddleOCR pack); each language has its own Anki deck, note type and card
@@ -111,6 +131,12 @@ This project stands on the shoulders of these projects — thank you:
 - **[PP-OCRv6_manga](https://huggingface.co/Kellenok/PP-OCRv6_manga)** by Kellenok (Apache-2.0,
   PaddleOCR fine-tuned on Manga109-s) and **[comic-text-and-bubble-detector](https://huggingface.co/ogkalu/comic-text-and-bubble-detector)**
   by ogkalu (Apache-2.0) — the on-device manga OCR models, downloaded from Hugging Face at runtime.
+- **[Anime4K](https://github.com/bloc97/Anime4K)** by bloc97 (MIT) — the Restore and x2 upscaling
+  CNNs behind the manga reader's *AI upscaling*, converted from its mpv shaders into a small ONNX
+  graph bundled in the APK (`tools/manga-eval/anime4k_onnx.py`). AMD's
+  [FidelityFX CAS](https://gpuopen.com/fidelityfx-cas/) (MIT) is the page filter's sharpener.
+- **[Black Jack ni Yoroshiku](https://densho810.com/free/)** by Shuho Sato — free for secondary use;
+  its pages appear in the README and website screenshots.
 - **[GameSentenceMiner](https://github.com/bpwhelan/GameSentenceMiner)** (GPL-3.0) — the whole
   concept: OCR on untranslated games, popup lookups, one-press Anki cards with audio, the two-pass
   OCR pipeline and the sentence-audio editing workflow.
