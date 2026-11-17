@@ -16,7 +16,7 @@ import org.json.JSONObject
  */
 object DebugExtras {
     /** Paths answered by [handle]. */
-    val PATHS = setOf("/whats_new", "/card_contents", "/manga_ocr")
+    val PATHS = setOf("/whats_new", "/card_contents", "/manga_ocr", "/manga_enhance")
 
     /** Answers one request for a path in [PATHS]. */
     fun handle(app: Application, path: String, params: Map<String, String>): JSONObject {
@@ -24,6 +24,7 @@ object DebugExtras {
             when (path) {
                 "/whats_new" -> whatsNew(app, params)
                 "/card_contents" -> cardContents(app)
+                "/manga_enhance" -> EnhanceDebug.handle(app, params)
                 else -> MangaDebug.handle(app, params)
             }
         return response

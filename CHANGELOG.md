@@ -13,6 +13,17 @@ versions are the `v*` tags that publish a signed APK on
   on a Xiaomi Pad 7, and on a hand-checked set of 99 bubbles (One Piece, Berserk) it reads 84–88
   bubbles exactly — Google Lens read 65, ML Kit 21, a desktop mokuro run 89. *Auto* uses it once
   downloaded; taps land on the right character (per-glyph boxes).
+- **Crisper manga pages** (*Reader settings → Image*, on by default): a page filter that turns grey
+  or yellowed paper white and ink solid black, resizes the page to your screen with a sharp Lanczos
+  filter instead of a soft stretch, and sharpens line art with AMD's contrast-adaptive sharpening
+  (CAS). *Off* / *Soft* / *Crisp* / *Strong*. Black-and-white pages are kept as one grey channel, a
+  quarter of the memory. ~0.15 s per page on a Xiaomi Pad 7, prepared ahead while you read.
+- **AI upscaling** (*Reader settings → Image*, on by default): low-resolution pages (drawn at 1.2×
+  their size or more) go through Anime4K's Restore + 2× CNNs (MIT, 74 KB, bundled — no download)
+  before the filter. On blurred, half-size test pages it recovers twice the edge sharpness of the
+  old stretch (SSIM 0.82 vs 0.71); about 0.8 s for a black-and-white page on the Pad 7, prepared
+  for the next pages so turning a page is instant. The page shows the quick filter first if the AI
+  copy isn't ready. OCR always reads the original page.
 
 ### Changed
 - **Google Lens pages are grouped by the bubble detector** when the models are downloaded: 71 of 99

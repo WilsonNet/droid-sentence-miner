@@ -38,6 +38,7 @@ import io.github.wilsonnet.droidsentenceminer.manga.MangaBlock
 import io.github.wilsonnet.droidsentenceminer.manga.MangaDirection
 import io.github.wilsonnet.droidsentenceminer.manga.MangaOcrMode
 import io.github.wilsonnet.droidsentenceminer.manga.MangaOverlayStyle
+import io.github.wilsonnet.droidsentenceminer.manga.MangaPageFilter
 import io.github.wilsonnet.droidsentenceminer.manga.MangaPageOcr
 import io.github.wilsonnet.droidsentenceminer.manga.MangaPreOcrQueue
 import io.github.wilsonnet.droidsentenceminer.manga.MangaReadingMode
@@ -68,6 +69,8 @@ internal data class ReaderPrefsState(
     val ocrMode: MangaOcrMode,
     val isCropPanelOnMine: Boolean,
     val isPreloadOcr: Boolean,
+    val pageFilter: MangaPageFilter,
+    val isAiUpscale: Boolean,
 )
 
 private data class ReaderCharTapInput(
@@ -204,6 +207,8 @@ fun MangaReaderScreen(volume: MangaVolumeEntity, onClose: () -> Unit, modifier: 
                     bitmap = pageBitmaps[idx],
                     ocr = pageOcrs[idx],
                     picked = if (p != null && p.pageIndex == idx) p else null,
+                    filter = prefsState.pageFilter,
+                    isAiUpscale = prefsState.isAiUpscale,
                 )
             },
             prefsState = prefsState,
@@ -361,6 +366,8 @@ private fun rememberReaderPrefsState(container: AppContainer): ReaderPrefsState 
     val ocrModeId by container.prefs.mangaOcrMode.collectAsState(initial = null)
     val isCropPanelOnMine by container.prefs.mangaCropPanelOnMine.collectAsState(initial = true)
     val isPreloadOcr by container.prefs.mangaPreloadOcr.collectAsState(initial = true)
+    val pageFilterId by container.prefs.mangaPageFilter.collectAsState(initial = null)
+    val isAiUpscale by container.prefs.mangaAiUpscale.collectAsState(initial = true)
     return ReaderPrefsState(
         readingMode = MangaReadingMode.fromId(readingModeId),
         direction = MangaDirection.fromId(directionId),
@@ -371,6 +378,8 @@ private fun rememberReaderPrefsState(container: AppContainer): ReaderPrefsState 
         ocrMode = MangaOcrMode.fromId(ocrModeId),
         isCropPanelOnMine = isCropPanelOnMine,
         isPreloadOcr = isPreloadOcr,
+        pageFilter = MangaPageFilter.fromId(pageFilterId),
+        isAiUpscale = isAiUpscale,
     )
 }
 
@@ -576,6 +585,8 @@ private fun ReaderDialogs(
             onReadingMode = { m -> onUpdateSetting { it.prefs.setMangaReadingMode(m.id) } },
             onDirection = { d -> onUpdateSetting { it.prefs.setMangaDirection(d.id) } },
             onCoverOffset = { v -> onUpdateSetting { it.prefs.setMangaCoverOffset(v) } },
+            onPageFilter = { f -> onUpdateSetting { it.prefs.setMangaPageFilter(f.id) } },
+            onAiUpscale = { v -> onUpdateSetting { it.prefs.setMangaAiUpscale(v) } },
             onOverlayStyle = { s -> onUpdateSetting { it.prefs.setMangaOverlayStyle(s.id) } },
             onShowBorders = { v -> onUpdateSetting { it.prefs.setMangaShowBorders(v) } },
             onTapZone = { z -> onUpdateSetting { it.prefs.setMangaTapZone(z.id) } },

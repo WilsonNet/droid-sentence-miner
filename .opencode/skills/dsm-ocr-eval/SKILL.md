@@ -147,6 +147,24 @@ regions 88, PP-OCRv6_manga + regions 88 host / 84 on the Pad 7 (~0.7 s/page), Le
 Lens + Manatan merge 65, meikiocr vertical rec 53, ML Kit 21. The GT was bootstrapped from mokuro's
 output and corrected by eye, so mokuro's 89 is slightly flattered.
 
+### Page filter / AI upscaling (display, not OCR)
+
+```bash
+# same pages in files/manga-eval/; quality = shrink 2x + blur + JPEG on the host, restore on device
+python tools/manga-eval/enhance_bench.py quality PAGES_DIR OUT_DIR op042 … bk080   # PSNR/SSIM/edge per method
+python tools/manga-eval/enhance_bench.py speed PAGES_DIR OUT_DIR bk013 op042 …     # ms at Pad 7 / S24 slot sizes
+# Anime4K weights: shaders from github.com/bloc97/Anime4K (MIT) → text → ONNX (needs a venv with onnx)
+python tools/manga-eval/anime4k_convert.py convert Anime4K_Upscale_CNN_x2_M.glsl x2_M.txt
+venv/bin/python tools/manga-eval/anime4k_onnx.py app/src/main/assets/anime4k/restore_x2_M.onnx restore_M.txt x2_M.txt
+venv/bin/python tools/manga-eval/anime4k_onnx.py --check OUT.onnx crop.png restore_M.txt x2_M.txt  # vs numpy
+```
+
+The scripts need numpy/Pillow/scipy from the user site (run without `-I`). Never run an ONNX
+upscaler on a whole page on the host: intermediates for 1370×2160 took several GB and the
+OOM killer took the terminal down — tile it (256 px + 16 px halo, as `PageUpscaler` does).
+Results in `docs/validation.md`: Crisp + AI SSIM 0.820 vs bilinear 0.712, edge sharpness 2.06×;
+Crisp 0.15 s / AI 0.83 s per mono page on the Pad 7.
+
 ## Latin-script / English OCR
 
 English (and any Latin-script module) is scored with case and punctuation, because a lookup

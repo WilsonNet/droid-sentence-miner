@@ -2,7 +2,6 @@ package io.github.wilsonnet.droidsentenceminer.ui.screens
 
 import android.graphics.Bitmap
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -37,12 +36,10 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.positionInWindow
@@ -54,6 +51,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import io.github.wilsonnet.droidsentenceminer.manga.MangaBlock
 import io.github.wilsonnet.droidsentenceminer.manga.MangaOverlayStyle
+import io.github.wilsonnet.droidsentenceminer.manga.MangaPageFilter
 import io.github.wilsonnet.droidsentenceminer.manga.MangaPageOcr
 import io.github.wilsonnet.droidsentenceminer.manga.MangaSpreadSlot
 import io.github.wilsonnet.droidsentenceminer.ocr.BoundingBox
@@ -68,6 +66,7 @@ private data class LineList(val items: List<String>)
 
 private const val DEFAULT_PAGE_ASPECT = 0.7f
 private const val HIT_SLACK_DP = 14
+private const val DETAIL_ZOOM = 1.15f
 private const val EDIT_BORDER_ALPHA = 0.7f
 private const val NORMAL_BORDER_ALPHA = 0.28f
 private const val HIGHLIGHT_ALPHA = 0.36f
@@ -112,6 +111,10 @@ data class MangaPageRenderState(
     val ocr: MangaPageOcr?,
     /** Currently active word selection on this page, if any. */
     val picked: MangaPick?,
+    /** Display filter for the artwork. */
+    val filter: MangaPageFilter = MangaPageFilter.OFF,
+    /** Whether [filter] runs the AI 2x upscaler on small pages. */
+    val isAiUpscale: Boolean = false,
 )
 
 /** Single-page or 2-page spread slot with pinch-to-zoom, pan, and tap-zone handling. */
@@ -374,6 +377,9 @@ fun MangaPageSurface(
         editMode = editMode,
         dragging = dragging,
         picked = state.picked,
+        filter = state.filter,
+        isAiUpscale = state.isAiUpscale,
+        isZoomed = zoom > DETAIL_ZOOM,
         modifier = pageModifier,
     )
 }
@@ -390,13 +396,18 @@ private fun PageArtworkAndOverlays(
     editMode: Boolean,
     dragging: Pair<Int, IntRange>?,
     picked: MangaPick?,
+    filter: MangaPageFilter,
+    isAiUpscale: Boolean,
+    isZoomed: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier) {
-        Image(
-            bitmap = remember(bitmap) { bitmap.asImageBitmap() },
-            contentDescription = "Manga page ${pageIndex + 1}",
-            contentScale = ContentScale.Fit,
+        FilteredPageImage(
+            bitmap = bitmap,
+            filter = filter,
+            isAiUpscale = isAiUpscale,
+            isZoomed = isZoomed,
+            description = "Manga page ${pageIndex + 1}",
             modifier = Modifier.fillMaxSize(),
         )
 

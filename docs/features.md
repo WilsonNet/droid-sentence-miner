@@ -91,6 +91,13 @@ Everything the app does, in detail. The short version is in the [README](../READ
   pinch-to-zoom and pan; narrowed edge / L-shape / off tap zones with nearest-glyph bubble
   fallback so tapping words never turns pages; tap any character to look up or hold-and-drag to
   select; and an inline *Edit text boxes* mode (top bar ⋮ menu, next to *Re-read this page* and *Reader settings*) to fix or delete any box.
+- **Crisp pages and AI upscaling** — *Reader settings → Image*: the *Page filter* (*Off* / *Soft* /
+  *Crisp*, the default / *Strong*) whitens paper, deepens ink, resizes each page to the exact screen
+  size with Lanczos (anti-ringing, so black lines on white get no halo) and sharpens with AMD CAS;
+  yellowed and sepia black-and-white scans come out pure grey. *AI upscaling* (default on) runs
+  Anime4K's Restore + 2× CNNs on pages drawn at 1.2× their size or more (low-resolution scans, phones
+  holding big pages don't need it). Filtered pages are prepared for the next two pages while you read;
+  OCR, box positions and Anki panel crops always use the original page.
 - **Panel cropper before *+ Anki*** — when *Crop panel on Add to Anki* is enabled (default on in
   reader settings), tapping *+ Anki* in the manga lookup popup (or the card editor) opens a
   full-screen interactive cropper with *Panel*, *Bubble*, and *Full page* quick presets, corner/edge

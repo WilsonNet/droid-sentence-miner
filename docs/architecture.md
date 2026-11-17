@@ -58,7 +58,14 @@ MediaProjection ──► ScreenCaptureManager ──► AutoOcrController ─�
     filter, ghost deduplication, furigana removal, Union-Find tiered bubble clustering).
   - *Auto*: Manga OCR when downloaded, else Lens, falling back offline to upscaled ML Kit (vertical
     languages) or the study language's OCR pack (`PaddleOcr` for Latin languages). `MangaPreOcrQueue` runs 2-concurrent background volume
-  pre-OCR into `manga.db`. `PanelCropperDialog` crops the bitmap in memory via `PanelCropMath` before
+  pre-OCR into `manga.db`. Pages are drawn by `FilteredPageImage` through `MangaPageEnhancer`
+  (display copies only; OCR and crops use the decoded page): `PagePipeline` = `PageLevels` (paper /
+  ink peaks → tone curve, monochrome test incl. yellowed scans) → optional AI 2× (`ocr/PageUpscaler`,
+  Anime4K Restore-M + Upscale-CNN-x2-M chained in `assets/anime4k/restore_x2_M.onnx`, built by
+  `tools/manga-eval/anime4k_onnx.py`, 256 px tiles) → `PageResampler` (Lanczos-3, kernel widened when
+  shrinking, anti-ringing clamp when growing) → `PageSharpen` (AMD CAS). Mono results are `ALPHA_8`
+  ink drawn black over a white rect; results are cached by sampled-pixel fingerprint + filter + size
+  + AI, and the reader prefetches the next pages. `PanelCropperDialog` crops the bitmap in memory via `PanelCropMath` before
   passing it to the card builder / Anki card flow.
 - **Matching**: the study language's module expands the OCR text into dictionary-form candidates
   (Japanese: every substring through `JapaneseDeinflector`, Yomitan/Jiten rules; English: whole

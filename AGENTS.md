@@ -150,7 +150,7 @@ Endpoints: `/state`, `/scan`, `/frame.png`, `/ocr` (`l,t,r,b` crops the file fir
 `/language?set=ja|en&setup=1` (study language; `setup=1` reshows the first-run screen), `/lang_pack?install=1|remove=1`,
 `/word_audio?term=`, `/autoocr?on=1|0`, `/lines?limit=`, `/clip.wav?id=&trim=0|1`, `/line_shot.jpg?id=`, `/mine_line?id=&word=`,
 `/set_region?l=&t=&r=&b=&orientation=`, `/clear_lines`, `/add_line?text=&ago=&dur=`,
-`/quick?l=&t=&r=&b=` (bubble quick lookup of a box), `/whats_new?reset=1|show=1` (update dialog), `/manga_ocr?file=&engine=local|lens|lensreg|mlkit&raw=1` (manga page OCR; `?models=install|status` downloads the manga models),
+`/quick?l=&t=&r=&b=` (bubble quick lookup of a box), `/whats_new?reset=1|show=1` (update dialog), `/manga_ocr?file=&engine=local|lens|lensreg|mlkit&raw=1` (manga page OCR; `?models=install|status` downloads the manga models), `/manga_enhance?file=&w=&h=&method=&ai=1` (manga page filter benchmark),
 `/card_contents` (Anki contents the current field mapping receives), `/install_ocr_models` (meikiocr download), `/ocr?engine=meiki|mlkit`, `/select_areas` (opens the area editor),
 `/install_dict?id=jitendex|jmnedict|pixiv-light` (background install; progress in `/state.dictInstall`),
 `/drive_list?url=` (public Drive folder listing), `/install_drive?url=` (public Drive file, same progress),
@@ -640,6 +640,15 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   `secondaryContainer` visibly lighter than `surfaceContainerHighest`, or tonal buttons vanish on
   cards. Phone checks: the Pad 7 at S24 size `wm size 1080x2340 && wm density 480` (360 dp), then
   `wm size reset; wm density reset`. Reader settings controls live in `ReaderSettingsControls.kt`.
+- **Manga page filter / AI upscaling** (`manga/PagePipeline.kt`, `MangaPageEnhancer`,
+  `ocr/PageUpscaler.kt`, `ui/screens/FilteredPageImage.kt`; prefs `manga_page_filter`,
+  `manga_ai_upscale`): display-only copies — never feed them to OCR or crops. Anime4K's shaders
+  were ported, not retrained: `tools/manga-eval/anime4k_convert.py` parses the GLSL (`mat4` is
+  column-major), `anime4k_onnx.py` builds the ONNX; manga-specific SR models (MangaJaNai,
+  MangaScale) are NonCommercial, waifu2x/Real-ESRGAN cost 15 s+/page on CPU. ONNX Runtime stays in
+  `ocr/` (Konsist `ArchitectureTest`). Cache key = sampled-pixel fingerprint: an identity key missed
+  every prefetched page. Run ONNX on the host in tiles — a full page OOM-killed the terminal.
+  Benchmark: `/manga_enhance` + `tools/manga-eval/enhance_bench.py`.
 - **New debug endpoints go in `debug/DebugExtras.kt`** (routed by one `if` before `DebugApi`'s
   `when`): adding a `when` branch, or editing any branch, resurfaces ~90 baselined findings.
 

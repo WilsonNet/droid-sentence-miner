@@ -7,6 +7,7 @@ import androidx.compose.ui.geometry.Offset
 import io.github.wilsonnet.droidsentenceminer.AppContainer
 import io.github.wilsonnet.droidsentenceminer.manga.MangaBlock
 import io.github.wilsonnet.droidsentenceminer.manga.MangaOcrMode
+import io.github.wilsonnet.droidsentenceminer.manga.MangaPageEnhancer
 import io.github.wilsonnet.droidsentenceminer.manga.MangaPageOcr
 import io.github.wilsonnet.droidsentenceminer.manga.MangaReadingMode
 import io.github.wilsonnet.droidsentenceminer.manga.MangaSpreadLayout
@@ -15,11 +16,13 @@ import io.github.wilsonnet.droidsentenceminer.manga.MangaVolumeEntity
 import io.github.wilsonnet.droidsentenceminer.manga.glyphAt
 import io.github.wilsonnet.droidsentenceminer.manga.nearestGlyph
 import io.github.wilsonnet.droidsentenceminer.manga.withText
+import io.github.wilsonnet.droidsentenceminer.ocr.PageUpscaler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 private const val LOOKAHEAD_DOUBLE = 3
 private const val LOOKAHEAD_SINGLE = 2
+private val PREFETCH_ORDER = listOf(1, 2, -1)
 
 internal data class MangaPageCacheState(
     val container: AppContainer,
@@ -61,11 +64,34 @@ internal suspend fun syncPageAndPreload(
     if (prefsState.readingMode == MangaReadingMode.DOUBLE_PAGE && currentPage + 1 < cache.entries.size) {
         loadPage(currentPage + 1, false)
     }
+    prefetchFilteredPages(cache = cache, currentPage = currentPage, prefsState = prefsState, scope = scope)
     if (prefsState.isPreloadOcr) {
         val depth = if (prefsState.readingMode == MangaReadingMode.DOUBLE_PAGE) LOOKAHEAD_DOUBLE else LOOKAHEAD_SINGLE
         for (delta in 1..depth) {
             val target = currentPage + delta
             if (target in cache.entries.indices) scope.launch { loadPage(target, false) }
+        }
+    }
+}
+
+// Filters the pages around [currentPage] for display ahead of time (decode only, no OCR), so a page
+// turn lands on the finished page instead of swapping it in a moment later.
+internal fun prefetchFilteredPages(
+    cache: MangaPageCacheState,
+    currentPage: Int,
+    prefsState: ReaderPrefsState,
+    scope: CoroutineScope,
+) {
+    val filter = prefsState.pageFilter
+    val upscaler = if (prefsState.isAiUpscale) PageUpscaler.loaded else null
+    MangaPageEnhancer.prefetch(scope = scope, filter = filter, upscaler = upscaler) {
+        PREFETCH_ORDER.mapNotNull { delta ->
+            val target = currentPage + delta
+            if (target in cache.entries.indices) {
+                cache.bitmaps[target] ?: cache.container.mangaRepo.decodePage(cache.volume, cache.entries, target)
+            } else {
+                null
+            }
         }
     }
 }

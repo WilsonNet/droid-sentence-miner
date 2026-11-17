@@ -20,11 +20,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.wilsonnet.droidsentenceminer.manga.MangaDirection
 import io.github.wilsonnet.droidsentenceminer.manga.MangaOverlayStyle
+import io.github.wilsonnet.droidsentenceminer.manga.MangaPageFilter
 import io.github.wilsonnet.droidsentenceminer.manga.MangaReadingMode
 import io.github.wilsonnet.droidsentenceminer.manga.MangaTapZone
 
@@ -104,6 +106,57 @@ internal fun OverlayStyleSegments(selected: MangaOverlayStyle, onSelect: (MangaO
     )
 }
 
+/** Page cleanup strength, with one line saying what the chosen level does. */
+@Suppress("FunctionName") // Composables are PascalCase.
+@Composable
+internal fun PageFilterControl(selected: MangaPageFilter, onSelect: (MangaPageFilter) -> Unit, modifier: Modifier = Modifier) {
+    val entries = MangaPageFilter.entries
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Segments(
+            count = entries.size,
+            selectedIndex = entries.indexOf(selected),
+            label = { i ->
+                when (entries[i]) {
+                    MangaPageFilter.OFF -> "Off"
+                    MangaPageFilter.SOFT -> "Soft"
+                    MangaPageFilter.CRISP -> "Crisp"
+                    MangaPageFilter.STRONG -> "Strong"
+                }
+            },
+            onSelect = { i -> onSelect(entries[i]) },
+        )
+        val hint =
+            when (selected) {
+                MangaPageFilter.OFF -> "Pages exactly as they are in the file"
+                MangaPageFilter.SOFT -> "Cleaner paper, a light sharpen"
+                MangaPageFilter.CRISP -> "White paper, solid ink, sharp lines"
+                MangaPageFilter.STRONG -> "Darker ink and heavy sharpening for faint scans"
+            }
+        Text(hint, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+/** Page filter and AI upscaling for the reader settings sheet. */
+@Suppress("FunctionName") // Composables are PascalCase.
+@Composable
+internal fun ReaderImageSettings(
+    prefsState: ReaderPrefsState,
+    onPageFilter: (MangaPageFilter) -> Unit,
+    onAiUpscale: (Boolean) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        ReaderSectionTitle("Image")
+        PageFilterControl(selected = prefsState.pageFilter, onSelect = onPageFilter)
+        SettingToggleRow(
+            title = "AI upscaling",
+            subtitle = "Redraws low-resolution pages at 2×, about 1 s each",
+            checked = prefsState.isAiUpscale && prefsState.pageFilter != MangaPageFilter.OFF,
+            onCheckedChange = onAiUpscale,
+            enabled = prefsState.pageFilter != MangaPageFilter.OFF,
+        )
+    }
+}
+
 /** Where a tap turns the page. */
 @Suppress("FunctionName") // Composables are PascalCase.
 @Composable
@@ -151,23 +204,29 @@ internal fun SettingToggleRow(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     Row(
         modifier =
         modifier
             .fillMaxWidth()
-            .toggleable(value = checked, role = Role.Switch, onValueChange = onCheckedChange)
+            .toggleable(value = checked, enabled = enabled, role = Role.Switch, onValueChange = onCheckedChange)
             .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Column(
+            modifier = Modifier.weight(1f).alpha(if (enabled) 1f else DISABLED_ALPHA),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
             Text(title, style = MaterialTheme.typography.bodyLarge)
             Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Spacer(Modifier.width(16.dp))
-        Switch(checked = checked, onCheckedChange = null)
+        Switch(checked = checked, onCheckedChange = null, enabled = enabled)
     }
 }
+
+private const val DISABLED_ALPHA = 0.38f
 
 /** One radio choice with a supporting line; the row is the touch target. */
 @Suppress("FunctionName") // Composables are PascalCase.

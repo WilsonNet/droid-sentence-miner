@@ -93,6 +93,8 @@ class DsmPrefs(private val context: Context) {
         val mangaTapZone = stringPreferencesKey("manga_tap_zone")
         val mangaCropPanelOnMine = booleanPreferencesKey("manga_crop_panel_on_mine")
         val mangaPreloadOcr = booleanPreferencesKey("manga_preload_ocr")
+        val mangaPageFilter = stringPreferencesKey("manga_page_filter")
+        val mangaAiUpscale = booleanPreferencesKey("manga_ai_upscale")
         val mangaOcrMode = stringPreferencesKey("manga_ocr_mode")
     }
 
@@ -201,6 +203,12 @@ class DsmPrefs(private val context: Context) {
 
     /** Whether adjacent manga pages run OCR ahead of time when no `.mokuro` is present. */
     val mangaPreloadOcr: Flow<Boolean> = context.dataStore.data.map { it[Keys.mangaPreloadOcr] != false }
+
+    /** Saved manga page filter id ([io.github.wilsonnet.droidsentenceminer.manga.MangaPageFilter]); null = default. */
+    val mangaPageFilter: Flow<String?> = context.dataStore.data.map { it[Keys.mangaPageFilter] }
+
+    /** Whether the manga page filter runs the Anime4K AI 2x upscaler on small pages (default on). */
+    val mangaAiUpscale: Flow<Boolean> = context.dataStore.data.map { it[Keys.mangaAiUpscale] != false }
 
     /** Saved manga OCR engine mode id ([io.github.wilsonnet.droidsentenceminer.manga.MangaOcrMode]). */
     val mangaOcrMode: Flow<String?> = context.dataStore.data.map { it[Keys.mangaOcrMode] }
@@ -334,6 +342,16 @@ class DsmPrefs(private val context: Context) {
     /** Updates whether double-page spreads treat the first page as a solo cover. */
     suspend fun setMangaCoverOffset(value: Boolean) {
         edit { it[Keys.mangaCoverOffset] = value }
+    }
+
+    /** Updates whether the manga page filter uses AI upscaling. */
+    suspend fun setMangaAiUpscale(value: Boolean) {
+        edit { it[Keys.mangaAiUpscale] = value }
+    }
+
+    /** Updates the manga page filter preference. */
+    suspend fun setMangaPageFilter(value: String) {
+        edit { it[Keys.mangaPageFilter] = value }
     }
 
     /** Updates the manga reader text overlay style preference. */

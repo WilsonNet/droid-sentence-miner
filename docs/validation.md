@@ -189,3 +189,41 @@ What was measured, on which device, and how. Recipes and scripts: [`.opencode/sk
   Pad 7 (one blob for a whole page, rec 3.4 s) while the same files ran fine on the x86 host — the
   app downloads FP32. *Prepare OCR for all pages* with Manga OCR: 227 Berserk pages in < 105 s
   (~500 % CPU), then a tap on 頼 highlighted 頼ん and opened 頼む.
+- Manga page filter and AI upscaling (2026-11-16, `tools/manga-eval/enhance_bench.py`, Xiaomi Pad 7
+  `c2bd6564` via `/manga_enhance`). Quality: the 11 eval pages shrunk 2× (box), blurred (σ 0.6) and
+  saved as JPEG q80, then scaled back to full size on the device and compared with the original
+  (luma; edge sharpness = mean Sobel gradient on the original's strongest 10 % edges, output ÷
+  original). Tone filters (*soft/crisp/strong*) change paper/ink levels on purpose, which PSNR/SSIM
+  count as error:
+
+  | Method | PSNR (dB) | SSIM | Edge sharpness |
+  | --- | --- | --- | --- |
+  | bilinear (what the reader drew before) | 18.06 | 0.712 | 0.355 |
+  | Lanczos-3, anti-ringing | 18.85 | 0.745 | 0.429 |
+  | Lanczos + CAS 0.6, sharpen before resize | 19.59 | 0.772 | 0.507 |
+  | Lanczos + CAS 0.6, sharpen after resize | 19.28 | 0.761 | 0.471 |
+  | *Soft* | 19.51 | 0.771 | 0.495 |
+  | *Crisp* | 19.64 | 0.781 | 0.524 |
+  | *Strong* | 19.31 | 0.780 | 0.557 |
+  | Lanczos + CAS + AI (Anime4K Restore-M + x2-M) | 20.99 | 0.817 | 0.716 |
+  | **Crisp + AI** (default) | 20.87 | **0.820** | **0.730** |
+
+  Host-only (numpy, same weights): Anime4K x2 alone S/M/L/VL 19.80/19.77/19.84/19.90 dB, SSIM
+  0.778–0.788 (the bigger nets barely help); *Restore-M + x2-VL* 20.95 / 0.815 — M is kept, half the
+  cost. Speed (median ms of 3, after warm-up; target = the page fit in a portrait slot):
+
+  | Page | Slot | bilinear | Soft | Crisp | Strong | Crisp + AI |
+  | --- | --- | --- | --- | --- | --- | --- |
+  | Berserk 844×1200, mono | Pad 7 2136×3037 | 22 | 152 | 155 | 153 | 827 |
+  | Berserk 844×1200, mono | S24 1080×1536 | 8 | 91 | 85 | 85 | 712 |
+  | One Piece 1370×2160, colour | Pad 7 2030×3200 | 22 | 753 | 753 | 745 | 3542 |
+  | One Piece 1370×2160, colour | S24 1080×1703 | 10 | 371 | 380 | 373 | 376 (no AI: shrinks) |
+
+  Before tuning, *Crisp* took 550 ms (mono) / 2100 ms (colour): float CAS with a division per sample,
+  clamped kernel indices per tap and 4 threads; integer CAS, precomputed indices, all cores and
+  sharpening on the smaller of the two images brought it to 150 / 690 ms. The AI step runs in
+  256 px tiles (16 px halo): a whole 1370×2160 page in one ONNX run used several GB and was killed
+  on the 13 GB host. In the reader the next pages are prepared ahead (+1, +2, −1; a page turn cancels
+  the rest): after the first page every turn showed the finished AI page at once (one AI run per
+  turn in the background, logcat `DSM-Enhance`). The cache keys on sampled pixels, not the Bitmap —
+  the reader and the prefetcher decoded the same page twice and never shared a cached result.

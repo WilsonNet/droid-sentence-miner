@@ -62,6 +62,7 @@ import androidx.compose.ui.unit.dp
 import io.github.wilsonnet.droidsentenceminer.manga.MangaDirection
 import io.github.wilsonnet.droidsentenceminer.manga.MangaOcrMode
 import io.github.wilsonnet.droidsentenceminer.manga.MangaOverlayStyle
+import io.github.wilsonnet.droidsentenceminer.manga.MangaPageFilter
 import io.github.wilsonnet.droidsentenceminer.manga.MangaPageOcr
 import io.github.wilsonnet.droidsentenceminer.manga.MangaPreOcrQueue
 import io.github.wilsonnet.droidsentenceminer.manga.MangaReadingMode
@@ -356,6 +357,8 @@ internal fun ReaderSettingsSheet(
     onReadingMode: (MangaReadingMode) -> Unit,
     onDirection: (MangaDirection) -> Unit,
     onCoverOffset: (Boolean) -> Unit,
+    onPageFilter: (MangaPageFilter) -> Unit,
+    onAiUpscale: (Boolean) -> Unit,
     onOverlayStyle: (MangaOverlayStyle) -> Unit,
     onShowBorders: (Boolean) -> Unit,
     onTapZone: (MangaTapZone) -> Unit,
@@ -380,6 +383,7 @@ internal fun ReaderSettingsSheet(
                 onDirection = onDirection,
                 onCoverOffset = onCoverOffset,
             )
+            ReaderImageSettings(prefsState = prefsState, onPageFilter = onPageFilter, onAiUpscale = onAiUpscale)
             ReaderOverlaySettings(
                 prefsState = prefsState,
                 onOverlayStyle = onOverlayStyle,
