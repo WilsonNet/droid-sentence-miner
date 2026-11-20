@@ -311,12 +311,13 @@ private enum class EntryState(val js: String) {
 }
 
 @Composable
-private fun rememberWordLookup(word: String, dark: Boolean): WordLookupState {
+private fun rememberWordLookup(word: String, dark: Boolean, sentence: String = ""): WordLookupState {
     val context = LocalContext.current
     val container = remember { AppContainer.from(context) }
-    val state = remember(word) { WordLookupState() }
-    LaunchedEffect(word) {
-        val result = container.lookup.lookup(word)
+    val state = remember(word, sentence) { WordLookupState() }
+    LaunchedEffect(key1 = word, key2 = sentence) {
+        // The sentence lets language steps read context (German separable verbs).
+        val result = container.lookup.lookup(word = word, sentence = sentence)
         state.details = result
         state.html = container.miner.buildPopupHtml(word, result, dark)
         state.loading = false
@@ -552,7 +553,7 @@ fun WordLookupDialog(
     val dark = androidx.compose.foundation.isSystemInDarkTheme()
     val stack = rememberLookupStack(word, sentence)
     val entry = stack.last()
-    val state = rememberWordLookup(entry.word, dark)
+    val state = rememberWordLookup(word = entry.word, dark = dark, sentence = entry.sentence)
     // A word reached from a definition gets that definition's sentence, and no line audio/screenshot.
     val mine = mineAction(state, entry.word, entry.sentence, image.takeIf { stack.size == 1 }, onMine.takeIf { stack.size == 1 })
     val edit =
@@ -691,7 +692,7 @@ fun WordLookupCard(
     val dark = androidx.compose.foundation.isSystemInDarkTheme()
     val stack = rememberLookupStack(word, sentence)
     val entry = stack.last()
-    val state = rememberWordLookup(entry.word, dark)
+    val state = rememberWordLookup(word = entry.word, dark = dark, sentence = entry.sentence)
     val pageImage = image.takeIf { stack.size == 1 }
     val focusBox = cropFocusBox.takeIf { stack.size == 1 }
     val mine =

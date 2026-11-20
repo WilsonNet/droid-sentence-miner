@@ -151,7 +151,7 @@ Endpoints: `/state`, `/scan`, `/frame.png`, `/ocr` (`l,t,r,b` crops the file fir
 `/word_audio?term=`, `/autoocr?on=1|0`, `/lines?limit=`, `/clip.wav?id=&trim=0|1`, `/line_shot.jpg?id=`, `/mine_line?id=&word=`,
 `/set_region?l=&t=&r=&b=&orientation=`, `/clear_lines`, `/add_line?text=&ago=&dur=`,
 `/quick?l=&t=&r=&b=` (bubble quick lookup of a box), `/whats_new?reset=1|show=1` (update dialog), `/manga_ocr?file=&engine=local|lens|lensreg|mlkit&raw=1` (manga page OCR; `?models=install|status` downloads the manga models), `/manga_enhance?file=&w=&h=&method=&ai=1` (manga page filter benchmark),
-`/card_contents` (Anki contents the current field mapping receives), `/card_fields?word=` (a card's IPA/gender/lemma/word audio, not added), `/install_ocr_models` (meikiocr download), `/ocr?engine=meiki|mlkit`, `/select_areas` (opens the area editor),
+`/card_contents` (Anki contents the current field mapping receives), `/card_fields?word=&sentence=` (a card's IPA/gender/lemma/word audio, not added), `/install_ocr_models` (meikiocr download), `/ocr?engine=meiki|mlkit`, `/select_areas` (opens the area editor),
 `/install_dict?id=jitendex|jmnedict|pixiv-light` (background install; progress in `/state.dictInstall`),
 `/drive_list?url=` (public Drive folder listing), `/install_drive?url=` (public Drive file, same progress),
 `/anki_notes?word=` (field-level card verification via the AnkiDroid provider),
@@ -630,8 +630,11 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   are built from shared kit pieces (scanner, suffix-rule tables, POS masks, case forms, OCR text
   helpers, row joiner) — `lang/kit` isn't a 2-letter package, so the architecture test lets every
   language import it. Engine behaviors (form-of following, homograph separation, grammar-noise
-  skip, kanji info) are `LookupFeature`s each language opts into; `TermLookup` never checks
-  `usesSpaces` for lookup behavior any more.
+  skip, kanji info, German separable verbs/compounds) are `LookupFeature`s each language opts
+  into; trade-off ones are `LookupOption`s the user can switch off, shown in Settings only for the
+  study language. `TermLookup` never checks `usesSpaces` for lookup behavior; the popup passes its
+  sentence (`lookup(word, sentence = …)`) so steps can read context. Language-specific Settings
+  wording lives in `ui/screens/LanguageSettings.kt`.
 - **OCR pack zips aren't reproducible** (`build_pack.py`): the 0.6.0 hash `eb4db787…` matched a zip
   that was never uploaded (`lang-en-1` 404'd). The module's `sha256` must be the hash of the file
   actually uploaded (`068d48a7…` since 0.7.0, shared by English and German); changing it also means

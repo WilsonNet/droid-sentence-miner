@@ -9,6 +9,7 @@ import io.github.wilsonnet.droidsentenceminer.anki.CardMiner
 import io.github.wilsonnet.droidsentenceminer.book.BookOcr
 import io.github.wilsonnet.droidsentenceminer.book.BookPage
 import io.github.wilsonnet.droidsentenceminer.core.DsmPrefs
+import io.github.wilsonnet.droidsentenceminer.core.LookupOptionPrefs
 import io.github.wilsonnet.droidsentenceminer.dict.DictDatabase
 import io.github.wilsonnet.droidsentenceminer.dict.DictDownloader
 import io.github.wilsonnet.droidsentenceminer.dict.TermLookup
@@ -133,6 +134,9 @@ class AppContainer(private val context: Context) {
     /** Changelog sections of the *What's new* dialog; empty = not shown (see `update/WhatsNew.kt`). */
     val whatsNew = MutableStateFlow<List<ChangelogSection>>(emptyList())
 
+    /** Language lookup options the user switched off (Settings → the study language's lookups). */
+    val lookupOptions by lazy { LookupOptionPrefs(context) }
+
     /**
      * Reads the study language before anything scans text and follows changes. Installs from
      * before languages existed that already have dictionaries are Japanese, without asking.
@@ -140,6 +144,12 @@ class AppContainer(private val context: Context) {
     fun startLanguage() {
         val stored = kotlinx.coroutines.runBlocking { prefs.language.first() }
         applyLanguage(stored)
+        appScope.launch {
+            lookupOptions.disabled.collect { off ->
+                Languages.disabledOptions = off
+                lookup.invalidateCaches()
+            }
+        }
         appScope.launch {
             if (stored == null) {
                 if (db.dictionaryDao().count() > 0) prefs.setLanguage(Languages.DEFAULT_CODE) else languageSetupNeeded.value = true

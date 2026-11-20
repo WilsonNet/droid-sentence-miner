@@ -67,9 +67,11 @@ class MangaOcrEngine(
     /** Runs [mode]'s engine on [bitmap] without touching the cache. */
     suspend fun recognize(bitmap: Bitmap, mode: MangaOcrMode = MangaOcrMode.AUTO): MangaPageOcr {
         val language = Languages.current
-        val local = if (language.usesSpaces) null else withContext(io) { localOcr() }
+        val local = if (hasLocalModels(language)) withContext(io) { localOcr() } else null
+        // A stored "Manga OCR" choice means Auto for languages the manga models don't read.
+        val effective = if (!hasLocalModels(language) && mode == MangaOcrMode.LOCAL) MangaOcrMode.AUTO else mode
         val pageOcr =
-            when (mode) {
+            when (effective) {
                 MangaOcrMode.MLKIT -> {
                     recognizeOffline(bitmap = bitmap, language = language)
                 }
@@ -219,6 +221,7 @@ class MangaOcrEngine(
     /** Decoding and block-assembly helpers. */
     companion object {
         private const val TAG = "DSM-MangaOCR"
+
         private const val MIN_FONT_SIZE = 12f
         private const val VERTICAL_ASPECT_RATIO = 1.2f
         private const val MAX_RUBY_LENGTH = 12
@@ -397,5 +400,8 @@ class MangaOcrEngine(
                 thickness < medianThickness * RUBY_THICKNESS_RATIO &&
                 text.all { ch -> language.isRubyChar(ch) || !language.isTargetChar(ch) }
         }
+
+        /** Whether the on-device manga models (PP-OCRv6_manga, Japanese) read [language]. */
+        fun hasLocalModels(language: LanguageModule): Boolean = !language.usesSpaces
     }
 }

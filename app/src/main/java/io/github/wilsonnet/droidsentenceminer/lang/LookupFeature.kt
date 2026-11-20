@@ -31,6 +31,18 @@ enum class LookupFeature {
 
     /** Look up the kanji of the word in kanji dictionaries (KANJIDIC) for the popup. */
     KANJI_INFO,
+
+    /**
+     * Join a verb with a particle its sentence moved to the end of the clause
+     * ([LanguageModule.clauseForms]: German "Ich stehe früh auf" → aufstehen), listed first.
+     */
+    SEPARABLE_VERBS,
+
+    /**
+     * A word no dictionary lists is split into parts it does list ([LanguageModule.compoundSplits]:
+     * German "Fensterputzmittel" → Fenster + Putzmittel), the head (last part) first.
+     */
+    SPLIT_COMPOUNDS,
     ;
 
     /** Default selections. */

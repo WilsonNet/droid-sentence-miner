@@ -3,6 +3,8 @@ package io.github.wilsonnet.droidsentenceminer.lang.de
 import io.github.wilsonnet.droidsentenceminer.lang.Candidate
 import io.github.wilsonnet.droidsentenceminer.lang.LanguageModule
 import io.github.wilsonnet.droidsentenceminer.lang.LanguagePack
+import io.github.wilsonnet.droidsentenceminer.lang.LookupFeature
+import io.github.wilsonnet.droidsentenceminer.lang.LookupOption
 import io.github.wilsonnet.droidsentenceminer.lang.WordAudioSource
 import io.github.wilsonnet.droidsentenceminer.lang.kit.LatinText
 import io.github.wilsonnet.droidsentenceminer.lang.kit.PosMask
@@ -15,6 +17,7 @@ import io.github.wilsonnet.droidsentenceminer.lang.kit.SpacedScanner
  * capitalized (ALL-CAPS game text). Deinflection: [GermanDeinflector]. Cards get the noun's
  * article (der/die/das) from Wiktionary's gender tags.
  */
+@Suppress("TooManyFunctions") // One override per LanguageModule hook German needs (dsm-language skill).
 object GermanLanguage : LanguageModule {
     override val code = "de"
     override val displayName = "German"
@@ -28,6 +31,23 @@ object GermanLanguage : LanguageModule {
     override val wiktionaryRegions = listOf("", "at", "ch")
     override val wordAudioSources = listOf(WordAudioSource.WIKTIONARY, WordAudioSource.LINGUA_LIBRE)
     override val hasNounGender = true
+
+    @Suppress("MultilineExpressionWrapping") // A property, not a function: the wrapping below is ktlint's own output.
+    override val lookupOptions =
+        listOf(
+            LookupOption(
+                feature = LookupFeature.SEPARABLE_VERBS,
+                title = "Join separable verbs",
+                description = "\"Ich stehe früh auf\": tapping stehe also shows aufstehen when the clause ends in its particle. " +
+                    "Only verbs the dictionary lists are offered.",
+            ),
+            LookupOption(
+                feature = LookupFeature.SPLIT_COMPOUNDS,
+                title = "Split unknown compounds",
+                description = "A compound no dictionary lists (Fensterputzmittel) shows its parts (Fenster + Putzmittel). " +
+                    "Sometimes picks an odd split.",
+            ),
+        )
 
     /**
      * The English pack's PaddleOCR models: the PP-OCRv6 recognizer's character set includes
@@ -84,6 +104,11 @@ object GermanLanguage : LanguageModule {
     override fun looksLikeText(text: String): Boolean = LatinText.looksLikeText(text)
 
     override fun normalizeOcr(text: String): String = GermanScanner.normalizeOcr(text)
+
+    override fun clauseForms(word: String, sentence: String): List<String> =
+        GermanCompounds.clauseForms(word = word, sentence = sentence)
+
+    override fun compoundSplits(word: String): List<Pair<String, String>> = GermanCompounds.compoundSplits(word)
 
     override fun joinRows(previous: String, next: String): String =
         GermanScanner.joinRows(previous = previous, next = next)

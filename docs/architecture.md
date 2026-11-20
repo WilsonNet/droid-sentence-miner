@@ -107,7 +107,14 @@ OCR post-processing, line tracking, Book layout, filters — only asks the modul
 - *Engine features* (`lang/LookupFeature`, chosen in `LanguageModule.lookupFeatures`,
   implemented in `dict/LookupSteps` and `TermLookup`): `FORM_OF_ENTRIES` (wty pointer entries →
   the lemma's entry, 2 levels), `SEPARATE_HOMOGRAPHS` (sequence-0 rows kept apart by glossary),
-  `SKIP_GRAMMAR_NOISE` (single-kana particles skipped while scanning), `KANJI_INFO`. Default =
+  `SKIP_GRAMMAR_NOISE` (single-kana particles skipped while scanning), `KANJI_INFO`,
+  `SEPARABLE_VERBS` (`LanguageModule.clauseForms`: German clause-final particle → *aufstehen*,
+  uses the popup's sentence — `TermLookup.lookup(word, sentence = …)`), `SPLIT_COMPOUNDS`
+  (`LanguageModule.compoundSplits`, only when the word has no entry; a tap on an unknown word then
+  selects the whole word). Languages can expose features as user switches
+  (`LanguageModule.lookupOptions` → `LookupOption`; *Settings → <language> lookups*, shown only for
+  the study language; off-switches in `LookupOptionPrefs`, applied via
+  `Languages.activeLookupFeatures()`). Default =
   `LookupFeature.WIKTIONARY` (the first two); Japanese picks the last two. Post-lookup features
   are `LookupStep`s fed an exact lookup of other words, so a new one (compound splitting,
   separable verbs) is a new enum value + step, opted into per language.

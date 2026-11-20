@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Style
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
@@ -45,6 +46,9 @@ import io.github.wilsonnet.droidsentenceminer.audio.AudioCaptureManager
 import io.github.wilsonnet.droidsentenceminer.core.GlossaryMode
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+
+private const val TWO_PASS_DESCRIPTION =
+    "Re-read detected lines at higher resolution and keep the better result. More accurate, a bit slower."
 
 @Composable
 fun SettingsScreen(modifier: Modifier = Modifier, onOpen: (String) -> Unit = {}) {
@@ -138,6 +142,7 @@ fun SettingsScreen(modifier: Modifier = Modifier, onOpen: (String) -> Unit = {})
             "Anki",
             "Backend, deck, note type and fields" + if (ankiDeck.isNotBlank()) " · deck: $ankiDeck" else "",
         ) { onOpen(io.github.wilsonnet.droidsentenceminer.PAGE_ANKI) }
+        LanguageLookupOptionsCard(languageCode = language.code)
 
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -208,13 +213,17 @@ fun SettingsScreen(modifier: Modifier = Modifier, onOpen: (String) -> Unit = {})
                     }
                     meikiError?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
                 }
-                SettingSwitch(
-                    title = "Two-pass OCR (ML Kit)",
-                    description = "Re-read detected lines at higher resolution and keep the better result. More accurate, a bit slower.",
-                    checked = twoPass,
-                ) { value ->
-                    twoPass = value
-                    scope.launch { container.prefs.setOcrTwoPass(value) }
+                val isMlKitRead =
+                    LanguageSettings.usesMlKit(context = context, language = language, engine = engine, isMeikiInstalled = meikiInstalled)
+                if (isMlKitRead) {
+                    SettingSwitch(
+                        title = "Two-pass OCR (ML Kit)",
+                        description = TWO_PASS_DESCRIPTION,
+                        checked = twoPass,
+                    ) { value ->
+                        twoPass = value
+                        scope.launch { container.prefs.setOcrTwoPass(value) }
+                    }
                 }
                 SettingSwitch(
                     title = "Filter non-${language.displayName} lines",
@@ -342,17 +351,16 @@ fun SettingsScreen(modifier: Modifier = Modifier, onOpen: (String) -> Unit = {})
                 }
                 SettingSwitch(
                     title = "Word audio",
-                    description = "Add the word's pronunciation to the card like Yomitan: JapanesePod101, then " +
-                        "JapanesePod101 search, then Jisho. Needs internet when mining.",
+                    description = LanguageSettings.wordAudioDescription(language),
                     checked = wordAudio,
                 ) { value -> scope.launch { container.prefs.setWordAudio(value) } }
                 if (wordAudio) {
-                    androidx.compose.material3.OutlinedTextField(
+                    OutlinedTextField(
                         value = wordAudioUrlDraft,
                         onValueChange = { wordAudioUrlDraft = it },
                         label = { Text("Custom audio URL (optional)") },
-                        placeholder = { Text("http://127.0.0.1:5050/?term={term}&reading={reading}") },
-                        supportingText = { Text("Tried first, e.g. a local audio server. {term} and {reading} are replaced.") },
+                        placeholder = { Text(LanguageSettings.customAudioPlaceholder(language)) },
+                        supportingText = { Text(LanguageSettings.customAudioHelp(language)) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                         trailingIcon = {
@@ -429,19 +437,24 @@ fun SettingsScreen(modifier: Modifier = Modifier, onOpen: (String) -> Unit = {})
                 Spacer(Modifier.width(4.dp))
                 Text("Credits", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
                 Text(
-                    "• GameSentenceMiner by bpwhelan — OCR pipeline and mining workflow inspiration\n" +
-                        "• Yomitan by yomidevs — dictionary format, deinflection rules, popup UX\n" +
-                        "• Yomihon by the Yomihon project — Kotlin dictionary parser and Japanese deinflector reference (GPL-3.0)\n" +
-                        "• Jiten by Sirush — deinflection rule source\n" +
-                        "• ML Kit by Google — on-device Japanese OCR\n" +
-                        "• AnkiDroid — AnkiDroid API and FlashCards contract\n" +
-                        "• meikiocr by rtr46 — game-trained OCR models (LGPL-3.0), downloaded at runtime\n" +
-                        "• meikidroid by rtr46 — Android game OCR overlay reference\n" +
-                        "• ONNX Runtime by Microsoft — on-device model inference\n" +
-                        "• OwOCR — OCR two-pass concepts used by GSM\n" +
+                    listOf(
+                        "• GameSentenceMiner by bpwhelan — OCR pipeline and mining workflow inspiration",
+                        "• Yomitan by yomidevs — dictionary format, deinflection rules, popup UX",
+                        "• Yomihon by the Yomihon project — Kotlin dictionary parser and Japanese deinflector reference (GPL-3.0)",
+                        "• Jiten by Sirush — deinflection rule source",
+                        "• ML Kit by Google — on-device Japanese OCR",
+                        "• AnkiDroid — AnkiDroid API and FlashCards contract",
+                        "• meikiocr by rtr46 — game-trained OCR models (LGPL-3.0), downloaded at runtime",
+                        "• meikidroid by rtr46 — Android game OCR overlay reference",
+                        "• ONNX Runtime by Microsoft — on-device model inference",
+                        "• OwOCR — OCR two-pass concepts used by GSM",
+                        "• Wiktionary contributors, kaikki.org and wty (CC BY-SA) — English, German and French dictionaries",
+                        "• PaddleOCR by PaddlePaddle (Apache-2.0) — OCR models of the language packs",
+                        "• Wikimedia Commons and Lingua Libre speakers — word recordings",
                         "• Kanjium (CC BY-SA 4.0) — pitch accents. The pitch accent notation, verb particle data, " +
-                        "phonetics, homonyms and other additions or modifications to EDICT, KANJIDIC or KRADFILE " +
-                        "were provided by Uros O. through his free database.",
+                            "phonetics, homonyms and other additions or modifications to EDICT, KANJIDIC or KRADFILE " +
+                            "were provided by Uros O. through his free database.",
+                    ).joinToString("\n"),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

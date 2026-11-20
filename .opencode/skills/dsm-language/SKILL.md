@@ -37,7 +37,10 @@ when a user studies that language. Architecture table: `docs/architecture.md` â†
    same new piece, put it in `lang/kit/`, never import another language. Pick engine steps with
    `lookupFeatures` (default `LookupFeature.WIKTIONARY` suits wty dictionaries; Japanese uses
    `SKIP_GRAMMAR_NOISE` + `KANJI_INFO`); a new engine behavior = a `LookupFeature` value + its
-   `LookupStep` in `dict/LookupSteps.kt`. Look at Yomitan's `ext/js/language/<code>/` transforms
+   `LookupStep` in `dict/LookupSteps.kt`; a behavior with a trade-off becomes a `LookupOption`
+   (title + description) in `lookupOptions`, which Settings renders only for that language
+   (German: separable verbs via `clauseForms`, compounds via `compoundSplits`). Language-specific
+   Settings text lives in `ui/screens/LanguageSettings.kt`, not in `SettingsScreen`. Look at Yomitan's `ext/js/language/<code>/` transforms
    for rule ideas.
 2. Register it in `Languages.ALL` (`lang/Language.kt`) and add a one-line blurb in
    `ui/screens/LanguageScreens.kt` â†’ `blurb()`.

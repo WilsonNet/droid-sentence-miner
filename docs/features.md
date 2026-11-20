@@ -33,6 +33,12 @@ Everything the app does, in detail. The short version is in the [README](../READ
   hyphens kept before inverted pronouns (*dit-il*). Word audio: the files on the word's French
   Wiktionary page (`Fr-chat.ogg`, Lingua Libre speakers), then a Lingua Libre search. Gender field:
   un/une. OCR pack: the English one (reads every French letter, œ, « »).
+  German lookup options (*Settings → German lookups*, on by default): separable verbs joined when
+  the clause ends in their particle (*Ich stehe früh auf* → aufstehen; *auf dem Tisch* is left
+  alone) and unknown compounds split into known parts (*Fensterputzmittel* → Fenster + Putzmittel).
+- **Settings per language** — Settings only show what the study language uses: its lookup options,
+  ML Kit options only while ML Kit reads it, its word-audio sources, and (manga reader) the
+  Japanese-only on-device manga models.
   Dictionaries per language: [docs/dictionaries.md](dictionaries.md).
 - **Anki cards per language** — deck, note type and tags are kept per study
   language (Japanese keeps its existing settings). Each language gets its own note type, created

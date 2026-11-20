@@ -24,7 +24,7 @@ object DebugExtras {
             when (path) {
                 "/whats_new" -> whatsNew(app, params)
                 "/card_contents" -> cardContents(app)
-                "/card_fields" -> cardFields(app = app, word = params["word"].orEmpty())
+                "/card_fields" -> cardFields(app = app, word = params["word"].orEmpty(), sentence = params["sentence"].orEmpty())
                 "/manga_enhance" -> EnhanceDebug.handle(app, params)
                 else -> MangaDebug.handle(app, params)
             }
@@ -61,12 +61,12 @@ object DebugExtras {
         }
     }
 
-    // `/card_fields?word=`: the language-specific contents a card for [word] gets (built, not added):
+    // `/card_fields?word=&sentence=`: the language-specific contents a card for [word] gets (built, not added):
     // the dictionary form, IPA, gender article, reading and word audio.
-    private fun cardFields(app: Application, word: String): JSONObject {
+    private fun cardFields(app: Application, word: String, sentence: String): JSONObject {
         val container = AppContainer.from(app)
         return runBlocking {
-            val details = container.lookup.lookup(word)
+            val details = container.lookup.lookup(word = word, sentence = sentence)
             val card = container.miner.buildCard(word, "", details = details)
             val terms = details.terms.map { "${it.expression} ${it.deinflectionReasons}" }
             JSONObject()

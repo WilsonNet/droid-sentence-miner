@@ -6,6 +6,8 @@ versions are the `v*` tags that publish a signed APK on
 
 ## [Unreleased]
 
+## [0.10.0] — 2026-11-20
+
 ### Added
 - **French.** Pick it as your study language: lookups of words and phrases (*pomme de terre*,
   *est-ce que*), elided words (*l'homme*, *qu'il*, *j'aime* — with ' or ’), conjugations
@@ -25,7 +27,17 @@ versions are the `v*` tags that publish a signed APK on
   letter, œ and « ») reads French subtitles with 2.1 % character / 2.9 % word errors vs the built-in
   reader's 3.6 % / 14.3 % (80 TEDx caption frames, Xiaomi Pad 7).
 
+- **German: separable verbs and compounds** (*Settings → German lookups*, both on, each can be
+  switched off): tapping *stehe* in "Ich stehe früh auf" also shows *aufstehen* (the particle must
+  end the clause, so "Ich stehe auf dem Tisch" stays *stehen*); a compound no dictionary lists
+  (*Fensterputzmittel*) shows its parts (*Fenster* + *Putzmittel*).
+
 ### Changed
+- **Settings only show what your study language uses**: a lookups card for languages that have
+  options (German), the ML Kit two-pass switch only while ML Kit reads your language, word-audio
+  text naming your language's sources, the custom audio URL's `{reading}` only for Japanese, and
+  the manga reader's on-device *Manga OCR* models (Japanese-only) hidden for other languages
+  (a stored choice falls back to *Auto*).
 - **Composable lookup engine**: languages are built from a shared toolkit (`lang/kit`: scanner,
   suffix-rule tables, part-of-speech masks, case forms, OCR text helpers) and pick the engine's
   optional steps (`LookupFeature`: form-of entries, homograph separation, grammar-noise skip,
@@ -38,6 +50,8 @@ versions are the `v*` tags that publish a signed APK on
   step shown (*allées* → plural feminine of *allé* → past participle of *aller*).
 
 ### Fixed
+- **Sharing an unknown word** (text selection → *Droid Sentence Miner* → *Look up*) looked up its
+  first 12 characters, a Japanese fallback; spaced languages now look up the whole first word.
 - **Homographs with the same headword were merged** (English, German, French): Wiktionary
   dictionaries number every entry 0, so *suis* (être / suivre) showed only one of them.
 - **IPA with combining marks** (French nasals *ɔ̃*, *ɑ̃*) drew the tilde beside the letter on
@@ -307,7 +321,8 @@ First release.
 - Microphone fallback for apps that block audio capture; typewriter-text handling for visual novels.
 - Tablet/landscape layout with a navigation rail.
 
-[Unreleased]: https://github.com/WilsonNet/droid-sentence-miner/compare/v0.9.1...HEAD
+[Unreleased]: https://github.com/WilsonNet/droid-sentence-miner/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/WilsonNet/droid-sentence-miner/compare/v0.9.1...v0.10.0
 [0.9.1]: https://github.com/WilsonNet/droid-sentence-miner/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/WilsonNet/droid-sentence-miner/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/WilsonNet/droid-sentence-miner/compare/v0.7.0...v0.8.0

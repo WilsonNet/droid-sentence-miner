@@ -251,21 +251,40 @@ class TermLookup(
     suspend fun wordAt(text: String, index: Int): IntRange {
         scan(text).firstOrNull { index >= it.start && index < it.end }?.let { return it.start until it.end }
         val from = scan(text.substring(index, minOf(text.length, index + Languages.current.maxTermLength))).firstOrNull { it.start == 0 }
-        return index until index + (from?.text?.length ?: 1)
+        return from?.let { index until index + it.text.length } ?: unknownWordAt(text = text, index = index)
+    }
+
+    // A tap on a word no dictionary lists: the whole word when the language splits compounds
+    // (the lookup shows its parts), otherwise the character alone.
+    private fun unknownWordAt(text: String, index: Int): IntRange {
+        val isWord = hasFeature(LookupFeature.SPLIT_COMPOUNDS) && text[index].isLetter()
+        if (!isWord) return index until index + 1
+        var start = index
+        while (start > 0 && text[start - 1].isLetter()) start--
+        var end = index
+        while (end < text.length && text[end].isLetter()) end++
+        return start until end
     }
 
     /**
      * Every entry for [word] (deinflected unless [allowDeinflection] is false), then the study
      * language's lookup steps ([LookupSteps], e.g. wty's form-of entries replaced by their lemmas').
      */
-    suspend fun lookup(word: String, allowDeinflection: Boolean = true): LookupDetails {
+    suspend fun lookup(word: String, allowDeinflection: Boolean = true, sentence: String = ""): LookupDetails {
         val details = lookupDirect(word = word, allowDeinflection = allowDeinflection)
         if (!allowDeinflection) return details
-        // The study language's post-lookup steps (LookupFeature), each fed an exact lookup of other words.
-        val exact: suspend (String) -> LookupDetails = { other -> lookupDirect(word = other, allowDeinflection = false) }
+        // The study language's post-lookup steps (LookupFeature), fed the sentence and lookups of other words.
+        val context =
+            LookupStep.Context(
+                word = word,
+                sentence = sentence,
+                language = Languages.current,
+                exact = { other -> lookupDirect(word = other, allowDeinflection = false) },
+                deinflected = { other -> lookupDirect(word = other, allowDeinflection = true) },
+            )
         var out = details
-        for (step in LookupSteps.forFeatures(Languages.current.lookupFeatures)) {
-            out = step.apply(details = out, exact = exact)
+        for (step in LookupSteps.forFeatures(Languages.activeLookupFeatures())) {
+            out = step.apply(details = out, context = context)
         }
         return out
     }
@@ -458,7 +477,7 @@ class TermLookup(
     private fun glossaryKey(term: TermResult): String =
         if (hasFeature(LookupFeature.SEPARATE_HOMOGRAPHS)) term.glossaryJson else ""
 
-    private fun hasFeature(feature: LookupFeature): Boolean = feature in Languages.current.lookupFeatures
+    private fun hasFeature(feature: LookupFeature): Boolean = feature in Languages.activeLookupFeatures()
 
     // LookupFeature.KANJI_INFO: the word's kanji from kanji dictionaries.
     private suspend fun kanjiOf(word: String): List<KanjiResult> {

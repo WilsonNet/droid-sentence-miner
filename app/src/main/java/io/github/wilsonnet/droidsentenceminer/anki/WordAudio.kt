@@ -185,7 +185,7 @@ object WordAudioSources {
     }
 
     fun customUrl(template: String, term: String, reading: String): String =
-        template.replace("{term}", enc(term)).replace("{reading}", enc(reading)).replace("{language}", "ja")
+        template.replace("{term}", enc(term)).replace("{reading}", enc(reading)).replace("{language}", Languages.current.code)
 
     /** Audio URLs of result rows whose reading matches (`dc-result-row` / `dc-vocab_kana`). */
     fun parseLanguagePod101(html: String, term: String, reading: String): List<String> {

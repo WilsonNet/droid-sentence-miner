@@ -26,7 +26,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import io.github.wilsonnet.droidsentenceminer.AppContainer
+import io.github.wilsonnet.droidsentenceminer.lang.Languages
 import io.github.wilsonnet.droidsentenceminer.manga.MangaModelDownloads
+import io.github.wilsonnet.droidsentenceminer.manga.MangaOcrEngine
 import io.github.wilsonnet.droidsentenceminer.manga.MangaOcrMode
 import io.github.wilsonnet.droidsentenceminer.manga.MangaOcrModels
 import io.github.wilsonnet.droidsentenceminer.manga.MangaPreOcrQueue
@@ -46,44 +48,50 @@ internal fun ReaderOcrSettingsSection(
 ) {
     val context = LocalContext.current
     val download by MangaModelDownloads.state.collectAsState()
+    // The on-device manga models read Japanese only; other languages never see them.
+    val hasMangaModels = MangaOcrEngine.hasLocalModels(Languages.current)
     LaunchedEffect(Unit) { MangaModelDownloads.refresh(context) }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         ReaderSectionTitle("OCR")
         Column {
-            MangaOcrMode.entries.forEach { mode ->
+            MangaOcrMode.entries.filter { hasMangaModels || it != MangaOcrMode.LOCAL }.forEach { mode ->
                 SettingRadioRow(
-                    title = engineTitle(mode),
-                    subtitle = engineHint(mode = mode, isInstalled = download.isInstalled),
+                    title = engineTitle(mode = mode, hasMangaModels = hasMangaModels),
+                    subtitle = engineHint(mode = mode, isInstalled = download.isInstalled, hasMangaModels = hasMangaModels),
                     selected = ocrMode == mode,
                     onSelect = { onOcrMode(mode) },
                 )
             }
         }
-        ModelDownloadRow(
-            state = download,
-            onDownload = { MangaModelDownloads.start(context, AppContainer.from(context).appScope) },
-            onRemove = { MangaModelDownloads.remove(context) },
-        )
+        if (hasMangaModels) {
+            ModelDownloadRow(
+                state = download,
+                onDownload = { MangaModelDownloads.start(context, AppContainer.from(context).appScope) },
+                onRemove = { MangaModelDownloads.remove(context) },
+            )
+        }
         if (!hasMokuro) {
             BatchPreOcrButtonRow(batchProgress = batchProgress, onToggleBatchPreOcr = onToggleBatchPreOcr)
         }
     }
 }
 
-private fun engineTitle(mode: MangaOcrMode): String {
+private fun engineTitle(mode: MangaOcrMode, hasMangaModels: Boolean): String {
     val title =
         when (mode) {
             MangaOcrMode.AUTO -> "Auto"
             MangaOcrMode.LOCAL -> "Manga OCR"
             MangaOcrMode.LENS -> "Google Lens"
-            MangaOcrMode.MLKIT -> "ML Kit"
+            MangaOcrMode.MLKIT -> if (hasMangaModels) "ML Kit" else "Offline"
         }
     return title
 }
 
-private fun engineHint(mode: MangaOcrMode, isInstalled: Boolean): String {
+private fun engineHint(mode: MangaOcrMode, isInstalled: Boolean, hasMangaModels: Boolean): String {
     val hint =
         when {
+            !hasMangaModels && mode == MangaOcrMode.AUTO -> "Google Lens, the offline reader without internet"
+            !hasMangaModels && mode == MangaOcrMode.MLKIT -> "On-device: the language's OCR pack when installed, else ML Kit"
             mode == MangaOcrMode.AUTO && isInstalled -> "Manga OCR on this device"
             mode == MangaOcrMode.AUTO -> "Google Lens until the models below are downloaded"
             mode == MangaOcrMode.LOCAL -> "On-device and offline, best for Japanese manga"

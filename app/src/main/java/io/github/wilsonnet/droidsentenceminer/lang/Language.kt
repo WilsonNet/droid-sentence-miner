@@ -79,6 +79,9 @@ interface LanguageModule {
      */
     val lookupFeatures: Set<LookupFeature> get() = LookupFeature.WIKTIONARY
 
+    /** Lookup behaviors the user may switch off in Settings (on by default), on top of [lookupFeatures]. */
+    val lookupOptions: List<LookupOption> get() = emptyList()
+
     /** Longest surface, in characters, tried at one position while scanning. */
     val maxTermLength: Int
 
@@ -126,6 +129,18 @@ interface LanguageModule {
 
     /** Joins OCR rows / wrapped lines into one sentence. */
     fun joinRows(previous: String, next: String): String
+
+    /**
+     * Extra surfaces for [word] that only its [sentence] reveals ([LookupFeature.SEPARABLE_VERBS]):
+     * German "stehe" in "Ich stehe früh auf" → "aufstehe". Empty by default.
+     */
+    fun clauseForms(word: String, sentence: String): List<String> = emptyList()
+
+    /**
+     * Ways to cut [word] into a modifier and a head for [LookupFeature.SPLIT_COMPOUNDS], most likely
+     * first (the longest head first; linking letters such as German -s- dropped). Empty by default.
+     */
+    fun compoundSplits(word: String): List<Pair<String, String>> = emptyList()
 }
 
 /** The registry and the language the user studies. */
@@ -141,6 +156,14 @@ object Languages {
      */
     @Volatile
     var current: LanguageModule = JapaneseLanguage
+
+    /** Options ([LanguageModule.lookupOptions]) the user turned off; set from preferences by `AppContainer`. */
+    @Volatile
+    var disabledOptions: Set<LookupFeature> = emptySet()
+
+    /** The study language's engine features: its own plus the options the user didn't turn off. */
+    fun activeLookupFeatures(language: LanguageModule = current): Set<LookupFeature> =
+        language.lookupFeatures + language.lookupOptions.map { it.feature }.filter { it !in disabledOptions }
 
     fun byCode(code: String?): LanguageModule = ALL.firstOrNull { it.code == code } ?: JapaneseLanguage
 

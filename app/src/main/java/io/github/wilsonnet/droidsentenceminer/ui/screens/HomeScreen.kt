@@ -267,8 +267,8 @@ fun HomeScreen(modifier: Modifier = Modifier) {
                     it.title == io.github.wilsonnet.droidsentenceminer.dict.RecommendedDictionaries.KANJIUM_TITLE ||
                         it.title.contains("pitch", ignoreCase = true) || it.title.contains("NHK")
                 }
-                if (language.code == "ja") StatusLine("Pitch accent dictionary", hasPitch)
-                if (!hasPitch && language.code == "ja") {
+                if (language.hasPitchAccent) StatusLine("Pitch accent dictionary", hasPitch)
+                if (!hasPitch && language.hasPitchAccent) {
                     val status = pitchStatus
                     if (status != null) {
                         Text(status, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)

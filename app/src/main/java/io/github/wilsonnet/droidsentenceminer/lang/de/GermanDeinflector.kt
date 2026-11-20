@@ -11,7 +11,7 @@ import io.github.wilsonnet.droidsentenceminer.lang.kit.SuffixRules
  * entries of their own ("ging" → past of gehen, "Häuser" → plural of Haus), so these rules only
  * cover regular endings — conjugation, weak/strong participles (also with separable prefixes:
  * "aufgemacht" → aufmachen), zu-infinitives, adjective declension, comparative and superlative,
- * and noun plural/case endings. Separated prefixes ("Ich stehe früh auf") are not joined.
+ * and noun plural/case endings. Separated prefixes ("Ich stehe früh auf") and compounds: [GermanCompounds].
  */
 internal object GermanDeinflector {
     private const val MIN_STEM = 2

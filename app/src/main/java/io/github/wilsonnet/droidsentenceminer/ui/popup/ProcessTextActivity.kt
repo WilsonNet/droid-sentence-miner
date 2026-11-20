@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
 import io.github.wilsonnet.droidsentenceminer.AppContainer
 import io.github.wilsonnet.droidsentenceminer.dict.ScannedWord
+import io.github.wilsonnet.droidsentenceminer.lang.Languages
 import io.github.wilsonnet.droidsentenceminer.ui.components.WordLookupDialog
 import io.github.wilsonnet.droidsentenceminer.ui.theme.DsmTheme
 import kotlinx.coroutines.launch
@@ -39,7 +40,6 @@ import kotlinx.coroutines.launch
  * a dictionary lookup popup.
  */
 class ProcessTextActivity : ComponentActivity() {
-
     private companion object {
         const val SENTENCE_MARKS = "。、！？!?「」『』…"
     }
@@ -119,7 +119,7 @@ class ProcessTextActivity : ComponentActivity() {
                     if (matches == null) {
                         Text("Scanning…", style = MaterialTheme.typography.bodySmall)
                     }
-                    Button(onClick = { selected = selected ?: text.trim().take(12) }) {
+                    Button(onClick = { selected = selected ?: fallbackWord(text) }) {
                         Text("Look up")
                     }
                     OutlinedButton(onClick = onClose) { Text("Dismiss") }
@@ -140,3 +140,13 @@ class ProcessTextActivity : ComponentActivity() {
         }
     }
 }
+
+// Nothing matched: the first word for spaced languages (a compound the lookup may split), else the
+// first characters (Japanese has no word boundaries to go by).
+internal fun fallbackWord(text: String): String {
+    val trimmed = text.trim()
+    val language = Languages.current
+    return if (language.usesSpaces) trimmed.substringBefore(' ') else trimmed.take(JAPANESE_FALLBACK_CHARS)
+}
+
+private const val JAPANESE_FALLBACK_CHARS = 12

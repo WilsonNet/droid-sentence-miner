@@ -12,9 +12,9 @@ Ideas and known gaps, roughly in priority order. Shipped work moves to [CHANGELO
   (wty has Wiktionary dictionaries for dozens of languages, PP-OCRv6 reads 50). Spanish,
   Chinese and Korean are the obvious next ones; Chinese/Korean need their own segmentation.
 - Make `build_pack.py` zips byte-reproducible (fixed timestamps), so a rebuilt pack keeps its SHA-256.
-- German: separated verb prefixes (*Ich stehe früh auf* → aufstehen) aren't joined; compound
-  nouns missing from Wiktionary aren't split; PaddleOCR's character set has no „ (low quote), so
-  it's dropped rather than read as `,,`.
+- German: separable verbs are only joined when the particle ends the clause and the joined verb is
+  in the dictionary; compound splitting takes the longest known head (*Arbeitsplatzangebot* →
+  Arbeit + Platzangebot); PaddleOCR's character set has no „ (low quote), so it's dropped.
 - French: reflexive verbs whose dictionary has no "se …" headword (wty-fr-en lists *se lever*'s
   senses under *lever*) open the bare verb; the pronoun is a separate tap.
 - English: book mode is untested on English print; no English frequency dictionary is offered;
