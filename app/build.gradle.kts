@@ -113,6 +113,9 @@ android {
         checkDependencies = true
         checkTestSources = true
         baseline = file("lint-baseline.xml")
+        // "A newer version of X is available" depends on the day and the machine (CI broke when
+        // Gradle 8.14.8 came out); dependency updates are a deliberate task, not a gate.
+        disable += setOf("GradleDependency", "AndroidGradlePluginVersion", "NewerVersionAvailable")
     }
 }
 

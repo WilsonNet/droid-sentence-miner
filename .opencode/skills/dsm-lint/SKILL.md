@@ -101,6 +101,13 @@ flagged by ExpressionBodySyntax/FunctionExpressionBody).
 Tests: same rules (names in backticks are allowed). Expression bodies with `runTest { checkAll(...) }`
 hit the contradiction above — use block bodies: `fun \`name\`() { runTest { … } }`.
 
+## Version-staleness checks are off
+
+`GradleDependency`, `AndroidGradlePluginVersion` and `NewerVersionAvailable` ("a newer version of X
+is available") are disabled in `app/build.gradle.kts`: their answer changes with the date and the
+machine, and CI broke on 2026-11-20 when Gradle 8.14.8 was published. Update dependencies as a task
+of its own, not because Lint noticed a release.
+
 ## Checklist before running the gate
 
 1. New logic in new files where possible; legacy diffs minimal (no re-indent, no import churn).
