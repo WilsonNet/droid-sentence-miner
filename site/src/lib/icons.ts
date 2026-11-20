@@ -8,6 +8,7 @@ export type IconName =
   | "github"
   | "headphones"
   | "layers"
+  | "library"
   | "plus"
   | "scan"
   | "shield"

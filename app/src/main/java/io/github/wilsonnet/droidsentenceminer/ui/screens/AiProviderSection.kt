@@ -47,10 +47,12 @@ import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import io.github.wilsonnet.droidsentenceminer.AppContainer
 import io.github.wilsonnet.droidsentenceminer.ai.AiConfig
+import io.github.wilsonnet.droidsentenceminer.ai.AiFailure
 import io.github.wilsonnet.droidsentenceminer.ai.AiProtocol
 import io.github.wilsonnet.droidsentenceminer.ai.AiProvider
 import io.github.wilsonnet.droidsentenceminer.ai.AiProviders
 import io.github.wilsonnet.droidsentenceminer.ai.AiSettings
+import io.github.wilsonnet.droidsentenceminer.ui.components.AiErrorBlock
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
@@ -222,7 +224,8 @@ private fun ModelPicker(settings: AiSettings) {
                     models = container.ai.client.models(probe)
                     if (models.isEmpty()) "Type the model id" else "${models.size} models"
                 } catch (e: IOException) {
-                    e.message ?: "Couldn't load models"
+                    val failure = AiFailure.from(error = e, provider = settings.provider.name)
+                    "Couldn't load models: ${failure.title.replaceFirstChar { it.lowercase() }}"
                 }
         }
     }
@@ -281,35 +284,42 @@ private fun TestRequest(settings: AiSettings) {
     val context = LocalContext.current
     val container = remember { AppContainer.from(context) }
     val scope = rememberCoroutineScope()
-    var result by remember(settings.config) { mutableStateOf<String?>(null) }
+    var passed by remember(settings.config) { mutableStateOf<String?>(null) }
+    var failure by remember(settings.config) { mutableStateOf<AiFailure?>(null) }
     var isRunning by remember { mutableStateOf(false) }
-    var isOk by remember { mutableStateOf(false) }
     val config = settings.config
     val run: (AiConfig) -> Unit = { endpoint ->
         isRunning = true
         scope.launch {
             val start = System.currentTimeMillis()
-            result =
-                try {
-                    container.ai.ask(config = endpoint, prompt = TEST_PROMPT, session = "test").toList()
-                    isOk = true
-                    String.format(Locale.US, "Answered in %.1f s", (System.currentTimeMillis() - start) / MS_PER_S)
-                } catch (e: IOException) {
-                    isOk = false
-                    e.message ?: "Failed"
-                }
+            try {
+                container.ai.ask(config = endpoint, prompt = TEST_PROMPT, session = "test").toList()
+                passed = String.format(Locale.US, "Answered in %.1f s", (System.currentTimeMillis() - start) / MS_PER_S)
+                failure = null
+            } catch (e: IOException) {
+                passed = null
+                failure = AiFailure.from(error = e, provider = settings.provider.name)
+            }
             isRunning = false
         }
     }
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(FIELD_GAP)) {
+    Column(verticalArrangement = Arrangement.spacedBy(FIELD_GAP)) {
         FilledTonalButton(enabled = config != null && !isRunning, onClick = { config?.let(run) }) {
             if (isRunning) CircularProgressIndicator(Modifier.size(SMALL_ICON), strokeWidth = 2.dp) else Text("Send a test")
         }
-        result?.let { text ->
-            if (isOk) Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-            val color = if (isOk) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error
-            Text(text, style = MaterialTheme.typography.bodySmall, color = color)
-        }
+        passed?.let { TestPassed(it) }
+        val shown = failure
+        val retry: () -> Unit = { if (config != null) run(config) }
+        if (shown != null) AiErrorBlock(failure = shown, onRetry = retry, isInSettings = true)
+    }
+}
+
+@Suppress("FunctionName") // Composables are PascalCase.
+@Composable
+private fun TestPassed(text: String) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(FIELD_GAP)) {
+        Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+        Text(text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

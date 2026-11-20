@@ -678,6 +678,16 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   `googlequicksearchbox`) but never sends it. AnkiDroid's API can't add a field to an existing note
   type, so *own field* fills a *Grammar*/*AI Explanation* field the user adds (or a mapped one) and
   `AI_EXPLANATION` stays out of `CardFields.forLanguage` (our note types/templates unchanged).
+  Free keys without a card (2026-11-20): Gemini (`gemini-flash-lite-latest` 0.9 s first text; Flash
+  proper 503 "high demand", 3.8-flash silent until timeout; 2.5 models refused to new keys) and
+  OpenRouter (`openrouter/free`, `:free` models). Ollama Cloud keys list models but every chat
+  answered 402. Gemini's list has TTS/image models that "generateContent": `AiStream.NOT_CHAT` hides them.
+  AI is **opt-in** (`AiPrefs`: `ENABLED == true`); Home's `AiHomeCard` is the switch plus the setup
+  left. Error copy is `AiFailure` (kinds → title/advice/actions, `AiErrorBlock`); a retired model is
+  replaced from the live list (`AiModels`, `AiService.replacementModel`). Any screen opens
+  Settings → AI with `openAiSettings(context)` (sets `AppContainer.openSettingsPage`, `MainActivity`
+  consumes it). `/ai_ask?heal=1` runs the popup's own path. The `gh auth` token gets a bare `200 OK`
+  from GitHub Models (no answer), so there's no GitHub preset.
   Test with `/ai`, `/ai_ask`, `/ai_models`, `/ai_send`; never commit a key (set it over adb only).
 - **New debug endpoints go in `debug/DebugExtras.kt`** (routed by one `if` before `DebugApi`'s
   `when`): adding a `when` branch, or editing any branch, resurfaces ~90 baselined findings.

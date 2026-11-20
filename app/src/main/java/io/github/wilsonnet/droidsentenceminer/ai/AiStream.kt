@@ -11,6 +11,12 @@ import kotlinx.serialization.json.contentOrNull
 /** Reads what each [AiProtocol] sends back: stream events, model lists, error bodies. Pure: unit tested. */
 object AiStream {
     private const val MODELS_PREFIX = "models/"
+    private const val FREE_SUFFIX = ":free"
+    private const val CONTENT = "content"
+
+    // Gemini lists speech, image and tool models that also "generateContent" but can't answer a text prompt.
+    private val NOT_CHAT =
+        Regex("""tts|image|transcribe|embedding|robotics|computer-use|customtools|lyria|banana|deep-research""")
     private val json = Json { ignoreUnknownKeys = true }
 
     /**
@@ -32,6 +38,37 @@ object AiStream {
         return delta
     }
 
+    /**
+     * A whole (non-streamed) answer: OpenAI `choices[0].message.content`, Anthropic `content[].text`,
+     * Gemini `candidates[0].content.parts[].text`; null when [body] is none of these.
+     */
+    fun parseWhole(protocol: AiProtocol, body: String): AiDelta? {
+        val obj = runCatching { json.parseToJsonElement(body.trim()) }.getOrNull() as? JsonObject
+        val error = obj?.let { errorMessage(it) }
+        val text =
+            when {
+                obj == null -> {
+                    null
+                }
+
+                protocol == AiProtocol.OPENAI_CHAT -> {
+                    val choice = (obj["choices"] as? JsonArray)?.firstOrNull() as? JsonObject
+                    (choice?.get("message") as? JsonObject)?.get(CONTENT).string()
+                }
+
+                protocol == AiProtocol.ANTHROPIC -> {
+                    (obj[CONTENT] as? JsonArray).orEmpty().filterIsInstance<JsonObject>().joinToString(
+                        "",
+                    ) { it["text"].string().orEmpty() }
+                }
+
+                else -> {
+                    geminiDelta(obj)?.text
+                }
+            }
+        return if (error != null) AiDelta(error = error) else text?.let { AiDelta(text = it) }
+    }
+
     /** Model ids from a model-list response, sorted; chat models only where the API says. */
     fun parseModels(protocol: AiProtocol, body: String): List<String> {
         val root = runCatching { json.parseToJsonElement(body) }.getOrNull() as? JsonObject
@@ -41,7 +78,8 @@ object AiStream {
                 val obj = item as? JsonObject
                 if (obj == null || !isChatModel(protocol = protocol, model = obj)) null else modelId(protocol = protocol, model = obj)
             }
-        return ids.distinct().sorted()
+        // Free models first (OpenRouter's ":free"), then by name.
+        return ids.distinct().sortedWith(compareBy({ !it.endsWith(FREE_SUFFIX) }, { it }))
     }
 
     /** The error a non-2xx response body carries (`{"error": {"message": …}}` in every protocol). */
@@ -53,7 +91,9 @@ object AiStream {
     private fun isChatModel(protocol: AiProtocol, model: JsonObject): Boolean {
         val methods = (model["supportedGenerationMethods"] as? JsonArray).orEmpty().map { it.string() }
         val type = model["type"].string()
-        return if (protocol == AiProtocol.GEMINI) "generateContent" in methods else type == null || type == "chat" || type == "model"
+        val isChat = if (protocol == AiProtocol.GEMINI) "generateContent" in methods else type == null || type == "chat" || type == "model"
+        val name = model["name"].string() ?: model["id"].string().orEmpty()
+        return isChat && !NOT_CHAT.containsMatchIn(name)
     }
 
     private fun modelId(protocol: AiProtocol, model: JsonObject): String? {
@@ -76,7 +116,7 @@ object AiStream {
     private fun openAiDelta(obj: JsonObject): AiDelta? {
         val choice = (obj["choices"] as? JsonArray)?.firstOrNull() as? JsonObject
         val delta = choice?.get("delta") as? JsonObject
-        val text = delta?.get("content").string().orEmpty()
+        val text = delta?.get(CONTENT).string().orEmpty()
         val reasoning = delta?.get("reasoning_content").string() ?: delta?.get("reasoning").string()
         return when {
             text.isNotEmpty() -> AiDelta(text = text)
@@ -100,8 +140,11 @@ object AiStream {
     // Gemini: candidates[0].content.parts[].text; parts marked "thought" are reasoning.
     private fun geminiDelta(obj: JsonObject): AiDelta? {
         val candidate = (obj["candidates"] as? JsonArray)?.firstOrNull() as? JsonObject
-        val parts = ((candidate?.get("content") as? JsonObject)?.get("parts") as? JsonArray).orEmpty()
-        val answer = parts.filterIsInstance<JsonObject>().filter { it["thought"].boolean() != true }
+        val parts = ((candidate?.get(CONTENT) as? JsonObject)?.get("parts") as? JsonArray).orEmpty()
+        val answer =
+            parts.filterIsInstance<JsonObject>().filter { part ->
+                (part["thought"] as? JsonPrimitive)?.booleanOrNull != true
+            }
         val text = answer.joinToString("") { it["text"].string().orEmpty() }
         return when {
             text.isNotEmpty() -> AiDelta(text = text)
@@ -111,6 +154,4 @@ object AiStream {
     }
 
     private fun JsonElement?.string(): String? = (this as? JsonPrimitive)?.takeIf { it.isString }?.contentOrNull
-
-    private fun JsonElement?.boolean(): Boolean? = (this as? JsonPrimitive)?.booleanOrNull
 }

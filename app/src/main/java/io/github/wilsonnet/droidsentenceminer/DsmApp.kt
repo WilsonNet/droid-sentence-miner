@@ -141,6 +141,9 @@ class AppContainer(private val context: Context) {
     /** AI explanations: settings, API client, prompt context (`ai/`). */
     val ai by lazy { AiService(context) }
 
+    /** A Settings sub-page to open (set before bringing `MainActivity` forward; it clears it). */
+    val openSettingsPage = MutableStateFlow<String?>(null)
+
     /**
      * Reads the study language before anything scans text and follows changes. Installs from
      * before languages existed that already have dictionaries are Japanese, without asking.

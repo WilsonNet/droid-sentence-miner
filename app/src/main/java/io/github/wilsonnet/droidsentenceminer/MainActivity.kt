@@ -1,5 +1,7 @@
 package io.github.wilsonnet.droidsentenceminer
 
+import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -33,12 +35,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import io.github.wilsonnet.droidsentenceminer.ui.components.ReadableWidth
 import io.github.wilsonnet.droidsentenceminer.ui.components.WhatsNewOnUpdate
@@ -128,6 +132,10 @@ private fun MainTabsScaffold(
     onMangaReaderOpenChange: (Boolean) -> Unit,
 ) {
     var settingsPage by rememberSaveable { mutableStateOf<String?>(null) }
+    OpenRequestedSettingsPage { page ->
+        settingsPage = page
+        onTabChange(TAB_SETTINGS)
+    }
     val wide = LocalConfiguration.current.screenWidthDp >= 600
     val select = { index: Int ->
         if (index != TAB_MANGA) onMangaReaderOpenChange(false)
@@ -244,4 +252,29 @@ private fun SettingsSubPage(
         }
         content(Modifier.weight(1f))
     }
+}
+
+// Opens the Settings sub-page another screen asked for (`AppContainer.openSettingsPage`, e.g. an AI error's *Open AI settings*).
+@Suppress("FunctionName") // Composables are PascalCase.
+@Composable
+private fun OpenRequestedSettingsPage(onOpen: (String) -> Unit) {
+    val context = LocalContext.current
+    val container = remember { AppContainer.from(context) }
+    val requested by container.openSettingsPage.collectAsState()
+    val open by rememberUpdatedState(onOpen)
+    LaunchedEffect(requested) {
+        requested?.let { page ->
+            open(page)
+            container.openSettingsPage.value = null
+        }
+    }
+}
+
+/** Brings the app forward on Settings → AI explanations (from a popup over another app too). */
+fun openAiSettings(context: Context) {
+    AppContainer.from(context).openSettingsPage.value = PAGE_AI
+    val intent =
+        Intent(context, MainActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+    context.startActivity(intent)
 }

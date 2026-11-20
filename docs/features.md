@@ -160,8 +160,9 @@ Everything the app does, in detail. The short version is in the [README](../READ
   OpenAI-compatible, Anthropic Messages and Gemini protocols cover Google Gemini, Groq, Cerebras,
   Mistral, OpenRouter, OpenAI, Anthropic, DeepSeek, xAI, OpenCode Go, Ollama and custom endpoints;
   the model list is read from the provider. Prompts are editable (built-ins restorable), and an
-  answer you opened goes after/before the glossary or into its own field on the next card. One
-  switch in *Settings → AI explanations* hides everything.
+  answer you opened goes after/before the glossary or into its own field on the next card. Opt-in:
+  off until switched on from Home's *AI explanations* card (which then shows the setup left) or
+  Settings; off means no AI button anywhere.
 - **Texts page** (GSM's texthooker) — every recognized line, newest first. Tap a line, tap a word,
   and mine it: the card gets that line's sentence, its screenshot and its voice clip.
 - **Replay buffer sentence audio** — the last 5 minutes (configurable 1–10) of game audio are kept

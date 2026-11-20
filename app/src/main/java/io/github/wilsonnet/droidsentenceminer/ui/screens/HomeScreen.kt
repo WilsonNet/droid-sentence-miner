@@ -351,6 +351,8 @@ fun HomeScreen(modifier: Modifier = Modifier) {
             }
         }
 
+        AiHomeCard()
+
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text("Test OCR & lookup", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)

@@ -61,8 +61,13 @@ const faqs = [
   },
   {
     answer:
-      "Japanese is the focus, and English and German are supported too: Wiktionary dictionaries, inflections, IPA, German articles on cards and an optional PaddleOCR pack. Pick the language on first launch; only that language downloads dictionaries and models. Other languages can be added as small modules.",
+      "Japanese is the focus, and English, German and French are supported too: Wiktionary dictionaries, inflections, IPA, German and French noun genders on cards and an optional PaddleOCR pack. Pick the language on first launch; only that language downloads dictionaries and models. Other languages can be added as small modules.",
     question: "Is it only for Japanese?",
+  },
+  {
+    answer:
+      "Only if you want it. The ✦ button in the lookup popup asks for a grammar breakdown of the sentence, focused on the tapped word. Out of the box it opens the Gemini app with the question typed. With your own API key (Google Gemini and OpenRouter give free ones without a credit card; OpenAI, Anthropic, Ollama and others work too) the answer appears in the popup and can go on the Anki card. Prompts are editable. AI is opt-in: it stays off, with no AI button anywhere, until you switch it on from the Home screen or Settings → AI explanations.",
+    question: "Does it use AI?",
   },
 ] as const;
 
@@ -593,7 +598,8 @@ const installationSteps = [
             <p class="mt-3 max-w-lg text-sm leading-6 text-white/60">
               OCR, deinflection and dictionary lookup run on the phone. Reading history lives in a
               local database. The only network calls are the ones you choose: dictionary or model
-              downloads, your own AnkiConnect server, and the word-audio sources.
+              downloads, your own AnkiConnect server, the word-audio sources, and the AI provider you
+              pick, if you turn that on.
             </p>
             <div class="mt-7 flex flex-wrap gap-2 text-[0.65rem] text-white/70">
               <span class="rounded-full border border-white/10 bg-white/5 px-3 py-1.5">No account</span>
@@ -628,7 +634,7 @@ const installationSteps = [
             <span
               class="grid size-11 place-items-center rounded-2xl bg-pine-50 text-pine-700 ring-1 ring-pine-100"
             >
-              <Icon name="sparkles" size={21} />
+              <Icon name="library" size={21} />
             </span>
             <h3 class="mt-6 text-xl font-semibold tracking-[-0.02em]">Bring your own dictionaries.</h3>
             <p class="mt-3 text-sm leading-6 text-muted">
@@ -659,6 +665,100 @@ const installationSteps = [
               Before adding, the popup checks your configured note type for the word. Existing
               words show ✓ In Anki instead of creating a duplicate.
             </p>
+          </article>
+
+          <article
+            class="feature-card reveal p-7 sm:p-9 lg:col-span-6"
+            style="--reveal-delay: 160ms"
+            data-reveal
+          >
+            <div class="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] lg:items-center">
+              <div>
+                <span
+                  class="grid size-11 place-items-center rounded-2xl bg-pine-50 text-pine-700 ring-1 ring-pine-100"
+                >
+                  <Icon name="sparkles" size={21} />
+                </span>
+                <h3 class="mt-6 text-2xl font-semibold tracking-[-0.03em]">
+                  Ask why the sentence says it that way.
+                </h3>
+                <p class="mt-3 max-w-xl text-sm leading-6 text-muted">
+                  The ✦ button in the popup asks an AI for a grammar breakdown of the sentence,
+                  focused on the word you tapped. With no setup, it opens Gemini with the question
+                  already typed. With your own API key, the answer streams into the popup and can
+                  go on the card. Google Gemini and OpenRouter give free keys without a credit card.
+                </p>
+                <ul class="mt-5 grid gap-2 text-sm text-muted sm:grid-cols-2">
+                  <li class="flex items-start gap-2">
+                    <Icon name="check" size={14} class="mt-1 shrink-0 text-pine-600" />
+                    Prompts you can edit, always restorable
+                  </li>
+                  <li class="flex items-start gap-2">
+                    <Icon name="check" size={14} class="mt-1 shrink-0 text-pine-600" />
+                    Gemini, OpenRouter, OpenAI, Anthropic, Ollama…
+                  </li>
+                  <li class="flex items-start gap-2">
+                    <Icon name="check" size={14} class="mt-1 shrink-0 text-pine-600" />
+                    Keys encrypted on the phone
+                  </li>
+                  <li class="flex items-start gap-2">
+                    <Icon name="check" size={14} class="mt-1 shrink-0 text-pine-600" />
+                    Opt-in: off until you turn it on
+                  </li>
+                </ul>
+                <div class="mt-6 flex items-start gap-3 rounded-2xl bg-pine-50 p-4 ring-1 ring-pine-100">
+                  <Icon name="shield" size={18} class="mt-0.5 shrink-0 text-pine-700" />
+                  <p class="text-sm leading-6 text-pine-900">
+                    <strong class="font-semibold">Not into AI? It stays off.</strong> AI is opt-in:
+                    until you switch it on, there is no AI button anywhere and nothing is sent. Nothing
+                    else in the app needs it.
+                  </p>
+                </div>
+              </div>
+
+              <div
+                class="overflow-hidden rounded-[1.35rem] bg-[#0a1411] p-5 text-white ring-1 ring-white/10"
+                aria-hidden="true"
+              >
+                <p class="font-jp text-[0.95rem] leading-7 text-white/80">
+                  まだ<span
+                    class="mx-0.5 rounded-md bg-pine-400/25 px-1 text-white ring-1 ring-pine-300/70"
+                  >死ぬな</span
+                  >
+                </p>
+                <div class="mt-3 rounded-xl bg-white p-3.5 text-ink shadow-2xl">
+                  <div class="flex items-center gap-2">
+                    <span class="font-jp text-lg font-semibold">死ぬな</span>
+                    <span class="font-jp text-xs text-muted">しぬな</span>
+                    <span
+                      class="ml-auto grid size-7 place-items-center rounded-full bg-pine-600 text-[0.8rem] text-white"
+                    >✦</span>
+                  </div>
+                  <div class="mt-2.5 flex gap-1.5 text-[0.6rem]">
+                    <span class="rounded-lg bg-pine-50 px-2 py-1 font-semibold text-pine-800">Grammar</span>
+                    <span class="rounded-lg border border-line px-2 py-1 text-muted">Translate</span>
+                    <span class="rounded-lg border border-line px-2 py-1 text-muted">Word nuance</span>
+                  </div>
+                  <ul class="mt-3 space-y-1.5 text-[0.7rem] leading-5 text-ink/80">
+                    <li class="flex gap-2">
+                      <span class="text-pine-600">•</span>
+                      <span><b class="font-jp">死ぬ</b> (to die) + <b class="font-jp">な</b>, the negative command: "don't die".</span>
+                    </li>
+                    <li class="flex gap-2">
+                      <span class="text-pine-600">•</span>
+                      <span><b class="font-jp">まだ</b> "still, yet" turns it into "not yet".</span>
+                    </li>
+                    <li class="flex gap-2">
+                      <span class="text-pine-600">•</span>
+                      <span>Natural: "Don't die yet."</span>
+                    </li>
+                  </ul>
+                  <p class="mt-3 border-t border-line pt-2 text-[0.55rem] text-muted">
+                    gemini-flash-lite-latest · on the card
+                  </p>
+                </div>
+              </div>
+            </div>
           </article>
         </div>
       </div>

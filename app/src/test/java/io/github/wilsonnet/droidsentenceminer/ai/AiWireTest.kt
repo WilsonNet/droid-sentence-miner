@@ -84,4 +84,27 @@ class AiWireTest {
                 """{"name":"models/embedding","supportedGenerationMethods":["embedContent"]}]}"""
         assertEquals(listOf("gemini-x"), AiStream.parseModels(protocol = AiProtocol.GEMINI, body = gemini))
     }
+
+    @Test
+    fun `gemini lists only text models and free models come first`() {
+        val gemini =
+            listOf(
+                """{"models":[""",
+                """{"name":"models/gemini-flash-lite-latest","supportedGenerationMethods":["generateContent"]},""",
+                """{"name":"models/gemini-3.8-flash-tts","supportedGenerationMethods":["generateContent"]},""",
+                """{"name":"models/gemini-3-pro-image","supportedGenerationMethods":["generateContent"]}]}""",
+            ).joinToString("")
+        assertEquals(listOf("gemini-flash-lite-latest"), AiStream.parseModels(protocol = AiProtocol.GEMINI, body = gemini))
+        val openRouter = """{"data":[{"id":"a/paid"},{"id":"z/model:free"},{"id":"b/other:free"}]}"""
+        assertEquals(
+            listOf("b/other:free", "z/model:free", "a/paid"),
+            AiStream.parseModels(protocol = AiProtocol.OPENAI_CHAT, body = openRouter),
+        )
+    }
+
+    @Test
+    fun `presets with a free tier are ready once a key is pasted`() {
+        assertEquals("gemini-flash-lite-latest", AiProviders.GEMINI.defaultModel)
+        assertEquals("openrouter/free", AiProviders.byId("openrouter").defaultModel)
+    }
 }

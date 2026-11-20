@@ -66,11 +66,11 @@ fun AiSettingsRow(onOpen: () -> Unit, modifier: Modifier = Modifier) {
     val api = current.config?.let { "${it.model} · ${current.provider.name}" } ?: "Needs an API key"
     val subtitle =
         when {
-            !current.isEnabled -> "Off: no AI buttons anywhere"
+            !current.isEnabled -> "Optional, off: turn on for grammar breakdowns in the popup"
             current.mode == AiMode.API -> api
             else -> app?.let { "Opens ${it.name}" } ?: "Needs an AI app or an API key"
         }
-    Card(onClick = { if (current.isEnabled) onOpen() }, modifier = modifier.fillMaxWidth()) {
+    Card(onClick = onOpen, modifier = modifier.fillMaxWidth()) {
         Row(Modifier.fillMaxWidth().padding(ROW_PADDING), verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
             Spacer(Modifier.width(ROW_PADDING))
@@ -81,7 +81,7 @@ fun AiSettingsRow(onOpen: () -> Unit, modifier: Modifier = Modifier) {
             Switch(checked = current.isEnabled, onCheckedChange = { isOn ->
                 scope.launch { container.ai.prefs.setEnabled(isOn) }
             })
-            if (current.isEnabled) Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
         }
     }
 }
@@ -109,11 +109,48 @@ fun AiSettingsScreen(modifier: Modifier = Modifier) {
             AiPromptEditor(prompt = prompt, settings = current, onClose = { editing = null })
         } else {
             Text("AI explanations", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            AiMasterSwitch(isEnabled = current.isEnabled)
+        }
+        if (prompt == null && current.isEnabled) {
             Section(title = "Answers") { AnswerSource(current) }
             Section(title = "Prompts", description = PROMPTS_NOTE) {
                 AiPromptList(settings = current, onEdit = { editing = it })
             }
             Section(title = "On the card", description = CARD_NOTE) { PlacementChoice(current) }
+        }
+    }
+}
+
+// AI is optional: the switch that removes every AI control sits first, on its own tinted card.
+@Suppress("FunctionName") // Composables are PascalCase.
+@Composable
+private fun AiMasterSwitch(isEnabled: Boolean) {
+    val context = LocalContext.current
+    val container = remember { AppContainer.from(context) }
+    val scope = rememberCoroutineScope()
+    Surface(color = MaterialTheme.colorScheme.secondaryContainer, shape = MaterialTheme.shapes.large) {
+        Row(Modifier.fillMaxWidth().padding(ROW_PADDING), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = if (isEnabled) "AI features are on" else "AI features are off",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                )
+                Text(
+                    text =
+                    if (isEnabled) {
+                        "Optional. Turn off to remove every AI button. Nothing else in the app needs AI."
+                    } else {
+                        "No AI buttons anywhere, and nothing is sent. Turn on to set it up."
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                )
+            }
+            Spacer(Modifier.width(ROW_PADDING))
+            Switch(checked = isEnabled, onCheckedChange = { isOn ->
+                scope.launch { container.ai.prefs.setEnabled(isOn) }
+            })
         }
     }
 }

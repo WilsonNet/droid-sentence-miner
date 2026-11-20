@@ -98,6 +98,45 @@ flagged by ExpressionBodySyntax/FunctionExpressionBody).
 | ComposeUnstableCollections | no `List` params on composables: wrap in an `@Immutable data class` (see `ChangelogNotes`) — kotlinx-collections-immutable isn't a dependency |
 | Compose mutable params | don't pass `MutableStateFlow`/`MutableState`; pass the owner (`AppContainer`) or a read-only `StateFlow` + callback |
 
+More shapes that bit the AI feature (2026-11-20, ~300 findings on first run):
+
+| Finding | Write |
+| --- | --- |
+| `ComposableLambdaParameterNaming` (**Android Lint**, not detekt) | a composable with one `@Composable () -> Unit` param must call it `content` |
+| "emitting content from one source at top level" | a composable that emits several siblings wraps them in one `Column`/`Row` |
+| "nests content emitters more deeply than the threshold" | extract the inner `Row { Icon; Column { Text… } }` into a private composable |
+| "has a modifier parameter but it doesn't have a default value" / "doesn't have a modifier parameter" | public composables take `modifier: Modifier = Modifier`; private ones may skip it |
+| "Lambda parameters … referenced directly inside of restarting effects" | `val save by rememberUpdatedState(onSave)` and call `save()` inside `LaunchedEffect` |
+| `DocumentationOverPrivateFunction` on a private composable | `//` comment, not `/** */` — also on private top-level funs in legacy files |
+| `BooleanPropertyNaming` on **enum constructor params** | `enum class Kind(val isRetryable: Boolean, val hasSettingsFix: Boolean)` |
+| `FunctionNameMinLength` (3) | `AiFailure.from(…)`, not `of(…)` |
+| `OutdatedDocumentation` | a class KDoc with `@property` tags must also `@param` its plain constructor params |
+| `InstanceOfCheckForException` | separate `catch (e: AiException)` / `catch (e: IOException)` blocks, not `e is X` inside one |
+| `NullableToStringCall` | `"${e.message.orEmpty()}"` in templates and logs |
+| `LabeledExpression` (`return@runBlocking`) | build the response in a `val`, fill it in an `if`, return it last |
+| `ReplaceSafeCallChainWithRun` / `ChainMethodContinuation` on `a?.b?.c().d()` | split into locals: `val msg = err?.message.orEmpty()` then `msg.substringAfter(…)` |
+| `CascadingCallWrapping` vs `ChainMethodContinuation` on `}.toList()` after a multi-line lambda | they contradict: assign the chain to a `val`, call `.toList()` on the next statement |
+| `TooManyFunctions` on an object (11) | inline one-line helpers (`(x as? JsonPrimitive)?.booleanOrNull`) or split the object (`AiWire` / `AiStream`) |
+| `NestedScopeFunctions` with `x?.let { … y?.let(run) }` | `val shown = x; if (shown != null) …` and `if (config != null) run(config)` |
+
+**Autocorrect only your own files.** `-PdetektAutoCorrect=true` fixes most wrapping in new files
+but reformats every legacy file too. Safe recipe (used three times on the AI feature):
+
+```bash
+B=$(mktemp -d); MINE='/ai/|/Ai[A-Z][A-Za-z]*\.kt$'           # your new files
+git diff --name-only | grep -vE "$MINE" > $B/legacy.txt      # legacy files you edited by hand
+while read f; do mkdir -p $B/$(dirname $f); cp $f $B/$f; done < $B/legacy.txt
+./gradlew detekt detektDebug detektDebugUnitTest -PdetektAutoCorrect=true --continue -q
+git diff --name-only | grep -vE "$MINE" | grep -vxF -f $B/legacy.txt | xargs -r git checkout --
+while read f; do cp $B/$f $f; done < $B/legacy.txt          # your hand edits, unformatted
+```
+
+Autocorrect sometimes produces shapes another rule rejects (an expression body re-indented at the
+wrong depth, `}.orEmpty()` after a wrapped `?.let`): re-run detekt and fix those by hand with the
+table above. Shell gotchas while doing this: `pkill -f "<pattern>"` also matches the shell running
+it (the command dies with exit 144); in zsh a variable like `ADB="adb -s X"` is not word-split, so
+use a function (`A(){ adb -s c2bd6564 "$@"; }`).
+
 Tests: same rules (names in backticks are allowed). Expression bodies with `runTest { checkAll(...) }`
 hit the contradiction above — use block bodies: `fun \`name\`() { runTest { … } }`.
 

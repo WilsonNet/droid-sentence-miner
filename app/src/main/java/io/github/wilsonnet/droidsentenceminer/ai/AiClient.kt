@@ -65,23 +65,37 @@ class AiClient(private val io: CoroutineDispatcher = Dispatchers.IO) {
         return builder
     }
 
-    // Server-sent events: every `data:` line is one event; an error sent mid-stream ends it.
+    // Server-sent events: every `data:` line is one event; an error sent mid-stream ends it. A
+    // provider that ignores `stream` answers one JSON body instead, read whole at the end. No answer
+    // text at all is an error, not an empty success.
     private suspend fun FlowCollector<AiDelta>.emitEvents(source: BufferedSource, protocol: AiProtocol) {
+        val other = StringBuilder()
+        var hasText = false
         var line = source.readUtf8Line()
         while (line != null) {
             val data = line.takeIf { it.startsWith(DATA) }?.run { removePrefix(DATA).trim() }
+            if (data == null) other.append(line).append('\n')
             val delta = data?.let { AiStream.parseEvent(protocol = protocol, data = it) }
             delta?.error?.let { throw AiException(it) }
             if (delta != null) emit(delta)
+            hasText = hasText || delta?.text.orEmpty().isNotEmpty()
             line = source.readUtf8Line()
         }
+        if (!hasText) emit(wholeAnswer(protocol = protocol, body = other.toString()))
+    }
+
+    private fun wholeAnswer(protocol: AiProtocol, body: String): AiDelta {
+        val whole = AiStream.parseWhole(protocol = protocol, body = body)
+        whole?.error?.let { throw AiException(it) }
+        if (whole == null || whole.text.isEmpty()) throw AiException("The provider sent no answer (${body.trim().take(MAX_ERROR_CHARS)})")
+        return whole
     }
 
     private fun checkOk(response: Response) {
         if (!response.isSuccessful) {
             val body = runCatching { response.body?.string().orEmpty() }.getOrDefault("")
             val message = AiStream.errorBody(body) ?: body.take(MAX_ERROR_CHARS).ifBlank { "HTTP ${response.code}" }
-            throw AiException(httpMessage(code = response.code, detail = message))
+            throw AiException(message = httpMessage(code = response.code, detail = message), code = response.code)
         }
     }
 
@@ -91,6 +105,8 @@ class AiClient(private val io: CoroutineDispatcher = Dispatchers.IO) {
                 HTTP_UNAUTHORIZED, HTTP_FORBIDDEN -> "The API key was refused"
                 HTTP_NOT_FOUND -> "Model or endpoint not found"
                 HTTP_TOO_MANY -> "Rate limit or quota reached"
+                HTTP_PAYMENT -> "This model needs credits or a plan with this provider"
+                in HTTP_SERVER_ERRORS -> "The provider is busy right now: try again or pick another model"
                 else -> "HTTP $code"
             }
         return "$hint: $detail"
@@ -98,16 +114,23 @@ class AiClient(private val io: CoroutineDispatcher = Dispatchers.IO) {
 
     private companion object {
         const val CONNECT_TIMEOUT_S = 15L
-        const val READ_TIMEOUT_S = 90L
+        const val READ_TIMEOUT_S = 60L
         const val MAX_ERROR_CHARS = 200
         const val HTTP_UNAUTHORIZED = 401
         const val HTTP_FORBIDDEN = 403
         const val HTTP_NOT_FOUND = 404
         const val HTTP_TOO_MANY = 429
+        const val HTTP_PAYMENT = 402
+        val HTTP_SERVER_ERRORS = 500..599
         const val DATA = "data:"
         val JSON = "application/json".toMediaType()
     }
 }
 
-/** A failed AI request, with a message fit for the popup. */
-class AiException(message: String) : IOException(message)
+/**
+ * A failed AI request, with a message fit for the popup.
+ *
+ * @param message What failed, with the provider's own words after ": ".
+ * @property code The HTTP status, 0 when the failure wasn't one (an error inside the stream, no answer).
+ */
+class AiException(message: String, val code: Int = 0) : IOException(message)

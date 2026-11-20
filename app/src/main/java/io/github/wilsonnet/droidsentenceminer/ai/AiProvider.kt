@@ -30,6 +30,7 @@ enum class AiProtocol(val label: String) {
  * @property modelsUrl Model list when it isn't `{baseUrl}/models`.
  * @property hasSessionHeader Sends `x-opencode-session` (OpenCode routes and caches by it).
  * @property extraBody JSON object fields added to every request (provider-specific switches, e.g. no reasoning).
+ * @property modelHints Parts of model ids to prefer when the chosen model stops working ([AiModels.pick]).
  */
 data class AiProvider(
     val id: String,
@@ -42,6 +43,7 @@ data class AiProvider(
     val modelsUrl: String? = null,
     val hasSessionHeader: Boolean = false,
     val extraBody: String? = null,
+    val modelHints: List<String> = AiModels.GENERIC_HINTS,
 ) {
     /** Whether requests need an API key (local servers don't). */
     val isKeyNeeded: Boolean get() = keyUrl != null || id == AiProviders.CUSTOM_ID
@@ -67,6 +69,9 @@ object AiProviders {
             baseUrl = "https://generativelanguage.googleapis.com/v1beta",
             keyUrl = "https://aistudio.google.com/apikey",
             note = "Free tier · key from Google AI Studio",
+            // An alias that follows new releases; Flash proper answered 503 (busy) on the free tier in testing.
+            defaultModel = "gemini-flash-lite-latest",
+            modelHints = listOf("flash-lite-latest", "flash-latest", "flash-lite", "flash"),
         )
 
     /** A user-defined endpoint speaking any [AiProtocol]. */
@@ -91,6 +96,9 @@ object AiProviders {
                 baseUrl = "https://openrouter.ai/api/v1",
                 keyUrl = "https://openrouter.ai/settings/keys",
                 note = "Hundreds of models, some free (:free)",
+                // OpenRouter's router over the free models: works with a fresh key, no model to pick.
+                defaultModel = "openrouter/free",
+                modelHints = listOf("openrouter/free", ":free"),
             ),
             AiProvider(
                 id = "groq",
@@ -107,6 +115,16 @@ object AiProviders {
                 baseUrl = "https://api.cerebras.ai/v1",
                 keyUrl = "https://cloud.cerebras.ai",
                 note = "Free tier · very fast",
+            ),
+            AiProvider(
+                id = "ollama-cloud",
+                name = "Ollama Cloud",
+                protocol = AiProtocol.OPENAI_CHAT,
+                baseUrl = "https://ollama.com/v1",
+                keyUrl = "https://ollama.com/settings/keys",
+                // A key needs no card, but API answers did (HTTP 402 on every model with a fresh key, 2026-11).
+                note = "Open models · API answers need credits",
+                defaultModel = "glm-5.3-flash",
             ),
             AiProvider(
                 id = "openai",
@@ -152,6 +170,7 @@ object AiProviders {
                 keyUrl = "https://opencode.ai/auth",
                 note = "Subscription · open models",
                 defaultModel = "deepseek-v4.1-flash",
+                modelHints = listOf("deepseek-v4", "flash", "glm"),
                 modelsUrl = "https://opencode.ai/zen/go/v1/models",
                 hasSessionHeader = true,
                 // Explanations don't need reasoning: first text in ~4.6 s instead of ~8.5 s (deepseek-v4.1-flash).

@@ -6,21 +6,33 @@ versions are the `v*` tags that publish a signed APK on
 
 ## [Unreleased]
 
+## [0.11.0] — 2026-11-20
+
 ### Added
-- **AI explanations.** An ✦ button in the lookup popup asks for a grammar breakdown of the
+- **AI explanations (optional, off until you turn them on).** Turn them on from the new *AI
+  explanations* card on Home, which then shows the setup that's left. An ✦ button in the lookup popup asks for a grammar breakdown of the
   sentence, focused on the word you tapped (its form, the patterns around it, a natural
   translation). Two ways: **AI app** opens Gemini with the prompt already typed (Claude, ChatGPT
   and others through the share sheet, prompt also copied) — free, nothing to set up; **API key**
   streams the answer into the popup from Google Gemini (free tier), Groq, Cerebras, Mistral,
-  OpenRouter, OpenAI, Anthropic, DeepSeek, xAI, OpenCode Go, Ollama on your computer, or any
-  OpenAI-, Anthropic- or Gemini-compatible endpoint. Keys are stored encrypted.
+  OpenRouter, OpenAI, Anthropic, DeepSeek, xAI, OpenCode Go, Ollama Cloud, Ollama on your computer, or any
+  OpenAI-, Anthropic- or Gemini-compatible endpoint. Keys are stored encrypted. Free keys without a
+  credit card: Google Gemini (AI Studio) and OpenRouter's free models — both ready as soon as the key
+  is pasted.
 - **Editable prompts**: *Grammar*, *Translate* and *Word nuance* built in, add your own, with
   `{word}`, `{sentence}`, `{lemma}`, `{reading}`, `{definition}` and `{language}` placeholders.
   Edited built-ins can always go back with *Restore original*.
 - **AI answers on cards**: an answer you opened goes after (or before) the glossary, or into its own
   field (*Grammar* / *AI Explanation*, or any field set to *AI explanation* in *Settings → Anki →
   Fields*). Mining never calls the AI by itself.
-- **One switch to turn AI off** (*Settings → AI explanations*): no AI button anywhere, nothing sent.
+- **Opt-in, one switch**: while AI is off (the default) there is no AI button anywhere and nothing is
+  sent; the same switch is on Home and in *Settings → AI explanations*.
+- **AI errors that say what to do**: no connection, refused key, model needs credits, free-tier limit,
+  provider busy or slow each get their own message with only the buttons that help (*Try again*,
+  *Open AI settings*), and *Ask Gemini* always works. *Send a test* in settings uses the same messages.
+- **Models that move on**: model lists come live from the provider, defaults are aliases
+  (`gemini-flash-lite-latest`, `openrouter/free`), and a retired model is replaced by the best one the
+  provider still lists — the popup says so and keeps going.
 
 ## [0.10.0] — 2026-11-20
 
@@ -337,7 +349,8 @@ First release.
 - Microphone fallback for apps that block audio capture; typewriter-text handling for visual novels.
 - Tablet/landscape layout with a navigation rail.
 
-[Unreleased]: https://github.com/WilsonNet/droid-sentence-miner/compare/v0.10.0...HEAD
+[Unreleased]: https://github.com/WilsonNet/droid-sentence-miner/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/WilsonNet/droid-sentence-miner/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/WilsonNet/droid-sentence-miner/compare/v0.9.1...v0.10.0
 [0.9.1]: https://github.com/WilsonNet/droid-sentence-miner/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/WilsonNet/droid-sentence-miner/compare/v0.8.0...v0.9.0

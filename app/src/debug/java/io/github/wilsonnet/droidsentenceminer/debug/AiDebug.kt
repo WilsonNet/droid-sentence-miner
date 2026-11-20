@@ -11,6 +11,8 @@ import io.github.wilsonnet.droidsentenceminer.ai.AiPromptRenderer
 import io.github.wilsonnet.droidsentenceminer.ai.AiProtocol
 import io.github.wilsonnet.droidsentenceminer.ai.AiProviders
 import io.github.wilsonnet.droidsentenceminer.ai.AiSettings
+import io.github.wilsonnet.droidsentenceminer.ui.components.AiPhase
+import io.github.wilsonnet.droidsentenceminer.ui.components.AiPopupState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.toList
@@ -33,6 +35,8 @@ object AiDebug {
     private const val ERROR = "error"
     private const val MODEL = "model"
     private const val PROMPT = "prompt"
+    private const val WORD = "word"
+    private const val SENTENCE = "sentence"
 
     /** Answers one request for a path in [PATHS]. */
     fun handle(app: Application, path: String, params: Map<String, String>): JSONObject {
@@ -41,7 +45,7 @@ object AiDebug {
                 "/ai" -> settings(app, params)
                 "/ai_models" -> models(app)
                 "/ai_send" -> send(app, params)
-                else -> ask(app, params)
+                else -> if (params["heal"] == "1") askLikePopup(app, params) else ask(app, params)
             }
         return response
     }
@@ -96,8 +100,8 @@ object AiDebug {
         return runBlocking {
             val settings = container.ai.prefs.current()
             val config = settings.config
-            val word = params["word"].orEmpty()
-            val sentence = params["sentence"].orEmpty()
+            val word = params[WORD].orEmpty()
+            val sentence = params[SENTENCE].orEmpty()
             val details = container.lookup.lookup(word = word, sentence = sentence)
             val lookup = container.ai.lookupContext(word = word, sentence = sentence, details = details)
             val prompt = settings.prompts.firstOrNull { it.id == params[PROMPT] } ?: settings.defaultPrompt
@@ -138,6 +142,38 @@ object AiDebug {
         }
     }
 
+    // `/ai_ask?heal=1&word=&sentence=`: the popup's own path (AiPopupState): a retired model is
+    // replaced by a live one and asked again; `notice` says so.
+    private fun askLikePopup(app: Application, params: Map<String, String>): JSONObject {
+        val container = AppContainer.from(app)
+        return runBlocking {
+            val settings = container.ai.prefs.current()
+            val config = settings.config
+            val response = JSONObject().put(OK, false).put(ERROR, "AI not configured")
+            if (config != null) {
+                val word = params[WORD].orEmpty()
+                val sentence = params[SENTENCE].orEmpty()
+                val details = container.lookup.lookup(word = word, sentence = sentence)
+                val lookup = container.ai.lookupContext(word = word, sentence = sentence, details = details)
+                val prompt = settings.defaultPrompt
+                val state = AiPopupState()
+                val text = AiPromptRenderer.render(template = prompt.template, context = lookup)
+                state.ask(ai = container.ai, config = config, promptId = prompt.id, prompt = text, lemma = lookup.lemma)
+                val answer = state.answers[prompt.id]
+                val failure = answer?.failure?.run { "$kind: $title. $advice ($detail)" }
+                val now = container.ai.prefs.current()
+                val model = now.model
+                response
+                    .put(OK, answer?.phase == AiPhase.DONE)
+                    .put(ERROR, failure ?: JSONObject.NULL)
+                    .put("notice", answer?.notice ?: JSONObject.NULL)
+                    .put(MODEL, model)
+                    .put("answer", answer?.text.orEmpty())
+            }
+            response
+        }
+    }
+
     // `/ai_models`: the configured provider's model list.
     private fun models(app: Application): JSONObject {
         val container = AppContainer.from(app)
@@ -160,8 +196,8 @@ object AiDebug {
         return runBlocking {
             val settings = container.ai.prefs.current()
             val target = AiApps.pick(context = app, preferred = settings.appPackage)
-            val word = params["word"].orEmpty()
-            val sentence = params["sentence"].orEmpty()
+            val word = params[WORD].orEmpty()
+            val sentence = params[SENTENCE].orEmpty()
             val details = container.lookup.lookup(word = word, sentence = sentence)
             val lookup = container.ai.lookupContext(word = word, sentence = sentence, details = details)
             val text = AiPromptRenderer.render(template = settings.defaultPrompt.template, context = lookup)

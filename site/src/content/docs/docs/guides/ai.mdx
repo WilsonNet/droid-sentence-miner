@@ -3,12 +3,22 @@ title: AI explanations
 description: A grammar breakdown of the sentence, focused on the word you looked up — from the Gemini app in one tap, or in the popup with your own API key. Off with one switch.
 ---
 
+:::tip[AI is optional and off until you turn it on]
+Nothing else in the app depends on it. Until you switch it on (the **AI explanations** card on
+Home, or **Settings → AI explanations**) there is no ✦ button anywhere and nothing is sent to any AI
+service. Switch it off again any time.
+:::
+
+## Turning it on
+
+On **Home**, switch on **AI explanations**. The card then shows what the ✦ button will do and the
+one step left, if any: in *AI app* mode it's ready when Gemini (or another AI app) is installed; in
+*API key* mode, **Get a free Gemini key** opens Google AI Studio and **AI settings** takes you
+where the key goes.
+
 The lookup popup has an AI button (✦) next to **+ Anki**. By default it asks for a short
 grammar breakdown of the sentence in English, focused on how the word you tapped is used: its
 form, the patterns around it, and a natural translation.
-
-Don't want AI at all? Turn off **Settings → AI explanations**: every AI button disappears and
-nothing is sent anywhere.
 
 ## Two ways to answer
 
@@ -22,17 +32,63 @@ definition. Tap ✦ again or press Back to return to the definition. Chips switc
 and ↻ asks again. Pick a provider under **Answers → API key**, paste your key, pick a model from
 the list and tap **Send a test**.
 
+### Getting a free key (no credit card)
+
+Checked on 2026-11-20 with brand-new accounts:
+
+| Provider | Key | What works for free |
+| --- | --- | --- |
+| **Google Gemini** | [Google AI Studio](https://aistudio.google.com/apikey): sign in with a Google account | The default model, `gemini-flash-lite-latest`, answered in under 1 s. The bigger Flash models sometimes answer "busy" on the free tier: try again or keep Flash-Lite. |
+| **OpenRouter** | [openrouter.ai/settings/keys](https://openrouter.ai/settings/keys) | Models ending in `:free` (listed first) and the default `openrouter/free`, which picks a free model for you. Free models are rate-limited; if one is busy, pick another. |
+| **Ollama Cloud** | [ollama.com/settings/keys](https://ollama.com/settings/keys) | The key is free and lists the models, but answers asked for credits or a plan. |
+
+Both Gemini and OpenRouter work right after you paste the key: the model is already filled in.
+
+### Other providers
+
 | Provider | Notes |
 | --- | --- |
-| Google Gemini | Free tier with a Google account: key from [Google AI Studio](https://aistudio.google.com/apikey). |
-| Groq, Cerebras, Mistral | Free tiers. |
-| OpenRouter | Hundreds of models, some free. |
+| Groq, Cerebras, Mistral | Free tiers (not checked here). |
 | OpenAI, Anthropic, DeepSeek, xAI | Paid. |
 | OpenCode Go | Subscription; open models such as DeepSeek V4.1 Flash and GLM-5.3. |
-| Ollama | Your own computer on the same network, no key: enter its address. |
+| Ollama (local) | Your own computer on the same network, no key: enter its address. |
 | Custom endpoint | Any API that speaks the OpenAI, Anthropic or Gemini format. |
 
 Keys are stored encrypted with the Android Keystore and only sent to the provider you picked.
+
+## Step by step: free answers in the popup
+
+1. Switch on **AI explanations** on Home (or in **Settings → AI explanations**) and choose **API key**.
+2. Pick **Google Gemini** (or **OpenRouter**) as the provider.
+3. Tap **Get a key from Google Gemini**, sign in, create a key and copy it.
+4. Paste it into **API key**. The model is already filled in (`gemini-flash-lite-latest`).
+5. Tap **Send a test**: *Answered in 1.0 s* means you're done.
+6. Look up any word and tap ✦ in the popup.
+
+## Models change; the app keeps up
+
+Model names come from the provider's live list, not from the app, so new models show up without
+an update. Defaults are aliases where the provider has them (`gemini-flash-lite-latest`,
+`openrouter/free`). If a model you picked is retired or renamed, the next answer switches to the
+best model the provider still lists, says so above the answer (*… isn't available anymore:
+switched to …*) and saves the new choice.
+
+## When something goes wrong
+
+The popup says what failed and what to do, with only the buttons that help:
+
+| You see | What to do |
+| --- | --- |
+| *No internet connection* | Check Wi-Fi or mobile data, then **Try again**. |
+| *… refused your API key* | The key was deleted or mistyped: **Open AI settings** and paste a new one. |
+| *This model needs credits* | Pick a free model (OpenRouter: `:free`), or add credits with the provider. |
+| *… limit is used up for now* | Free tiers allow a few requests a minute: wait, or pick another model. |
+| *… is busy right now* / *took too long* | The model is overloaded: **Try again** in a moment, or pick a lighter model. |
+| *This model isn't available anymore* | No replacement was found: pick a model in settings. |
+
+**Ask Gemini** under every answer is the way out that always works: it opens the Gemini app with
+the same prompt. **Send a test** in settings shows the same messages, so you can fix a key or model
+before you need it.
 
 ## Prompts
 

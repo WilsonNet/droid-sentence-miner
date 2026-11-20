@@ -147,17 +147,21 @@ private fun AiAnswerPanel(state: AiPopupState, settings: AiSettings, lookup: AiL
 @Composable
 private fun AnswerBody(answer: AiAnswer?, isConfigured: Boolean, isApiMode: Boolean, onRetry: () -> Unit, modifier: Modifier = Modifier) {
     Column(modifier.verticalScroll(rememberScrollState())) {
+        answer?.notice?.let {
+            Text(it, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+        }
         val isEmpty = answer == null || answer.text.isEmpty()
         val isWaiting = isEmpty && answer?.phase != AiPhase.FAILED
+        val failure = answer?.failure
         when {
-            !isConfigured -> SetupHint(isApiMode = isApiMode)
+            !isConfigured -> AiSetupHint(isApiMode = isApiMode)
+
             answer == null || isWaiting -> AnswerSkeleton(isThinking = answer?.phase == AiPhase.THINKING)
-            else -> AiMarkdownText(markdown = answer.text)
+
+            // A cut-off answer keeps what arrived; the error follows it.
+            else -> AiMarkdownText(markdown = answer.text, modifier = Modifier.padding(bottom = SMALL_GAP))
         }
-        if (answer?.phase == AiPhase.FAILED) {
-            Text(answer.error.orEmpty(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
-            TextButton(onClick = onRetry) { Text("Try again") }
-        }
+        if (failure != null) AiErrorBlock(failure = failure, onRetry = onRetry)
     }
 }
 
@@ -211,18 +215,6 @@ private fun AnswerSkeleton(isThinking: Boolean) {
             Text("Thinking…", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
-}
-
-@Suppress("FunctionName") // Composables are PascalCase.
-@Composable
-private fun SetupHint(isApiMode: Boolean) {
-    val message =
-        if (isApiMode) {
-            "Add an API key and model in Settings → AI to see answers here."
-        } else {
-            "No AI app found. Install Gemini, or add an API key in Settings → AI."
-        }
-    Text(message, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
 // The model on the left, and whether the answer will go on the card; hand-off on the right.

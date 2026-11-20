@@ -198,7 +198,8 @@ class AiPrefs(private val context: Context) {
                 it.id == prefs[PLACEMENT]
             } ?: AiCardPlacement.AFTER_GLOSSARY
         return AiSettings(
-            isEnabled = prefs[ENABLED] != false,
+            // Opt-in: off until the user turns it on (Home's AI card or Settings).
+            isEnabled = prefs[ENABLED] == true,
             mode = mode,
             provider = provider,
             apiKey = key,

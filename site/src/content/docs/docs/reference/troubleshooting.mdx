@@ -133,3 +133,13 @@ and auto OCR on a real device.
 Open an issue with the device model, Android version, OCR engine, and what the log shows. If you
 can reproduce it with the built-in sample or a public video, include that; it makes the bug much
 faster to fix.
+
+## AI explanations
+
+- **No ✦ button in the popup**: **Settings → AI explanations** is switched off.
+- **✦ opens Gemini instead of answering in the popup**: that's *AI app* mode. Switch *Answers* to
+  **API key** and add a key.
+- **An error instead of an answer**: the message says what failed and what to do. See
+  [When something goes wrong](../../guides/ai/#when-something-goes-wrong).
+- **GitHub Models**: the token from `gh auth login` gets no answers. That provider isn't built in.
+

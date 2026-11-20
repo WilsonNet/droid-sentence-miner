@@ -77,11 +77,14 @@ Step by step from a fresh install. The website has the same flow with screenshot
    open *Reader settings* to pick *Single page / Double page / Vertical scroll* and *Auto / Manga OCR / Google
    Lens / ML Kit*. For mokuro-quality text, run `mokuro volume.cbz` on a PC and import the
    `volume.mokuro` it writes together with the `.cbz`.
-9. **AI explanations (optional)** — tap ✦ in any lookup popup for a grammar breakdown of the
-   sentence. Out of the box it opens Gemini (if installed) with the prompt typed: tap send. For
-   answers inside the popup, open *Settings → AI explanations → Answers → API key*, pick a provider
-   (Google Gemini has a free tier: *Get a key from Google Gemini*), paste the key, pick a model and
-   *Send a test*. Edit or add prompts there, and choose where answers go on cards. The switch on the
-   *AI explanations* row turns all of it off.
+9. **AI explanations (optional, off by default)** — switch on *AI explanations* on Home; the card
+   shows what's left to set up. Then tap ✦ in any lookup popup for a grammar breakdown of the
+   sentence. In *AI app* mode it opens Gemini (if installed) with the prompt typed: tap send. For
+   answers inside the popup, open *Settings → AI explanations → Answers → API key*, pick a provider,
+   tap *Get a key from …*, paste the key and *Send a test*. Free keys without a credit card:
+   **Google Gemini** (Google AI Studio; default `gemini-flash-lite-latest`) and **OpenRouter**
+   (`:free` models; default `openrouter/free`) — both work as soon as the key is pasted. An
+   **Ollama Cloud** key is free too, but its API answers needed credits when tested (2026-11-20). Edit or add prompts there, and choose where answers go on cards. Switch AI off again
+   on Home or in Settings: every AI button disappears.
 10. **Test drive** — the Home tab has a built-in sample (a public-domain Aozora Bunko passage) and
    an image picker to test OCR + lookup without a game.

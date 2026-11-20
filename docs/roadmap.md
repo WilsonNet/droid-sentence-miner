@@ -6,8 +6,9 @@ Ideas and known gaps, roughly in priority order. Shipped work moves to [CHANGELO
 (the `dsm-docs` skill checks this list against the code at the end of every task).
 
 - AI explanations: models that only speak OpenAI's Responses API (some GPT models on gateways)
-  aren't supported; the Claude/ChatGPT app hand-off and the direct Anthropic, OpenAI and Gemini
-  providers were only checked through the OpenCode gateway, not with their own keys; Gemini (and
+  aren't supported; the Claude/ChatGPT app hand-off and the direct Anthropic and OpenAI providers
+  were only checked through the OpenCode gateway, not with their own keys (Gemini, OpenRouter and
+  Ollama Cloud were checked with their own); Groq, Cerebras and Mistral are untested; Gemini (and
   other apps) can't be made to send the prompt by themselves, the user taps send; answers are
   English-only unless the prompt is edited.
 - More study languages: a module is `lang/<code>/` + registry entry + recommended dictionaries

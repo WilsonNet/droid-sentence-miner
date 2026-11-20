@@ -72,8 +72,13 @@ with AI upscaling (right). Pages: *Black Jack ni Yoroshiku* by Shuho Sato (free 
   photograph a printed page and tap the text to look it up.
 - **AI explanations (optional)** — a grammar breakdown of the sentence focused on the tapped word:
   one tap opens Gemini with the prompt typed, or bring your own API key (Gemini free tier, Groq,
-  OpenRouter, OpenAI, Anthropic, Ollama…) for answers in the popup and on the card. Editable
-  prompts; one switch hides it all.
+  OpenRouter, OpenAI, Anthropic, Ollama…) for answers in the popup and on the card. Gemini and
+  OpenRouter keys are free without a credit card. Editable prompts, clear errors, retired models
+  replaced automatically; opt-in
+  ([guide](https://wilsonnet.github.io/droid-sentence-miner/docs/guides/ai/)).
+
+  > **Not into AI? It stays off.** AI is opt-in: until you switch it on (Home or *Settings → AI
+  > explanations*) there is no AI button anywhere and nothing is sent. Nothing else in the app needs it.
 - **Multilingual, Japanese first** — pick the language you study on first launch: Japanese
   (main focus), English, German or French (Wiktionary dictionaries, inflections, IPA, noun genders on
   cards, optional PaddleOCR pack); each language has its own Anki deck, note type and card

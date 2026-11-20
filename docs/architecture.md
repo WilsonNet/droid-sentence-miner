@@ -158,6 +158,15 @@ downloaded. Adding a language: `.opencode/skills/dsm-language/SKILL.md`.
   first definition as plain text, study language).
 - **Popup** (`ui/components/AiAnswerPanel.kt`, `AiPopupState.kt`): `AiHeaderButton` + `AiOrDefinition`
   wrap the existing lookup card/dialog; answers are cached per prompt for the popup's lifetime.
+- **Models are never a fixed list**: `AiClient.models` reads the provider's list (Gemini's filtered by
+  `AiStream.NOT_CHAT`, OpenRouter's `:free` first); presets only hold a default (an alias where one
+  exists) and `modelHints`. When a request fails because the model is gone (`AiModels.isModelGone`:
+  404/410, or 400 naming the model), `AiService.replacementModel` picks the best live model by hints,
+  saves it, and `AiPopupState.ask` retries once with a notice.
+- **Errors** (`AiFailure`): every failure becomes a kind (offline, timeout, key refused, credits,
+  rate limit, busy, model gone, empty answer, other) with title + advice + the provider's message;
+  `AiErrorBlock` shows only the actions that kind allows. A body without SSE events is parsed whole
+  (`AiStream.parseWhole`); no text at all is an error, not an empty success.
 - **App hand-off** (`AiApps`): `ACTION_SEND` text/plain to a known AI app's package (manifest
   `<queries>`), new task, clipboard copy for apps not known to prefill.
 - **Cards** (`AiCardNotes`): a finished popup answer is kept per expression for 30 min;

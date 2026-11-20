@@ -13,13 +13,14 @@ import androidx.compose.ui.platform.LocalContext
 import io.github.wilsonnet.droidsentenceminer.AppContainer
 import io.github.wilsonnet.droidsentenceminer.ai.AiCardNotes
 import io.github.wilsonnet.droidsentenceminer.ai.AiConfig
+import io.github.wilsonnet.droidsentenceminer.ai.AiException
+import io.github.wilsonnet.droidsentenceminer.ai.AiFailure
 import io.github.wilsonnet.droidsentenceminer.ai.AiLookupContext
+import io.github.wilsonnet.droidsentenceminer.ai.AiModels
 import io.github.wilsonnet.droidsentenceminer.ai.AiService
 import io.github.wilsonnet.droidsentenceminer.ai.AiSettings
 import io.github.wilsonnet.droidsentenceminer.dict.TermLookup
 import java.io.IOException
-import java.net.SocketTimeoutException
-import java.net.UnknownHostException
 import java.util.UUID
 
 /** Where one prompt's answer is. */
@@ -45,9 +46,15 @@ enum class AiPhase {
  *
  * @property text Markdown received so far.
  * @property phase Progress.
- * @property error Why it failed, fit to show.
+ * @property failure Why it failed, as user copy with its recovery ([AiFailure]).
+ * @property notice A note above the answer (the model was switched because the old one is gone).
  */
-data class AiAnswer(val text: String = "", val phase: AiPhase = AiPhase.WAITING, val error: String? = null) {
+data class AiAnswer(
+    val text: String = "",
+    val phase: AiPhase = AiPhase.WAITING,
+    val failure: AiFailure? = null,
+    val notice: String? = null,
+) {
     /** A request is still running. */
     val isBusy: Boolean get() = phase == AiPhase.WAITING || phase == AiPhase.THINKING || phase == AiPhase.STREAMING
 }
@@ -85,30 +92,57 @@ class AiPopupState {
      */
     suspend fun ask(ai: AiService, config: AiConfig, promptId: String, prompt: String, lemma: String) {
         if (answers[promptId]?.phase == AiPhase.DONE) return
-        answers[promptId] = AiAnswer()
         AiCardNotes.forget(lemma)
+        var endpoint = config
+        var notice: String? = null
+        var attempt = 0
+        while (attempt < MAX_ATTEMPTS) {
+            attempt++
+            answers[promptId] = AiAnswer(notice = notice)
+            val isGone = stream(ai = ai, config = endpoint, promptId = promptId, prompt = prompt, notice = notice)
+            // A retired or renamed model: switch to the best one the provider lists now, once.
+            val replacement = if (isGone && attempt < MAX_ATTEMPTS) ai.replacementModel(endpoint) else null
+            if (replacement == null) break
+            notice = "${endpoint.model} isn't available anymore: switched to ${replacement.model}."
+            endpoint = replacement
+        }
+        val done = answers[promptId]?.takeIf { it.phase == AiPhase.DONE }
+        if (done != null) AiCardNotes.remember(expression = lemma, answer = done.text)
+    }
+
+    // One request into [answers]; true when it failed because the model is gone.
+    private suspend fun stream(
+        ai: AiService,
+        config: AiConfig,
+        promptId: String,
+        prompt: String,
+        notice: String?,
+    ): Boolean {
         val answer = StringBuilder()
+        var isModelGone = false
         try {
             ai.ask(config = config, prompt = prompt, session = session).collect { delta ->
                 answer.append(delta.text)
                 val phase = if (answer.isEmpty()) AiPhase.THINKING else AiPhase.STREAMING
-                answers[promptId] = AiAnswer(text = answer.toString(), phase = phase)
+                answers[promptId] = AiAnswer(text = answer.toString(), phase = phase, notice = notice)
             }
-            answers[promptId] = AiAnswer(text = answer.toString(), phase = AiPhase.DONE)
-            AiCardNotes.remember(expression = lemma, answer = answer.toString())
+            answers[promptId] = AiAnswer(text = answer.toString(), phase = AiPhase.DONE, notice = notice)
+        } catch (e: AiException) {
+            isModelGone = AiModels.isModelGone(e)
+            answers[promptId] = failed(answer = answer, error = e, config = config, notice = notice)
         } catch (e: IOException) {
-            answers[promptId] = AiAnswer(text = answer.toString(), phase = AiPhase.FAILED, error = failureMessage(e))
+            answers[promptId] = failed(answer = answer, error = e, config = config, notice = notice)
         }
+        return isModelGone
     }
 
-    private fun failureMessage(error: IOException): String {
-        val message =
-            when (error) {
-                is UnknownHostException -> "No internet connection."
-                is SocketTimeoutException -> "The AI took too long to answer."
-                else -> error.message ?: "The AI request failed."
-            }
-        return message
+    private fun failed(answer: StringBuilder, error: IOException, config: AiConfig, notice: String?): AiAnswer {
+        val failure = AiFailure.from(error = error, provider = config.provider.name)
+        return AiAnswer(text = answer.toString(), phase = AiPhase.FAILED, failure = failure, notice = notice)
+    }
+
+    private companion object {
+        const val MAX_ATTEMPTS = 2
     }
 }
 
