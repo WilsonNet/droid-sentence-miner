@@ -4,6 +4,9 @@ import io.github.wilsonnet.droidsentenceminer.lang.Candidate
 import io.github.wilsonnet.droidsentenceminer.lang.LanguageModule
 import io.github.wilsonnet.droidsentenceminer.lang.LanguagePack
 import io.github.wilsonnet.droidsentenceminer.lang.WordAudioSource
+import io.github.wilsonnet.droidsentenceminer.lang.kit.LatinText
+import io.github.wilsonnet.droidsentenceminer.lang.kit.PosMask
+import io.github.wilsonnet.droidsentenceminer.lang.kit.SpacedScanner
 
 /**
  * French: spaced Latin script with accents, elision (l'homme, qu'il, j'ai) and hyphenated forms
@@ -45,26 +48,25 @@ object FrenchLanguage : LanguageModule {
         )
 
     /** Part-of-speech bit for nouns (Yomitan rule "n"). */
-    const val NOUN = 1L
+    const val NOUN = PosMask.NOUN
 
     /** Part-of-speech bit for verbs (Yomitan rule "v"). */
-    const val VERB = 2L
+    const val VERB = PosMask.VERB
 
     /** Part-of-speech bit for adjectives (Yomitan rule "adj"). */
-    const val ADJ = 4L
+    const val ADJ = PosMask.ADJ
 
     /** Part-of-speech bit for adverbs (Yomitan rule "adv"). */
-    const val ADV = 8L
+    const val ADV = PosMask.ADV
 
     private val GENDER_ARTICLES = listOf("masc" to "un", "fem" to "une")
 
-    override fun isTargetChar(c: Char): Boolean =
-        c.isLetter() && Character.UnicodeScript.of(c.code) == Character.UnicodeScript.LATIN
+    override fun isTargetChar(c: Char): Boolean = LatinText.isLatinLetter(c)
 
-    override fun isLookupable(c: Char): Boolean = c.isLetterOrDigit() || c == '\'' || c == '’' || c == '-'
+    override fun isLookupable(c: Char): Boolean = SpacedScanner.isLookupable(c)
 
     override fun candidateLengths(text: String, position: Int, maxLength: Int): IntArray =
-        FrenchScanner.candidateLengths(text = text, position = position, maxLength = maxLength)
+        FrenchScanner.SCANNER.candidateLengths(text = text, position = position, maxLength = maxLength)
 
     override fun deinflect(surface: String): List<Candidate> = FrenchDeinflector.deinflect(surface)
 
@@ -74,13 +76,13 @@ object FrenchLanguage : LanguageModule {
 
     /** Unknown or missing parts of speech (phrases, symbols) accept any deinflection. */
     override fun termMatches(conditions: Long, ruleMask: Long): Boolean =
-        conditions == 0L || ruleMask == 0L || ruleMask and conditions != 0L
+        PosMask.matches(conditions = conditions, mask = ruleMask)
 
-    override fun ruleMask(rules: String): Long = FrenchDeinflector.ruleMask(rules)
+    override fun ruleMask(rules: String): Long = PosMask.parse(rules)
 
-    override fun textScore(text: String): Double = FrenchScanner.textScore(text)
+    override fun textScore(text: String): Double = LatinText.score(text)
 
-    override fun looksLikeText(text: String): Boolean = FrenchScanner.looksLikeText(text)
+    override fun looksLikeText(text: String): Boolean = LatinText.looksLikeText(text)
 
     override fun normalizeOcr(text: String): String = FrenchScanner.normalizeOcr(text)
 

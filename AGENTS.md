@@ -626,6 +626,12 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   Commons `Fr-…` regex search returns junk and the Lingua Libre search ranks phrases first. OCR
   pack = the English zip (PP-OCRv6 small reads every French letter, œ, « »). IPA in the popup uses
   `serif`: HyperOS's MiSans lacks ɔ, and a fallback font split ɔ from its combining tilde.
+- **Composable lookup** (`lang/kit/`, `lang/LookupFeature`, `dict/LookupSteps`): spaced languages
+  are built from shared kit pieces (scanner, suffix-rule tables, POS masks, case forms, OCR text
+  helpers, row joiner) — `lang/kit` isn't a 2-letter package, so the architecture test lets every
+  language import it. Engine behaviors (form-of following, homograph separation, grammar-noise
+  skip, kanji info) are `LookupFeature`s each language opts into; `TermLookup` never checks
+  `usesSpaces` for lookup behavior any more.
 - **OCR pack zips aren't reproducible** (`build_pack.py`): the 0.6.0 hash `eb4db787…` matched a zip
   that was never uploaded (`lang-en-1` 404'd). The module's `sha256` must be the hash of the file
   actually uploaded (`068d48a7…` since 0.7.0, shared by English and German); changing it also means
@@ -673,7 +679,8 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
 
 ```
 app/src/main/java/io/github/wilsonnet/droidsentenceminer/
-├── lang/      LanguageModule interface, Languages registry, LanguagePacks (downloadable data)
+├── lang/      LanguageModule interface, Languages registry, LanguagePacks (downloadable data), LookupFeature
+│   ├── kit/   shared lookup toolkit (SpacedScanner, SuffixRules, PosMask, CaseForms, LatinText, RowJoiner)
 │   ├── ja/    Japanese module, JapaneseDeinflector, JapaneseTextScore
 │   ├── en/    English module (word/phrase scan, suffix deinflector)
 │   ├── de/    German module (GermanScanner, GermanDeinflector fallback rules, noun articles)

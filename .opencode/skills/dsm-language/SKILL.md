@@ -29,9 +29,16 @@ when a user studies that language. Architecture table: `docs/architecture.md` �
 ## Adding a language (e.g. Spanish)
 
 1. `app/src/main/java/.../lang/es/SpanishLanguage.kt`: `object SpanishLanguage : LanguageModule`.
-   Start from `EnglishLanguage` for spaced Latin scripts (word/phrase `candidateLengths`, suffix
-   rules with POS bits from the dictionaries' `rules` column). Look at Yomitan's
-   `ext/js/language/<code>/` transforms for rule ideas.
+   Compose it from `lang/kit/` (see `FrenchLanguage`): `SpacedScanner(maxWords = …)` for
+   `candidateLengths`, `SuffixRules.group(pos = PosMask.VERB, reason = …, spec = "suffix>repl …")`
+   tables + `CaseForms` + `CandidateSet` for `deinflect`, `PosMask.parse/matches` for
+   `ruleMask/termMatches`, `LatinText` for score/normalize, `RowJoiner` for `joinRows`. Write
+   only what the language really adds (elision, separable prefixes…); if two languages need the
+   same new piece, put it in `lang/kit/`, never import another language. Pick engine steps with
+   `lookupFeatures` (default `LookupFeature.WIKTIONARY` suits wty dictionaries; Japanese uses
+   `SKIP_GRAMMAR_NOISE` + `KANJI_INFO`); a new engine behavior = a `LookupFeature` value + its
+   `LookupStep` in `dict/LookupSteps.kt`. Look at Yomitan's `ext/js/language/<code>/` transforms
+   for rule ideas.
 2. Register it in `Languages.ALL` (`lang/Language.kt`) and add a one-line blurb in
    `ui/screens/LanguageScreens.kt` → `blurb()`.
 3. Dictionaries: append `RecommendedDictionary(language = "es", …)` to

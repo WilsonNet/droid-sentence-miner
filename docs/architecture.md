@@ -94,6 +94,24 @@ OCR post-processing, line tracking, Book layout, filters — only asks the modul
 | `wordAudioSources`, `wiktionaryRegions`, `linguaLibreArticles` | JapanesePod101, Jisho | Wiktionary (us, uk), Lingua Libre | Wiktionary (no region, at, ch), Lingua Libre (+ der/die/das) | the French Wiktionary page's files (`WiktionaryPageAudio`), Lingua Libre |
 | `hasIpaReading`, `hasPitchAccent`, `hasNounGender`, `nounArticle` | kana Reading, pitch graph | IPA field | IPA + Gender field (der/die/das) | IPA + Gender field (un/une) |
 
+**Composable lookup.** Two layers a language picks from instead of re-implementing:
+
+- *Language toolkit* (`lang/kit/`, shared by every module, not a language itself):
+  `SpacedScanner` (word/phrase candidates for spaced scripts, optional trailing apostrophe),
+  `SuffixRules` (`"suffix>replacement"` tables per part of speech, per-rule minimum stem),
+  `PosMask` (wty's `n`/`v`/`adj`/`adv` rules as bits + matching), `CaseForms` (sentence-start,
+  lower-case, Capitalized spellings), `CandidateSet`, `LatinText` (OCR score, spacing clean-up)
+  and `RowJoiner` (what a line-end hyphen means: join / keep / keep + space). English, German and
+  French are built from these; their own files only hold what is really theirs (German
+  participles and zu-infinitives, French elision, pronominal verbs and ALL-CAPS accents).
+- *Engine features* (`lang/LookupFeature`, chosen in `LanguageModule.lookupFeatures`,
+  implemented in `dict/LookupSteps` and `TermLookup`): `FORM_OF_ENTRIES` (wty pointer entries →
+  the lemma's entry, 2 levels), `SEPARATE_HOMOGRAPHS` (sequence-0 rows kept apart by glossary),
+  `SKIP_GRAMMAR_NOISE` (single-kana particles skipped while scanning), `KANJI_INFO`. Default =
+  `LookupFeature.WIKTIONARY` (the first two); Japanese picks the last two. Post-lookup features
+  are `LookupStep`s fed an exact lookup of other words, so a new one (compound splitting,
+  separable verbs) is a new enum value + step, opted into per language.
+
 **Anki fields per language** (`anki/AnkiModels.kt` → `CardFields.forLanguage`, `CardTemplates`):
 the module's flags decide the card contents (Japanese = the historic `CardFields.ORDER`); the
 contents no field receives in the note type's custom mapping (*Nothing*) are dropped

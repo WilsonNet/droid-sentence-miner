@@ -1,30 +1,25 @@
 package io.github.wilsonnet.droidsentenceminer.lang.fr
 
 import io.github.wilsonnet.droidsentenceminer.lang.Candidate
-import io.github.wilsonnet.droidsentenceminer.lang.fr.FrenchLanguage.ADJ
-import io.github.wilsonnet.droidsentenceminer.lang.fr.FrenchLanguage.ADV
-import io.github.wilsonnet.droidsentenceminer.lang.fr.FrenchLanguage.NOUN
-import io.github.wilsonnet.droidsentenceminer.lang.fr.FrenchLanguage.VERB
+import io.github.wilsonnet.droidsentenceminer.lang.kit.CandidateSet
+import io.github.wilsonnet.droidsentenceminer.lang.kit.CaseForms
+import io.github.wilsonnet.droidsentenceminer.lang.kit.PosMask
+import io.github.wilsonnet.droidsentenceminer.lang.kit.SuffixRules
 
 /**
  * French deinflection. Elided words are stripped first (l'homme → homme, qu'il → il, j'aime →
  * aime), then a fallback for regular endings: the Wiktionary dictionaries (wty) list inflected
  * forms as entries of their own ("mangeait" → imperfect of manger, "chevaux" → plural of cheval),
  * so these rules only cover -er/-ir/-re conjugations, participles, noun plurals and adjective
- * agreement for words wty doesn't list.
+ * agreement for words wty doesn't list. Pronominal verbs and unaccented capitals: [FrenchForms].
  */
 internal object FrenchDeinflector {
-    private const val MIN_STEM = 2
-    private const val CONJUGATED = "conjugated"
-    private const val PARTICIPLE = "past participle"
     private const val ELIDED = "elision"
     private const val PRONOMINAL = "pronominal"
 
     // Longest first: "jusqu'" before "qu'".
     private val ELISIONS =
         listOf("jusqu'", "lorsqu'", "puisqu'", "quoiqu'", "presqu'", "qu'", "l'", "d'", "j'", "m'", "t'", "s'", "n'", "c'")
-
-    private data class Rule(val suffix: String, val replacement: String, val pos: Long, val reason: String)
 
     private const val PRESENT =
         "e>er es>er ent>er ons>er ez>er eons>er çons>cer elle>eler elles>eler ellent>eler ette>eter ettes>eter ettent>eter " +
@@ -41,32 +36,33 @@ internal object FrenchDeinflector {
         "e> s> es> x> euse>eux euses>eux ive>if ives>if elle>el elles>el enne>en ennes>en " +
             "ette>et ettes>et ère>er ères>er aux>al ale>al ales>al"
 
-    private val RULES: List<Rule> =
-        listOf(
-            rules(pos = VERB, reason = CONJUGATED, spec = PRESENT),
-            rules(pos = VERB, reason = "imperfect", spec = IMPERFECT),
-            rules(pos = VERB, reason = "future/conditional", spec = FUTURE),
-            rules(pos = VERB, reason = "simple past", spec = "ai>er as>er a>er âmes>er âtes>er èrent>er ea>er ît>ir irent>ir"),
-            rules(pos = VERB, reason = PARTICIPLE, spec = "é>er ée>er és>er ées>er i>ir ie>ir ies>ir u>re ue>re us>re ues>re"),
-            rules(pos = VERB, reason = "present participle", spec = "ant>er eant>er çant>cer issant>ir ant>re"),
-            rules(pos = NOUN, reason = "plural", spec = "s> x> aux>al"),
-            rules(pos = ADJ, reason = "agreement", spec = AGREEMENT),
-        ).flatten()
-
-    // "suffix>replacement" pairs, one part of speech and reason per group.
-    private fun rules(pos: Long, reason: String, spec: String): List<Rule> {
-        val pairs = spec.split(' ')
-        return pairs.map { pair ->
-            Rule(suffix = pair.substringBefore('>'), replacement = pair.substringAfter('>'), pos = pos, reason = reason)
-        }
-    }
+    private val RULES =
+        SuffixRules.combine(
+            SuffixRules.group(pos = PosMask.VERB, reason = "conjugated", spec = PRESENT),
+            SuffixRules.group(pos = PosMask.VERB, reason = "imperfect", spec = IMPERFECT),
+            SuffixRules.group(pos = PosMask.VERB, reason = "future/conditional", spec = FUTURE),
+            SuffixRules.group(
+                pos = PosMask.VERB,
+                reason = "simple past",
+                spec = "ai>er as>er a>er âmes>er âtes>er èrent>er ea>er ît>ir irent>ir",
+            ),
+            SuffixRules.group(
+                pos = PosMask.VERB,
+                reason = "past participle",
+                spec = "é>er ée>er és>er ées>er i>ir ie>ir ies>ir u>re ue>re us>re ues>re",
+            ),
+            SuffixRules.group(pos = PosMask.VERB, reason = "present participle", spec = "ant>er eant>er çant>cer issant>ir ant>re"),
+            SuffixRules.group(pos = PosMask.NOUN, reason = "plural", spec = "s> x> aux>al"),
+            SuffixRules.group(pos = PosMask.ADJ, reason = "agreement", spec = AGREEMENT),
+        )
+    private val VERB_RULES = RULES.only(PosMask.VERB)
 
     /** Dictionary-form candidates for [surface], the surface itself (in each case form) first. */
     fun deinflect(surface: String): List<Candidate> {
         if (surface.isBlank()) return emptyList()
-        val out = LinkedHashMap<Pair<String, Long>, Candidate>()
+        val out = CandidateSet()
         val text = surface.replace(oldChar = '’', newChar = '\'')
-        for (form in caseForms(text)) {
+        for (form in CaseForms.spellings(text)) {
             addWithRules(out = out, form = form, reasons = emptyList())
             val bare = withoutElision(form)
             if (bare != null) addWithRules(out = out, form = bare, reasons = listOf(ELIDED))
@@ -74,45 +70,35 @@ internal object FrenchDeinflector {
                 addPronominal(out = out, verb = verb, isReflexive = isReflexive)
             }
         }
-        FrenchForms.accentVariants(text).forEach { add(out = out, term = it, pos = 0L, reasons = emptyList()) }
-        return out.values.toList()
+        FrenchForms.accentVariants(text).forEach { out.add(term = it, pos = 0L, reasons = emptyList()) }
+        return out.toList()
     }
 
     // "se lève" / "me lève" / "s'appelle" → "se lever" / "s'appeler": the verb's rules, with the reflexive pronoun.
-    private fun addPronominal(out: MutableMap<Pair<String, Long>, Candidate>, verb: String, isReflexive: Boolean) {
-        if (!isReflexive) add(out = out, term = FrenchForms.withReflexive(verb), pos = VERB, reasons = listOf(PRONOMINAL))
-        for (rule in RULES.filter { it.pos == VERB }) {
-            val lemma = applyRule(rule = rule, word = verb) ?: continue
+    private fun addPronominal(out: CandidateSet, verb: String, isReflexive: Boolean) {
+        if (!isReflexive) out.add(term = FrenchForms.withReflexive(verb), pos = PosMask.VERB, reasons = listOf(PRONOMINAL))
+        for (form in VERB_RULES.apply(verb)) {
             // No reason listed: ranking puts fewer reasons first, and "m'appelle" means s'appeler more than appeler.
-            FrenchForms.stemVariants(lemma).forEach {
-                add(out = out, term = FrenchForms.withReflexive(it), pos = VERB, reasons = emptyList())
+            FrenchForms.stemVariants(form.term).forEach {
+                out.add(term = FrenchForms.withReflexive(it), pos = PosMask.VERB, reasons = emptyList())
             }
         }
     }
 
     // The form itself, then its inflections undone (phrases: their first word only, "allait voir" → aller voir).
-    private fun addWithRules(out: MutableMap<Pair<String, Long>, Candidate>, form: String, reasons: List<String>) {
-        add(out = out, term = form, pos = 0L, reasons = reasons)
+    private fun addWithRules(out: CandidateSet, form: String, reasons: List<String>) {
+        out.add(term = form, pos = 0L, reasons = reasons)
         val first = form.substringBefore(' ')
         val rest = form.substring(first.length)
         val isPhrase = rest.isNotEmpty()
-        // Phrases only conjugate their first word.
-        val rules = if (isPhrase) RULES.filter { it.pos == VERB } else RULES
-        for (rule in rules) {
-            val lemma = applyRule(rule = rule, word = first) ?: continue
-            val terms = if (rule.pos == VERB) FrenchForms.stemVariants(lemma) else listOf(lemma)
-            val pos = if (isPhrase) 0L else rule.pos
+        val rules = if (isPhrase) VERB_RULES else RULES
+        for (lemma in rules.apply(first)) {
+            val terms = if (lemma.pos == PosMask.VERB) FrenchForms.stemVariants(lemma.term) else listOf(lemma.term)
+            val pos = if (isPhrase) 0L else lemma.pos
             for (term in terms) {
-                add(out = out, term = term + rest, pos = pos, reasons = reasons + rule.reason)
+                out.add(term = term + rest, pos = pos, reasons = reasons + lemma.reason)
             }
         }
-    }
-
-    private fun add(out: MutableMap<Pair<String, Long>, Candidate>, term: String, pos: Long, reasons: List<String>) {
-        if (term.isEmpty()) return
-        val candidate =
-            Candidate(term = term, conditions = pos, reasons = ArrayDeque(reasons), hasAppliedRule = reasons.isNotEmpty())
-        out.putIfAbsent(term to pos, candidate)
     }
 
     // l'homme → homme; null when the word has no elided prefix or nothing follows it.
@@ -121,32 +107,4 @@ internal object FrenchDeinflector {
         val rest = form.substring(prefix.length)
         return rest.takeIf { it.isNotEmpty() && it.first().isLetter() }
     }
-
-    // As written, first letter lowered (sentence start), all lowered, and Capitalized (ALL-CAPS text).
-    private fun caseForms(text: String): Set<String> {
-        val capitalized = text.lowercase().replaceFirstChar { it.uppercaseChar() }
-        return linkedSetOf(text, text.replaceFirstChar { it.lowercaseChar() }, text.lowercase(), capitalized)
-    }
-
-    private fun applyRule(rule: Rule, word: String): String? {
-        val stem = word.dropLast(rule.suffix.length)
-        val hasLetter = stem.any { it.isLetter() }
-        val isApplicable = word.endsWith(rule.suffix, ignoreCase = true) && stem.length >= MIN_STEM && hasLetter
-        return if (isApplicable) stem + rule.replacement else null
-    }
-
-    /** A dictionary row's Yomitan `rules` ("n", "v", "adj", "adv") as part-of-speech bits. */
-    @Suppress("FunctionSignature") // Multi-line body: ktlint's function-signature and multiline-expression-wrapping disagree (dsm-lint).
-    fun ruleMask(rules: String): Long =
-        rules.split(' ', ',').fold(0L) { mask, rule ->
-            val bit =
-                when (rule.trim()) {
-                    "n", "noun", "name" -> NOUN
-                    "v", "verb", "vt", "vi" -> VERB
-                    "adj", "adjective" -> ADJ
-                    "adv", "adverb" -> ADV
-                    else -> 0L
-                }
-            mask or bit
-        }
 }

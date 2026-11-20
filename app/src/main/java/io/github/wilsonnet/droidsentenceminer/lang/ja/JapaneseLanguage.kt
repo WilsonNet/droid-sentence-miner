@@ -4,6 +4,7 @@ import io.github.wilsonnet.droidsentenceminer.dict.TermLookup
 import io.github.wilsonnet.droidsentenceminer.lang.Candidate
 import io.github.wilsonnet.droidsentenceminer.lang.LanguageModule
 import io.github.wilsonnet.droidsentenceminer.lang.LanguagePack
+import io.github.wilsonnet.droidsentenceminer.lang.LookupFeature
 import io.github.wilsonnet.droidsentenceminer.lang.WordAudioSource
 import java.text.Normalizer
 
@@ -20,6 +21,7 @@ object JapaneseLanguage : LanguageModule {
     override val maxTermLength = 16
     override val hasIpaReading = false
     override val hasPitchAccent = true
+    override val lookupFeatures = setOf(LookupFeature.SKIP_GRAMMAR_NOISE, LookupFeature.KANJI_INFO)
 
     override fun isTargetChar(c: Char): Boolean = JapaneseTextScore.isJapanese(c)
 

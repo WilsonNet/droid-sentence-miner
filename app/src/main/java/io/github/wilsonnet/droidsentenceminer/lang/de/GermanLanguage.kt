@@ -4,6 +4,9 @@ import io.github.wilsonnet.droidsentenceminer.lang.Candidate
 import io.github.wilsonnet.droidsentenceminer.lang.LanguageModule
 import io.github.wilsonnet.droidsentenceminer.lang.LanguagePack
 import io.github.wilsonnet.droidsentenceminer.lang.WordAudioSource
+import io.github.wilsonnet.droidsentenceminer.lang.kit.LatinText
+import io.github.wilsonnet.droidsentenceminer.lang.kit.PosMask
+import io.github.wilsonnet.droidsentenceminer.lang.kit.SpacedScanner
 
 /**
  * German: spaced Latin script with umlauts and ß. Scanning works like English (whole words and
@@ -44,26 +47,25 @@ object GermanLanguage : LanguageModule {
         )
 
     /** Part-of-speech bit for nouns (Yomitan rule "n"). */
-    const val NOUN = 1L
+    const val NOUN = PosMask.NOUN
 
     /** Part-of-speech bit for verbs (Yomitan rule "v"). */
-    const val VERB = 2L
+    const val VERB = PosMask.VERB
 
     /** Part-of-speech bit for adjectives (Yomitan rule "adj"). */
-    const val ADJ = 4L
+    const val ADJ = PosMask.ADJ
 
     /** Part-of-speech bit for adverbs (Yomitan rule "adv"). */
-    const val ADV = 8L
+    const val ADV = PosMask.ADV
 
     private val GENDER_ARTICLES = listOf("masc" to "der", "fem" to "die", "neut" to "das")
 
-    override fun isTargetChar(c: Char): Boolean =
-        c.isLetter() && Character.UnicodeScript.of(c.code) == Character.UnicodeScript.LATIN
+    override fun isTargetChar(c: Char): Boolean = LatinText.isLatinLetter(c)
 
-    override fun isLookupable(c: Char): Boolean = c.isLetterOrDigit() || c == '\'' || c == '’' || c == '-'
+    override fun isLookupable(c: Char): Boolean = SpacedScanner.isLookupable(c)
 
     override fun candidateLengths(text: String, position: Int, maxLength: Int): IntArray =
-        GermanScanner.candidateLengths(text = text, position = position, maxLength = maxLength)
+        GermanScanner.SCANNER.candidateLengths(text = text, position = position, maxLength = maxLength)
 
     override fun deinflect(surface: String): List<Candidate> = GermanDeinflector.deinflect(surface)
 
@@ -73,13 +75,13 @@ object GermanLanguage : LanguageModule {
 
     /** Unknown or missing parts of speech (phrases, symbols) accept any deinflection. */
     override fun termMatches(conditions: Long, ruleMask: Long): Boolean =
-        conditions == 0L || ruleMask == 0L || ruleMask and conditions != 0L
+        PosMask.matches(conditions = conditions, mask = ruleMask)
 
-    override fun ruleMask(rules: String): Long = GermanDeinflector.ruleMask(rules)
+    override fun ruleMask(rules: String): Long = PosMask.parse(rules)
 
-    override fun textScore(text: String): Double = GermanScanner.textScore(text)
+    override fun textScore(text: String): Double = LatinText.score(text)
 
-    override fun looksLikeText(text: String): Boolean = GermanScanner.looksLikeText(text)
+    override fun looksLikeText(text: String): Boolean = LatinText.looksLikeText(text)
 
     override fun normalizeOcr(text: String): String = GermanScanner.normalizeOcr(text)
 

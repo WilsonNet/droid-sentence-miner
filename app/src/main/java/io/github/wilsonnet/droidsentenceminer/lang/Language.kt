@@ -73,6 +73,12 @@ interface LanguageModule {
     /** This language's word-audio sources, tried in order; no other source is ever queried. */
     val wordAudioSources: List<WordAudioSource> get() = emptyList()
 
+    /**
+     * The lookup engine's optional steps this language wants ([LookupFeature]); defaults to what
+     * Wiktionary-based languages need.
+     */
+    val lookupFeatures: Set<LookupFeature> get() = LookupFeature.WIKTIONARY
+
     /** Longest surface, in characters, tried at one position while scanning. */
     val maxTermLength: Int
 

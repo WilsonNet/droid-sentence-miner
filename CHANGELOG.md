@@ -26,6 +26,11 @@ versions are the `v*` tags that publish a signed APK on
   reader's 3.6 % / 14.3 % (80 TEDx caption frames, Xiaomi Pad 7).
 
 ### Changed
+- **Composable lookup engine**: languages are built from a shared toolkit (`lang/kit`: scanner,
+  suffix-rule tables, part-of-speech masks, case forms, OCR text helpers) and pick the engine's
+  optional steps (`LookupFeature`: form-of entries, homograph separation, grammar-noise skip,
+  kanji info). English, German and French now share one scanner and rule engine; lookups are
+  unchanged (re-checked on device in all four languages).
 - **Inflected-form entries open their lemma** (French, German, English Wiktionary dictionaries): an
   entry that only says "imperfect of *manger*" is replaced by *manger*'s own entry with that
   inflection, like Yomitan — so irregular forms (*suis → être*, *ging → gehen*) get the real

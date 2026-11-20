@@ -1,10 +1,10 @@
 package io.github.wilsonnet.droidsentenceminer.lang.de
 
 import io.github.wilsonnet.droidsentenceminer.lang.Candidate
-import io.github.wilsonnet.droidsentenceminer.lang.de.GermanLanguage.ADJ
-import io.github.wilsonnet.droidsentenceminer.lang.de.GermanLanguage.ADV
-import io.github.wilsonnet.droidsentenceminer.lang.de.GermanLanguage.NOUN
-import io.github.wilsonnet.droidsentenceminer.lang.de.GermanLanguage.VERB
+import io.github.wilsonnet.droidsentenceminer.lang.kit.CandidateSet
+import io.github.wilsonnet.droidsentenceminer.lang.kit.CaseForms
+import io.github.wilsonnet.droidsentenceminer.lang.kit.PosMask
+import io.github.wilsonnet.droidsentenceminer.lang.kit.SuffixRules
 
 /**
  * German deinflection, a fallback: the Wiktionary dictionaries (wty) list most inflected forms as
@@ -19,105 +19,77 @@ internal object GermanDeinflector {
     private const val GE_LENGTH = 2
     private const val DECLINED = "declined"
     private const val CONJUGATED = "conjugated"
-    private const val PAST = "past"
     private const val PARTICIPLE = "past participle"
     private const val PLURAL_CASE = "plural/case"
-
-    private data class Rule(val suffix: String, val replacement: String, val pos: Long, val reason: String)
 
     // One undone inflection chain: the dictionary form, its part of speech and the reasons.
     private data class Form(val term: String, val pos: Long, val reasons: List<String>)
 
-    private val RULES: List<Rule> =
-        rules(pos = VERB, reason = CONJUGATED, spec = "e>en st>en est>en t>en et>en le>eln re>ern st>n t>n") +
-            rules(pos = VERB, reason = PAST, spec = "te>en test>en ten>en tet>en ete>en etest>en eten>en etet>en te>n test>n ten>n tet>n") +
-            rules(pos = VERB, reason = "present participle", spec = "end>en nd>n") +
-            rules(pos = NOUN, reason = PLURAL_CASE, spec = "e> en> n> er> s> es> ns> ens> nen>") +
-            rules(pos = ADJ, reason = DECLINED, spec = "e> en> em> er> es>") +
-            rules(pos = ADJ, reason = "comparative", spec = "er>") +
-            rules(pos = ADJ, reason = "superlative", spec = "st> est>")
+    private val RULES =
+        SuffixRules.combine(
+            SuffixRules.group(pos = PosMask.VERB, reason = CONJUGATED, spec = "e>en st>en est>en t>en et>en le>eln re>ern st>n t>n"),
+            SuffixRules.group(
+                pos = PosMask.VERB,
+                reason = "past",
+                spec = "te>en test>en ten>en tet>en ete>en etest>en eten>en etet>en te>n test>n ten>n tet>n",
+            ),
+            SuffixRules.group(pos = PosMask.VERB, reason = "present participle", spec = "end>en nd>n"),
+            SuffixRules.group(pos = PosMask.NOUN, reason = PLURAL_CASE, spec = "e> en> n> er> s> es> ns> ens> nen>"),
+            SuffixRules.group(pos = PosMask.ADJ, reason = DECLINED, spec = "e> en> em> er> es>"),
+            SuffixRules.group(pos = PosMask.ADJ, reason = "comparative", spec = "er>"),
+            SuffixRules.group(pos = PosMask.ADJ, reason = "superlative", spec = "st> est>"),
+        )
 
     // Rules that may follow an adjective ending: schnelleren → schneller → schnell.
-    private val AFTER_DECLINED = RULES.filter { it.reason !in setOf(DECLINED, PLURAL_CASE, CONJUGATED) }
-
-    // "suffix>replacement" pairs, one part of speech and reason per group.
-    private fun rules(pos: Long, reason: String, spec: String): List<Rule> {
-        val pairs = spec.split(' ')
-        return pairs.map { pair ->
-            Rule(suffix = pair.substringBefore('>'), replacement = pair.substringAfter('>'), pos = pos, reason = reason)
-        }
-    }
+    private val AFTER_DECLINED =
+        SuffixRules(
+            RULES.rules.filter { rule ->
+                rule.reason !in setOf(DECLINED, PLURAL_CASE, CONJUGATED)
+            },
+        )
 
     /** Dictionary-form candidates for [surface], the surface itself (in each case form) first. */
     fun deinflect(surface: String): List<Candidate> {
         if (surface.isBlank()) return emptyList()
-        val out = LinkedHashMap<Pair<String, Long>, Candidate>()
-        for (form in caseForms(surface.replace(oldChar = '’', newChar = '\''))) {
-            add(out = out, form = Form(term = form, pos = 0L, reasons = emptyList()))
+        val out = CandidateSet()
+        for (form in CaseForms.spellings(surface.replace(oldChar = '’', newChar = '\''))) {
+            out.add(term = form, pos = 0L, reasons = emptyList())
             val words = form.split(' ')
             if (words.size == 1) {
-                wordForms(form).forEach { add(out = out, form = it) }
+                wordForms(form).forEach { out.add(term = it.term, pos = it.pos, reasons = it.reasons) }
             } else {
                 // Phrases inflect their first word ("ging nach Hause" is listed as is).
                 val rest = form.substringAfter(' ')
                 wordForms(words.first())
-                    .filter { it.pos == VERB }
-                    .forEach { add(out = out, form = Form(term = "${it.term} $rest", pos = 0L, reasons = it.reasons)) }
+                    .filter { it.pos == PosMask.VERB }
+                    .forEach { out.add(term = "${it.term} $rest", pos = 0L, reasons = it.reasons) }
             }
         }
-        return out.values.toList()
-    }
-
-    private fun add(out: MutableMap<Pair<String, Long>, Candidate>, form: Form) {
-        if (form.term.isEmpty()) return
-        val candidate =
-            Candidate(
-                term = form.term,
-                conditions = form.pos,
-                reasons = ArrayDeque(form.reasons),
-                hasAppliedRule = form.reasons.isNotEmpty(),
-            )
-        out.putIfAbsent(form.term to form.pos, candidate)
-    }
-
-    // As written, first letter lowered (sentence start), all lowered, and Capitalized (ALL-CAPS text).
-    private fun caseForms(text: String): Set<String> {
-        val capitalized = text.lowercase().replaceFirstChar { it.uppercaseChar() }
-        return linkedSetOf(text, text.replaceFirstChar { it.lowercaseChar() }, text.lowercase(), capitalized)
+        return out.toList()
     }
 
     private fun wordForms(word: String): List<Form> {
         val results = mutableListOf<Form>()
-        for (rule in RULES) {
-            val next = applyRule(rule = rule, word = word) ?: continue
-            results += Form(term = next, pos = rule.pos, reasons = listOf(rule.reason))
-            if (rule.reason == DECLINED) results += afterDeclension(next)
+        for (form in RULES.apply(word)) {
+            results += Form(term = form.term, pos = form.pos, reasons = listOf(form.reason))
+            if (form.reason == DECLINED) results += afterDeclension(form.term)
         }
-        participles(word).forEach { results += Form(term = it, pos = VERB, reasons = listOf(PARTICIPLE)) }
-        zuInfinitive(word)?.let { results += Form(term = it, pos = VERB, reasons = listOf("zu-infinitive")) }
+        participles(word).forEach { results += Form(term = it, pos = PosMask.VERB, reasons = listOf(PARTICIPLE)) }
+        zuInfinitive(word)?.let { results += Form(term = it, pos = PosMask.VERB, reasons = listOf("zu-infinitive")) }
         return results
     }
 
     // A declined form's comparative, superlative or participle: schnelleren, schnellsten, gemachte.
     private fun afterDeclension(stem: String): List<Form> {
         val degrees =
-            AFTER_DECLINED.mapNotNull { rule ->
-                applyRule(rule = rule, word = stem)?.let { term ->
-                    Form(term = term, pos = rule.pos, reasons = listOf(rule.reason, DECLINED))
-                }
+            AFTER_DECLINED.apply(stem).map { form ->
+                Form(term = form.term, pos = form.pos, reasons = listOf(form.reason, DECLINED))
             }
         val participles =
             participles(stem).map { term ->
-                Form(term = term, pos = VERB, reasons = listOf(PARTICIPLE, DECLINED))
+                Form(term = term, pos = PosMask.VERB, reasons = listOf(PARTICIPLE, DECLINED))
             }
         return degrees + participles
-    }
-
-    private fun applyRule(rule: Rule, word: String): String? {
-        val stem = word.dropLast(rule.suffix.length)
-        val hasLetter = stem.any { it.isLetter() }
-        val isApplicable = word.endsWith(rule.suffix, ignoreCase = true) && stem.length >= MIN_STEM && hasLetter
-        return if (isApplicable) stem + rule.replacement else null
     }
 
     // gemacht → machen, gearbeitet → arbeiten, gefahren → fahren, aufgemacht → aufmachen (strong
@@ -150,19 +122,4 @@ internal object GermanDeinflector {
         val isInfinitive = at in MIN_STEM..MAX_SEPARABLE_PREFIX && word.endsWith("n") && word.length - at - GE_LENGTH > MIN_STEM
         return if (isInfinitive) word.removeRange(startIndex = at, endIndex = at + GE_LENGTH) else null
     }
-
-    /** A dictionary row's Yomitan `rules` ("n", "v", "adj", "adv") as part-of-speech bits. */
-    @Suppress("FunctionSignature") // Multi-line body: ktlint's function-signature and multiline-expression-wrapping disagree (dsm-lint).
-    fun ruleMask(rules: String): Long =
-        rules.split(' ', ',').fold(0L) { mask, rule ->
-            val bit =
-                when (rule.trim()) {
-                    "n", "noun", "name" -> NOUN
-                    "v", "verb", "vt", "vi" -> VERB
-                    "adj", "adjective" -> ADJ
-                    "adv", "adverb" -> ADV
-                    else -> 0L
-                }
-            mask or bit
-        }
 }

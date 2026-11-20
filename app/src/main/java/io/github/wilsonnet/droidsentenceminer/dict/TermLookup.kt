@@ -2,8 +2,8 @@ package io.github.wilsonnet.droidsentenceminer.dict
 
 import androidx.room.InvalidationTracker
 import io.github.wilsonnet.droidsentenceminer.lang.Candidate
-import io.github.wilsonnet.droidsentenceminer.lang.LanguageModule
 import io.github.wilsonnet.droidsentenceminer.lang.Languages
+import io.github.wilsonnet.droidsentenceminer.lang.LookupFeature
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.concurrent.ConcurrentHashMap
@@ -190,7 +190,7 @@ class TermLookup(
                 }
             }
         }
-        val words = if (hitsByPosition.isEmpty()) emptyList() else longestMatches(text, maxLength, hitsByPosition, language)
+        val words = if (hitsByPosition.isEmpty()) emptyList() else longestMatches(text, maxLength, hitsByPosition)
         val done = System.nanoTime()
         lastScanStats = ScanStats(
             forms = formSources.size,
@@ -207,7 +207,6 @@ class TermLookup(
         text: String,
         maxLength: Int,
         hitsByPosition: Map<Int, Map<Int, List<TermResult>>>,
-        language: LanguageModule,
     ): List<ScannedWord> {
         val words = mutableListOf<ScannedWord>()
         var position = 0
@@ -229,7 +228,7 @@ class TermLookup(
             }
             val terms = lengthMap!![chosenLength]!!
             val surface = text.substring(position, position + chosenLength)
-            if (!language.usesSpaces && isNoiseMatch(surface, terms)) {
+            if (hasFeature(LookupFeature.SKIP_GRAMMAR_NOISE) && isNoiseMatch(surface, terms)) {
                 position++
                 continue
             }
@@ -256,38 +255,24 @@ class TermLookup(
     }
 
     /**
-     * Every entry for [word] (deinflected unless [allowDeinflection] is false), with wty's inflected-form
-     * entries replaced by their lemmas' ([DictionaryDeinflections]).
+     * Every entry for [word] (deinflected unless [allowDeinflection] is false), then the study
+     * language's lookup steps ([LookupSteps], e.g. wty's form-of entries replaced by their lemmas').
      */
     suspend fun lookup(word: String, allowDeinflection: Boolean = true): LookupDetails {
         val details = lookupDirect(word = word, allowDeinflection = allowDeinflection)
-        return if (allowDeinflection) followPointers(details = details, depth = POINTER_DEPTH) else details
-    }
-
-    // Replaces pointer entries by their lemmas', [depth] levels deep (allées → allé → aller).
-    private suspend fun followPointers(details: LookupDetails, depth: Int): LookupDetails {
-        val pointers = details.terms.flatMap { DictionaryDeinflections.pointers(it) }
-        val lemmas = pointers.map { it.lemma }.distinct()
-        if (depth == 0 || lemmas.isEmpty()) return details
-        val found =
-            lemmas.associateWith { lemma ->
-                followPointers(details = lookupDirect(word = lemma, allowDeinflection = false), depth = depth - 1)
-            }
-        val lemmaTerms =
-            found.mapValues { (_, lemma) ->
-                lemma.terms.filter { DictionaryDeinflections.pointers(it).isEmpty() }
-            }
-        val terms = DictionaryDeinflections.replace(terms = details.terms, lemmas = lemmaTerms)
-        // The header's inflection is the first entry's: "concours" (a noun) must not show concourir's.
-        return details.copy(
-            terms = terms,
-            frequencies = (details.frequencies + found.values.flatMap { it.frequencies }).distinct(),
-            deinflection = terms.firstOrNull()?.deinflectionReasons.orEmpty(),
-        )
+        if (!allowDeinflection) return details
+        // The study language's post-lookup steps (LookupFeature), each fed an exact lookup of other words.
+        val exact: suspend (String) -> LookupDetails = { other -> lookupDirect(word = other, allowDeinflection = false) }
+        var out = details
+        for (step in LookupSteps.forFeatures(Languages.current.lookupFeatures)) {
+            out = step.apply(details = out, exact = exact)
+        }
+        return out
     }
 
     @Suppress(
         "FunctionSignature", // Legacy expression body (was lookup); ktlint's wrapping rules disagree on these (dsm-lint skill).
+        "MultilineExpressionWrapping", // Same legacy expression body.
         "CognitiveComplexMethod", // Legacy (was lookup).
         "CyclomaticComplexMethod", // Legacy (was lookup).
     )
@@ -332,7 +317,7 @@ class TermLookup(
 
         val ranked = rankTerms(word, results)
         val frequencies = lookupTermMeta(formConditions.keys.toList(), dicts)
-        val kanji = lookupKanji(word.filter { isKanji(it) }.map { it.toString() }.distinct())
+        val kanji = kanjiOf(word)
 
         LookupDetails(
             surface = word,
@@ -458,7 +443,7 @@ class TermLookup(
     private fun rankTerms(surface: String, terms: List<TermResult>): List<TermResult> {
         return terms
             // wty numbers every row 0: without the glossary, "suis" (être, suivre, estre) collapsed into one row.
-            // Spaced languages only, so Japanese results stay exactly as they were.
+            // Only for languages with LookupFeature.SEPARATE_HOMOGRAPHS (Japanese results stay as they were).
             .distinctBy { "${it.dictId}:${it.expression}:${it.reading}:${it.sequence}:${it.definitionTags}:${glossaryKey(it)}" }
             .sortedWith(
                 compareBy<TermResult> { it.dictionaryPriority }
@@ -470,7 +455,16 @@ class TermLookup(
             )
     }
 
-    private fun glossaryKey(term: TermResult): String = if (Languages.current.usesSpaces) term.glossaryJson else ""
+    private fun glossaryKey(term: TermResult): String =
+        if (hasFeature(LookupFeature.SEPARATE_HOMOGRAPHS)) term.glossaryJson else ""
+
+    private fun hasFeature(feature: LookupFeature): Boolean = feature in Languages.current.lookupFeatures
+
+    // LookupFeature.KANJI_INFO: the word's kanji from kanji dictionaries.
+    private suspend fun kanjiOf(word: String): List<KanjiResult> {
+        val characters = word.filter { isKanji(it) }.map { it.toString() }.distinct()
+        return if (hasFeature(LookupFeature.KANJI_INFO)) lookupKanji(characters) else emptyList()
+    }
 
     /**
      * Single kana (particles, okurigana) and pure grammatical entries make the
@@ -493,9 +487,6 @@ class TermLookup(
         /** Forms per terms query: bound twice (expression IN, reading IN), and old SQLite allows 999 args. */
         private const val TERM_CHUNK = 450
         private const val SCAN_CACHE_SIZE = 32
-
-        // Form-of entries pointing at form-of entries: allées → allé → aller.
-        private const val POINTER_DEPTH = 2
 
         fun isKanji(c: Char): Boolean = Character.UnicodeScript.of(c.code) == Character.UnicodeScript.HAN
 
