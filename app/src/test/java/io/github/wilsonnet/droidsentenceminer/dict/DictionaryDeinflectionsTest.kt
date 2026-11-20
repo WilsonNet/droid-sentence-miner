@@ -46,6 +46,29 @@ class DictionaryDeinflectionsTest {
     }
 
     @Test
+    fun `the pointer whose lemma shares most of the word comes first`() {
+        val toAppeler = term(expression = "s'appelle", glossary = """[["appeler",["third-person singular present"]]]""")
+        val toReflexive =
+            term(expression = "s'appelle", glossary = """[["s'appeler",["third-person singular present"]]]""")
+        val lemmas =
+            mapOf(
+                "appeler" to listOf(term(expression = "appeler", glossary = """["to call"]""", sequence = 3L)),
+                "s'appeler" to listOf(term(expression = "s'appeler", glossary = """["to be called"]""", sequence = 4L)),
+            )
+        val replaced = DictionaryDeinflections.replace(terms = listOf(toAppeler, toReflexive), lemmas = lemmas)
+        assertEquals(listOf("s'appeler", "appeler"), replaced.map { it.expression })
+    }
+
+    @Test
+    fun `a chain keeps every inflection`() {
+        val allees = term(expression = "allées", glossary = """[["allé",["plural feminine"]]]""")
+        val aller =
+            term(expression = "aller", glossary = """["to go"]""", sequence = 5L, reasons = listOf("past participle"))
+        val replaced = DictionaryDeinflections.replace(terms = listOf(allees), lemmas = mapOf("allé" to listOf(aller)))
+        assertEquals(listOf("plural feminine", "past participle"), replaced.single().deinflectionReasons)
+    }
+
+    @Test
     fun `a pointer whose lemma has no entry stays`() {
         val suis = term(expression = "suis", glossary = """[["être",["first-person singular present indicative"]]]""")
         assertEquals(listOf(suis), DictionaryDeinflections.replace(terms = listOf(suis), lemmas = emptyMap()))

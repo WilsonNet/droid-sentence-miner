@@ -36,7 +36,7 @@ object DictionaryDeinflections {
     fun replace(terms: List<TermResult>, lemmas: Map<String, List<TermResult>>): List<TermResult> {
         val seen = HashSet<String>()
         val out = ArrayList<TermResult>(terms.size)
-        for (term in terms) {
+        for (term in byAffinity(terms)) {
             val expanded = expand(term = term, lemmas = lemmas)
             expanded.filter { seen.add(key(it)) }.forEach { out += it }
         }
@@ -47,10 +47,39 @@ object DictionaryDeinflections {
         val resolved =
             pointers(term).flatMap { pointer ->
                 lemmas[pointer.lemma].orEmpty().map { lemma ->
-                    lemma.copy(deinflectionReasons = term.deinflectionReasons + pointer.forms)
+                    // A chain keeps every step: allées → plural feminine of allé → past participle of aller.
+                    lemma.copy(deinflectionReasons = term.deinflectionReasons + pointer.forms + lemma.deinflectionReasons)
                 }
             }
         return resolved.ifEmpty { listOf(term) }
+    }
+
+    // Pointer rows of one headword, the one whose lemma keeps its pronoun first: "s'appelle" points at both
+    // s'appeler and appeler, and s'appeler is the reading. Entries with definitions stay ahead of pointers.
+    private fun byAffinity(terms: List<TermResult>): List<TermResult> {
+        val groupStart = HashMap<String, Int>()
+        terms.forEachIndexed { index, term -> groupStart.putIfAbsent("${term.dictId}:${term.expression}", index) }
+        val byGroup = compareBy<TermResult> { term -> groupStart.getValue("${term.dictId}:${term.expression}") }
+        return terms.sortedWith(byGroup.thenByDescending(::affinity))
+    }
+
+    // Definitions first (2), then pointers whose lemma keeps a leading pronoun or particle like the word's
+    // ("s'appelle", "m'appelle" → s'appeler: 1), then the rest in dictionary order (suis → être, suivre: 0).
+    private fun affinity(term: TermResult): Int {
+        val lemmas = pointers(term).map { it.lemma }
+        // m'appelle → s'appeler too: the clitic changes person, but the lemma keeps one.
+        val isLeadKept = leadingWord(term.expression) != null && lemmas.any { leadingWord(it) != null }
+        return when {
+            lemmas.isEmpty() -> 2
+            isLeadKept -> 1
+            else -> 0
+        }
+    }
+
+    // "s'" of "s'appelle", "se " of "se lave"; null for a single plain word.
+    private fun leadingWord(text: String): String? {
+        val end = text.indexOfFirst { it == '\'' || it == ' ' }
+        return if (end > 0) text.take(end + 1) else null
     }
 
     private fun key(term: TermResult): String = "${term.dictId}:${term.expression}:${term.reading}:${term.sequence}"

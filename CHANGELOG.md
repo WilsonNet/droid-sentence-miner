@@ -17,6 +17,10 @@ versions are the `v*` tags that publish a signed APK on
 - **French dictionaries in one tap**: Wiktionary French → English (495,000 entries, with conjugated
   forms) and French IPA (recommended), Wiktionary French (monolingual, 77 MB) and its IPA, and small
   French → Portuguese / Spanish / German / Italian / Russian / Chinese / Japanese / Korean glossaries.
+- **French pronominal verbs and ALL-CAPS text**: *s'appelle* opens *s'appeler* first (then
+  *appeler*), and *m'appelle*/*t'appelles* also try the *s'…* headword; stem-changing verbs resolve
+  (*lève → lever*, *répète → répéter*, *appelle → appeler*); unaccented capitals get their accents
+  back (*ETE → été*, *ECOLE → école*, *ETAIT → être*).
 - **French OCR**: the optional OCR pack (the English one: PaddleOCR, its recognizer reads every French
   letter, œ and « ») reads French subtitles with 2.1 % character / 2.9 % word errors vs the built-in
   reader's 3.6 % / 14.3 % (80 TEDx caption frames, Xiaomi Pad 7).
@@ -25,7 +29,8 @@ versions are the `v*` tags that publish a signed APK on
 - **Inflected-form entries open their lemma** (French, German, English Wiktionary dictionaries): an
   entry that only says "imperfect of *manger*" is replaced by *manger*'s own entry with that
   inflection, like Yomitan — so irregular forms (*suis → être*, *ging → gehen*) get the real
-  definition, and the card is for the dictionary form.
+  definition, and the card is for the dictionary form. Chains are followed two levels with every
+  step shown (*allées* → plural feminine of *allé* → past participle of *aller*).
 
 ### Fixed
 - **Homographs with the same headword were merged** (English, German, French): Wiktionary

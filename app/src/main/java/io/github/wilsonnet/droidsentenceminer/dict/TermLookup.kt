@@ -261,10 +261,18 @@ class TermLookup(
      */
     suspend fun lookup(word: String, allowDeinflection: Boolean = true): LookupDetails {
         val details = lookupDirect(word = word, allowDeinflection = allowDeinflection)
+        return if (allowDeinflection) followPointers(details = details, depth = POINTER_DEPTH) else details
+    }
+
+    // Replaces pointer entries by their lemmas', [depth] levels deep (allées → allé → aller).
+    private suspend fun followPointers(details: LookupDetails, depth: Int): LookupDetails {
         val pointers = details.terms.flatMap { DictionaryDeinflections.pointers(it) }
         val lemmas = pointers.map { it.lemma }.distinct()
-        if (!allowDeinflection || lemmas.isEmpty()) return details
-        val found = lemmas.associateWith { lemma -> lookupDirect(word = lemma, allowDeinflection = false) }
+        if (depth == 0 || lemmas.isEmpty()) return details
+        val found =
+            lemmas.associateWith { lemma ->
+                followPointers(details = lookupDirect(word = lemma, allowDeinflection = false), depth = depth - 1)
+            }
         val lemmaTerms =
             found.mapValues { (_, lemma) ->
                 lemma.terms.filter { DictionaryDeinflections.pointers(it).isEmpty() }
@@ -485,6 +493,9 @@ class TermLookup(
         /** Forms per terms query: bound twice (expression IN, reading IN), and old SQLite allows 999 args. */
         private const val TERM_CHUNK = 450
         private const val SCAN_CACHE_SIZE = 32
+
+        // Form-of entries pointing at form-of entries: allées → allé → aller.
+        private const val POINTER_DEPTH = 2
 
         fun isKanji(c: Char): Boolean = Character.UnicodeScript.of(c.code) == Character.UnicodeScript.HAN
 

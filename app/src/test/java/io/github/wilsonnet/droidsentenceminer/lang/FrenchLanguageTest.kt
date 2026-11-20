@@ -83,6 +83,25 @@ class FrenchLanguageTest {
     }
 
     @Test
+    fun `pronominal verbs keep their reflexive pronoun`() {
+        assertTrue(verb(surface = "s'appelle", infinitive = "s'appeler"))
+        assertTrue(verb(surface = "se lève", infinitive = "se lever"))
+        assertTrue(verb(surface = "me lève", infinitive = "se lever"))
+        assertTrue(verb(surface = "t'habilles", infinitive = "s'habiller"))
+        assertTrue("se laver" in forms("se laver"))
+        assertTrue(verb(surface = "appelle", infinitive = "appeler"))
+        assertTrue(verb(surface = "répète", infinitive = "répéter"))
+    }
+
+    @Test
+    fun `all caps text gets its accents back`() {
+        assertTrue("été" in forms("ETE"))
+        assertTrue("école" in forms("ECOLE"))
+        assertTrue("à" in forms("A"))
+        assertFalse("été" in forms("Ete"))
+    }
+
+    @Test
     fun `phrases inflect their first word`() {
         assertTrue("pomme de terre" in forms("pomme de terre"))
         assertTrue("aller voir" in forms("allait voir"))

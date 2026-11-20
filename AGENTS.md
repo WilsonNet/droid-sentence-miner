@@ -677,7 +677,7 @@ app/src/main/java/io/github/wilsonnet/droidsentenceminer/
 │   ├── ja/    Japanese module, JapaneseDeinflector, JapaneseTextScore
 │   ├── en/    English module (word/phrase scan, suffix deinflector)
 │   ├── de/    German module (GermanScanner, GermanDeinflector fallback rules, noun articles)
-│   └── fr/    French module (FrenchScanner, FrenchDeinflector: elision + fallback rules, un/une)
+│   └── fr/    French module (FrenchScanner, FrenchDeinflector: elision + fallback rules, FrenchForms: pronominal/caps accents, un/une)
 ├── dict/      Yomitan import, Room storage, lookup, glossary rendering, IPA
 ├── ocr/       meikiocr + PaddleOCR (ONNX) + ML Kit + Google Lens protobuf engines, preprocessing, post-processing
 ├── capture/   MediaProjection capture, auto OCR loop, text areas

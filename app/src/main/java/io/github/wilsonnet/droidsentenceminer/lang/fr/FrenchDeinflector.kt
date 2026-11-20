@@ -18,6 +18,7 @@ internal object FrenchDeinflector {
     private const val CONJUGATED = "conjugated"
     private const val PARTICIPLE = "past participle"
     private const val ELIDED = "elision"
+    private const val PRONOMINAL = "pronominal"
 
     // Longest first: "jusqu'" before "qu'".
     private val ELISIONS =
@@ -26,7 +27,8 @@ internal object FrenchDeinflector {
     private data class Rule(val suffix: String, val replacement: String, val pos: Long, val reason: String)
 
     private const val PRESENT =
-        "e>er es>er ent>er ons>er ez>er eons>er çons>cer is>ir it>ir issons>ir issez>ir issent>ir isse>ir " +
+        "e>er es>er ent>er ons>er ez>er eons>er çons>cer elle>eler elles>eler ellent>eler ette>eter ettes>eter ettent>eter " +
+            "is>ir it>ir issons>ir issez>ir issent>ir isse>ir " +
             "s>re ds>dre d>dre t>re ons>re ez>re ent>re"
     private const val IMPERFECT =
         "ais>er ait>er ions>er iez>er aient>er eais>er eait>er eaient>er çais>cer çait>cer çaient>cer " +
@@ -63,12 +65,29 @@ internal object FrenchDeinflector {
     fun deinflect(surface: String): List<Candidate> {
         if (surface.isBlank()) return emptyList()
         val out = LinkedHashMap<Pair<String, Long>, Candidate>()
-        for (form in caseForms(surface.replace(oldChar = '’', newChar = '\''))) {
+        val text = surface.replace(oldChar = '’', newChar = '\'')
+        for (form in caseForms(text)) {
             addWithRules(out = out, form = form, reasons = emptyList())
             val bare = withoutElision(form)
             if (bare != null) addWithRules(out = out, form = bare, reasons = listOf(ELIDED))
+            for ((verb, isReflexive) in FrenchForms.pronominal(form)) {
+                addPronominal(out = out, verb = verb, isReflexive = isReflexive)
+            }
         }
+        FrenchForms.accentVariants(text).forEach { add(out = out, term = it, pos = 0L, reasons = emptyList()) }
         return out.values.toList()
+    }
+
+    // "se lève" / "me lève" / "s'appelle" → "se lever" / "s'appeler": the verb's rules, with the reflexive pronoun.
+    private fun addPronominal(out: MutableMap<Pair<String, Long>, Candidate>, verb: String, isReflexive: Boolean) {
+        if (!isReflexive) add(out = out, term = FrenchForms.withReflexive(verb), pos = VERB, reasons = listOf(PRONOMINAL))
+        for (rule in RULES.filter { it.pos == VERB }) {
+            val lemma = applyRule(rule = rule, word = verb) ?: continue
+            // No reason listed: ranking puts fewer reasons first, and "m'appelle" means s'appeler more than appeler.
+            FrenchForms.stemVariants(lemma).forEach {
+                add(out = out, term = FrenchForms.withReflexive(it), pos = VERB, reasons = emptyList())
+            }
+        }
     }
 
     // The form itself, then its inflections undone (phrases: their first word only, "allait voir" → aller voir).
@@ -80,8 +99,12 @@ internal object FrenchDeinflector {
         // Phrases only conjugate their first word.
         val rules = if (isPhrase) RULES.filter { it.pos == VERB } else RULES
         for (rule in rules) {
-            val term = applyRule(rule = rule, word = first) ?: continue
-            add(out = out, term = term + rest, pos = if (isPhrase) 0L else rule.pos, reasons = reasons + rule.reason)
+            val lemma = applyRule(rule = rule, word = first) ?: continue
+            val terms = if (rule.pos == VERB) FrenchForms.stemVariants(lemma) else listOf(lemma)
+            val pos = if (isPhrase) 0L else rule.pos
+            for (term in terms) {
+                add(out = out, term = term + rest, pos = pos, reasons = reasons + rule.reason)
+            }
         }
     }
 

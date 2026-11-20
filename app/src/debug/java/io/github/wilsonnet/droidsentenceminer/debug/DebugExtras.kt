@@ -66,8 +66,11 @@ object DebugExtras {
     private fun cardFields(app: Application, word: String): JSONObject {
         val container = AppContainer.from(app)
         return runBlocking {
-            val card = container.miner.buildCard(word, "", details = container.lookup.lookup(word))
+            val details = container.lookup.lookup(word)
+            val card = container.miner.buildCard(word, "", details = details)
+            val terms = details.terms.map { "${it.expression} ${it.deinflectionReasons}" }
             JSONObject()
+                .put("terms", JSONArray(terms))
                 .put("ok", true)
                 .put("expression", card.expression)
                 .put("reading", card.reading)

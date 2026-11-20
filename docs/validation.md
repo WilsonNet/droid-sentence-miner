@@ -48,7 +48,11 @@ What was measured, on which device, and how. Recipes and scripts: [`.opencode/sk
   and *choisissez → choisir* with IPA in Reading, sentence, clip, screenshot, word audio;
   `/card_fields` shows Gender un/une for nouns. Comic: Pepper&Carrot ep. 6 (French, CC-BY) as a
   .cbz in the manga reader, offline OCR via the pack; tapping *concours* opens the noun (masc) and
-  *concourir* with its inflection.
+  *concourir* with its inflection. Pronominal/caps/chains: *s'appelle* → [s'appeler, appeler],
+  *allées* → [allée, aller, s'en aller, y aller], ETE → été, ECOLE → école, ETAIT → être.
+- German OCR benchmark (Pad 7, 2026-11-20), 73 TEDxStuttgart caption frames (`9CZBIaaiPRI`, manual
+  German subs, `gen_latin_set.py`): ML Kit 2.8 % CER / 7.0 % WER / 60 % exact / 417 ms, PaddleOCR
+  pack 1.8 % / 2.1 % / 77 % / 239 ms (desktop 1.6 / 2.5).
 - Lookup speed with 8 dictionaries (~2.1 M rows: Jitendex, Kanjium, Pixiv, 広辞苑, 三省堂, 実用日本語表現,
   新明解, 大辞林), Xiaomi Pad 7, `/lookup_bench` median per tap (line scan + lookup + popup
   HTML), before → after the lean-scan/cache work:

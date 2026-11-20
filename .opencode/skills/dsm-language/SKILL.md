@@ -98,6 +98,8 @@ curl -s "localhost:9099/ocr?engine=paddle&file=/data/user/0/io.github.wilsonnet.
   `linguaLibreArticles` (Lingua Libre files recorded with the article).
 - The pack can reuse another language's zip when the recognizer's charset covers it (PP-OCRv6
   small rec: äöüß yes, „ no). `lang-en-1` was only published with 0.7.0 (it 404'd in 0.6.0) — see AGENTS.md.
+- OCR benchmark (2026-11-20, 73 TEDxStuttgart caption frames `9CZBIaaiPRI`): ML Kit 2.8 % CER /
+  7.0 % WER / 60 % exact, pack 1.8 / 2.1 / 77 %.
 - Device results: all test forms resolve (gemacht, aufgemacht, anzufangen, schnelleren,
   Lehrerinnen, HUND → Hund); tap → popup 54 ms warm; Wiktionary audio found for Hund, Mädchen,
   Wörterbuch, schön, Entschuldigung; 3 rendered umlaut lines read exactly by ML Kit and PaddleOCR
@@ -118,6 +120,11 @@ curl -s "localhost:9099/ocr?engine=paddle&file=/data/user/0/io.github.wilsonnet.
   reads the file list of the word's page on `<code>.wiktionary.org` (`prop=images`) — dozens of
   exact `LL-Q150 (fra)-<speaker>-chat.wav` + `Fr-chat.ogg`. Speakers may contain `-`
   (`Jérémy-Günther-Heinz Jähnick`): those rank after single-token speakers. Titles mix ' and ’.
+- `FrenchForms`: pronominal candidates (*me lève* → *se lever*; wty has only ~200 "se …"/"s'…"
+  lemmas, most reflexives are senses of the bare verb), -er stem changes (*lève → lever*), and
+  accent variants for unaccented ALL-CAPS words (≤ 3 accents, ≤ 48 variants, no rules applied —
+  wty lists the inflected forms). `DictionaryDeinflections` orders a headword's pointers by shared
+  prefix with the lemma (s'appeler before appeler) and `TermLookup` follows chains 2 deep.
 - OCR: pack = English zip (PP-OCRv6 small has every French letter, œ, « »). Desktop on 80 TEDx
   caption frames (`Cpa1i82J23s`, manual French subs): v6 tiny 2.8 % CER / 7.8 % WER, **small
   2.2 / 3.7**, medium 2.0 / 2.8 (3.5× rec time), latin_PP-OCRv5_mobile 2.5 / 6.6. Device (Pad 7):
