@@ -2,7 +2,7 @@
 
 A native Android sentence miner for Japanese immersion: OCR text from any app with a floating
 popup, look words up with Yomitan dictionaries, and mine them into Anki — plus the game's voice
-line as sentence audio. Japanese is the focus; English and German are supported too, and other languages can
+line as sentence audio. Japanese is the focus; English, German and French are supported too, and other languages can
 be added as modules that download nothing unless you study them.
 
 Inspired by [GameSentenceMiner](https://github.com/bpwhelan/GameSentenceMiner), rebuilt for Android
@@ -71,7 +71,7 @@ with AI upscaling (right). Pages: *Black Jack ni Yoroshiku* by Shuho Sato (free 
   with Anime4K AI upscaling for blurry scans, and panel cropping before sending to Anki), or
   photograph a printed page and tap the text to look it up.
 - **Multilingual, Japanese first** — pick the language you study on first launch: Japanese
-  (main focus), English or German (Wiktionary dictionaries, inflections, IPA, German articles on
+  (main focus), English, German or French (Wiktionary dictionaries, inflections, IPA, noun genders on
   cards, optional PaddleOCR pack); each language has its own Anki deck, note type and card
   contents ([dictionaries per language](docs/dictionaries.md)).
   Only that language's dictionaries and models are downloaded. New languages are small modules

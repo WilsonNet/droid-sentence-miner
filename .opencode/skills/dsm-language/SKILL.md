@@ -103,6 +103,33 @@ curl -s "localhost:9099/ocr?engine=paddle&file=/data/user/0/io.github.wilsonnet.
   Wörterbuch, schön, Entschuldigung; 3 rendered umlaut lines read exactly by ML Kit and PaddleOCR
   (PaddleOCR drops „).
 
+## French (`lang/fr`, 2026-11-20) — third spaced language
+
+- Same split as German: `FrenchLanguage` (overrides), `FrenchScanner` (scan/OCR helpers),
+  `FrenchDeinflector` (elision stripped first: l'/d'/j'/qu'/jusqu'…, then `"suffix>replacement"`
+  rules for -er/-ir/-re, participles, plurals, agreement). Phrase rules only inflect the first word.
+- wty-fr-en: 495 k rows, 395 k `non-lemma` pointers (`[["manger", ["imperfect…"]]]`), every row
+  `sequence 0`. Two generic fixes came out of it: `DictionaryDeinflections` (lookup follows a
+  pointer to the lemma's entry and keeps the inflection, Yomitan's behavior — fixes *suis → être*
+  where no suffix rule gets there, and German *ging*, too), and `rankTerms`' distinct key now
+  includes the glossary (sequence-0 homographs collapsed into one row).
+- Word audio: Commons regex search for `Fr-<word>.ogg` returns junk, and the Lingua Libre search
+  ranks phrases (*appeler un chat un chat*) above the bare word. `WordAudioSource.WIKTIONARY_PAGE`
+  reads the file list of the word's page on `<code>.wiktionary.org` (`prop=images`) — dozens of
+  exact `LL-Q150 (fra)-<speaker>-chat.wav` + `Fr-chat.ogg`. Speakers may contain `-`
+  (`Jérémy-Günther-Heinz Jähnick`): those rank after single-token speakers. Titles mix ' and ’.
+- OCR: pack = English zip (PP-OCRv6 small has every French letter, œ, « »). Desktop on 80 TEDx
+  caption frames (`Cpa1i82J23s`, manual French subs): v6 tiny 2.8 % CER / 7.8 % WER, **small
+  2.2 / 3.7**, medium 2.0 / 2.8 (3.5× rec time), latin_PP-OCRv5_mobile 2.5 / 6.6. Device (Pad 7):
+  ML Kit 3.6 / 14.3 / 40 % exact (drops apostrophes: *lintérieur*), pack 2.1 / 2.9 / 81 %.
+- Manga: spaced languages skip the Japanese manga models; offline the reader runs the pack
+  (`/manga_ocr?engine=reader&mode=mlkit`). Pepper&Carrot ep. 6 in French (CC-BY,
+  `peppercarrot.com/0_sources/ep06_The-Potion-Contest/low-res/fr_…E06P01.jpg`): pack reads *dû*,
+  *Où*, *?!* that ML Kit gets wrong (*do*, *OŬ*, *P*).
+- Live (Pad 7, 2026-11-20): YouTube TEDx with French captions, pack: 33/35 lines exact, clips NCC
+  0.90–0.99 vs the video audio; tap → popup 61 ms warm; ML Kit 182 ms vs pack 218 ms per frame.
+  Check a card's language fields with `/card_fields?word=` (`/preview_card` doesn't show IPA/Gender).
+
 ## Known numbers (Xiaomi Pad 7, 2026-11-08)
 
 English OCR (80 game/subtitle-style frames): ML Kit CER 6.0 % / WER 12.2 % / 420 ms; PaddleOCR

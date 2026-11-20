@@ -129,6 +129,11 @@ DSM auto OCR + mic fallback on it): see the `dsm-nightshade` skill.
   picks up the slide behind the speaker). Bring YouTube back after `/startoverlay` with
   `monkey -p com.google.android.youtube -c android.intent.category.LAUNCHER 1` (keeps the video
   and fullscreen; a new VIEW intent reloads it).
+- **French test video**: TEDx `Cpa1i82J23s` (manual French, Arabic and Spanish captions; the CC
+  button picks **Arabic** first). In the two-column layout: gear `(2169, 160)` → 字幕 `(1830, 600)` →
+  フランス語 `(1319, 1519)`, then fullscreen `(2165, 1265)`. Same caption area as the English TED.
+  Tapping a caption word while paused first shows YouTube's controls, which move the captions up
+  — tap an empty spot `(1600, 700)`, wait for the layer to re-read, then tap the word.
 - **Force landscape while testing**: `settings put system accelerometer_rotation 0; settings put
   system user_rotation 1`; restore with `accelerometer_rotation 1; user_rotation 0`. HyperOS may
   reset it when an app's own orientation request wins — re-check `wm`/screenshots.

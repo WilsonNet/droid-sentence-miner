@@ -23,4 +23,11 @@ enum class WordAudioSource(
 
     /** Lingua Libre recordings on Commons; needs [LanguageModule.linguaLibrePrefix]. */
     LINGUA_LIBRE("lingualibre"),
+
+    /**
+     * The recordings a word's page on the language's own Wiktionary (`fr.wiktionary.org/wiki/chat`)
+     * embeds: `Fr-chat.ogg` and Lingua Libre files ([LanguageModule.linguaLibrePrefix]). Exact and fast where
+     * the Commons search ranks phrases ("appeler un chat un chat") above the bare word.
+     */
+    WIKTIONARY_PAGE("wiktionary-page"),
 }

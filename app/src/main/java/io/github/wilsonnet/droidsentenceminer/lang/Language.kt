@@ -2,6 +2,7 @@ package io.github.wilsonnet.droidsentenceminer.lang
 
 import io.github.wilsonnet.droidsentenceminer.lang.de.GermanLanguage
 import io.github.wilsonnet.droidsentenceminer.lang.en.EnglishLanguage
+import io.github.wilsonnet.droidsentenceminer.lang.fr.FrenchLanguage
 import io.github.wilsonnet.droidsentenceminer.lang.ja.JapaneseLanguage
 
 /**
@@ -124,7 +125,7 @@ interface LanguageModule {
 /** The registry and the language the user studies. */
 object Languages {
     /** Every study language, in picker order. */
-    val ALL: List<LanguageModule> = listOf(JapaneseLanguage, EnglishLanguage, GermanLanguage)
+    val ALL: List<LanguageModule> = listOf(JapaneseLanguage, EnglishLanguage, GermanLanguage, FrenchLanguage)
 
     const val DEFAULT_CODE = "ja"
 

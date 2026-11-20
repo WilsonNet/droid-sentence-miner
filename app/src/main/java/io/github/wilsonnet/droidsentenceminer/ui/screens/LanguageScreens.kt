@@ -53,6 +53,7 @@ private fun blurb(language: LanguageModule): String = when (language.code) {
     "ja" -> "Main focus. Game-trained OCR, pitch accent, word audio, vertical book pages."
     "en" -> "Wiktionary dictionaries, inflections and phrasal verbs, PaddleOCR (optional ${language.pack?.sizeMb?.toInt()} MB download)."
     "de" -> "Wiktionary dictionaries with inflected forms, umlaut-aware OCR (optional ${language.pack?.sizeMb?.toInt()} MB download)."
+    "fr" -> "Wiktionary dictionaries with conjugated forms, elision, accent-aware OCR (optional ${language.pack?.sizeMb?.toInt()} MB)."
     else -> ""
 }
 

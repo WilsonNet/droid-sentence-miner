@@ -4,7 +4,7 @@
 
 Everything the app does, in detail. The short version is in the [README](../README.md).
 
-- **Study language** — Japanese (the main focus), English or German, picked on first launch and in
+- **Study language** — Japanese (the main focus), English, German or French, picked on first launch and in
   *Settings → Language*. Lookups, OCR clean-up, recommended dictionaries and the Dictionaries page
   follow it; only that language downloads dictionaries and models (other languages' dictionaries
   stay installed, hidden and unused). English: whole words and phrases up to five words
@@ -23,13 +23,24 @@ Everything the app does, in detail. The short version is in the [README](../READ
   endings. Line-end hyphens are joined (*Wör- terbuch*), „quotes“ read as `,,` are restored. Word
   audio: Wiktionary's `De-<word>.ogg` recordings (standard first, then Austrian/Swiss), then Lingua
   Libre (also files recorded with the article, *das Mädchen*). The optional OCR pack is the English
-  one (its recognizer reads äöüß). Dictionaries per language: [docs/dictionaries.md](dictionaries.md).
+  one (its recognizer reads äöüß).
+  French: the same word/phrase scanning (*pomme de terre*, *est-ce que*); elided articles and
+  pronouns are stripped (*l'homme → homme*, *qu'il*, *j'aime*, ' or ’); Wiktionary lists conjugated
+  and plural forms, and the popup replaces such "form of" entries with the lemma's entry plus the
+  inflection (*suis → être*, *mangeait → manger* — `DictionaryDeinflections`, also for German and
+  English Wiktionary); a fallback deinflector covers regular -er/-ir/-re conjugation, participles,
+  plurals and adjective agreement. OCR clean-up: « » read as `<<`/`>>`, NBSP, *l' homme*, line-end
+  hyphens kept before inverted pronouns (*dit-il*). Word audio: the files on the word's French
+  Wiktionary page (`Fr-chat.ogg`, Lingua Libre speakers), then a Lingua Libre search. Gender field:
+  un/une. OCR pack: the English one (reads every French letter, œ, « »).
+  Dictionaries per language: [docs/dictionaries.md](dictionaries.md).
 - **Anki cards per language** — deck, note type and tags are kept per study
   language (Japanese keeps its existing settings). Each language gets its own note type, created
   on the first card: *Droid Sentence Miner* (Japanese: Reading, Pitch graph), *Droid Sentence
   Miner (English)* (IPA instead of Reading, no pitch graph), *Droid Sentence Miner (German)*
-  (Gender — the noun's article der/die/das from Wiktionary's gender tags — and IPA), in decks
-  *Droid Sentence Miner::English* / *::German*. Other note types match the new contents by name
+  (Gender — the noun's article der/die/das from Wiktionary's gender tags — and IPA), *Droid
+  Sentence Miner (French)* (Gender un/une, IPA), in decks *Droid Sentence Miner::English* /
+  *::German* / *::French*. Other note types match the new contents by name
   (*IPA*/*Pronunciation*, *Gender*/*Article*; a *Reading* field takes the IPA).
 - **Leaving contents out** — set a field to *Nothing* in *Settings → Anki → Fields* (the mapping
   is per note type): a content no field receives isn't fetched at all (no word-audio request, no
@@ -78,7 +89,7 @@ Everything the app does, in detail. The short version is in the [README](../READ
   on-device *Manga OCR* (download once in *Reader settings*, 34 MB: PP-OCRv6_manga lines grouped
   into bubbles by a speech-bubble detector; offline, ~0.4–1 s/page, about as accurate as a desktop
   mokuro run) — until it is downloaded *Auto* uses Google Lens (like Manatan) with offline fallback
-  to upscaled ML Kit (Japanese) or the downloaded PaddleOCR pack (English/German). Furigana, noise
+  to upscaled ML Kit (Japanese) or the downloaded PaddleOCR pack (English/German/French). Furigana, noise
   and edge page numbers are filtered out; Lens pages are grouped by the same bubble detector when it
   is installed (else Manatan's Union-Find merge, `MangaOcrGrouping`). Reader settings let you pick
   *Auto* / *Manga OCR* / *Google Lens* / *ML Kit*, download or remove the models, toggle

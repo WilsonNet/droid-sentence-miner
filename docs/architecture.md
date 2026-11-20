@@ -83,16 +83,16 @@ Everything language-specific sits behind `LanguageModule` (`lang/Language.kt`); 
 is the study language (pref `language`, set by the first-run screen). Generic code — scanning,
 OCR post-processing, line tracking, Book layout, filters — only asks the module:
 
-| Hook | Japanese (`lang/ja`) | English (`lang/en`) | German (`lang/de`) |
-| --- | --- | --- | --- |
-| `candidateLengths` | every substring length | whole words and phrases (≤ 5 words, stop at punctuation) | words/phrases ≤ 4 words (`GermanScanner`) |
-| `deinflect` / `ruleMask` / `termMatches` | Yomitan/Jiten rules (`JapaneseDeinflector`) | suffix rules + POS bits (`n`/`v`/`adj`/`adv`), case folding | fallback rules (`GermanDeinflector`; wty lists inflected forms), case forms |
-| `normalizeOcr` / `joinRows` | NFKC, full-width punctuation, no spaces | NFKC, keep spaces/punctuation, join rows with a space | + `,,` → „, line-end hyphen joins words (not before *und*/capitals) |
-| `isTargetChar`, `textScore`, `looksLikeText` | kana/kanji | Latin letters | Latin letters |
-| `isRubyChar` | kana (furigana filter) | none | none |
-| `pack` | — (meikiocr models via `MeikiModels`) | PaddleOCR models (`LanguagePacks`) | the English pack's zip, installed as `de` |
-| `wordAudioSources`, `wiktionaryRegions`, `linguaLibreArticles` | JapanesePod101, Jisho | Wiktionary (us, uk), Lingua Libre | Wiktionary (no region, at, ch), Lingua Libre (+ der/die/das) |
-| `hasIpaReading`, `hasPitchAccent`, `hasNounGender`, `nounArticle` | kana Reading, pitch graph | IPA field | IPA + Gender field (der/die/das) |
+| Hook | Japanese (`lang/ja`) | English (`lang/en`) | German (`lang/de`) | French (`lang/fr`) |
+| --- | --- | --- | --- | --- |
+| `candidateLengths` | every substring length | whole words and phrases (≤ 5 words, stop at punctuation) | words/phrases ≤ 4 words (`GermanScanner`) | words/phrases ≤ 4 words, *l'homme* is one word (`FrenchScanner`) |
+| `deinflect` / `ruleMask` / `termMatches` | Yomitan/Jiten rules (`JapaneseDeinflector`) | suffix rules + POS bits (`n`/`v`/`adj`/`adv`), case folding | fallback rules (`GermanDeinflector`; wty lists inflected forms), case forms | elision stripped (l'/qu'/j'…), fallback -er/-ir/-re, plural, agreement rules (`FrenchDeinflector`), case forms |
+| `normalizeOcr` / `joinRows` | NFKC, full-width punctuation, no spaces | NFKC, keep spaces/punctuation, join rows with a space | + `,,` → „, line-end hyphen joins words (not before *und*/capitals) | NBSP → space, `<<`/`>>` → « », *l' homme* → *l'homme*; line-end hyphen kept before *il*/*être*/capitals |
+| `isTargetChar`, `textScore`, `looksLikeText` | kana/kanji | Latin letters | Latin letters | Latin letters |
+| `isRubyChar` | kana (furigana filter) | none | none | none |
+| `pack` | — (meikiocr models via `MeikiModels`) | PaddleOCR models (`LanguagePacks`) | the English pack's zip, installed as `de` | the English pack's zip, installed as `fr` |
+| `wordAudioSources`, `wiktionaryRegions`, `linguaLibreArticles` | JapanesePod101, Jisho | Wiktionary (us, uk), Lingua Libre | Wiktionary (no region, at, ch), Lingua Libre (+ der/die/das) | the French Wiktionary page's files (`WiktionaryPageAudio`), Lingua Libre |
+| `hasIpaReading`, `hasPitchAccent`, `hasNounGender`, `nounArticle` | kana Reading, pitch graph | IPA field | IPA + Gender field (der/die/das) | IPA + Gender field (un/une) |
 
 **Anki fields per language** (`anki/AnkiModels.kt` → `CardFields.forLanguage`, `CardTemplates`):
 the module's flags decide the card contents (Japanese = the historic `CardFields.ORDER`); the

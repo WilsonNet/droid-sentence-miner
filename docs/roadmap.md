@@ -15,6 +15,9 @@ Ideas and known gaps, roughly in priority order. Shipped work moves to [CHANGELO
 - German: separated verb prefixes (*Ich stehe früh auf* → aufstehen) aren't joined; compound
   nouns missing from Wiktionary aren't split; PaddleOCR's character set has no „ (low quote), so
   it's dropped rather than read as `,,`; German OCR is only checked on 3 rendered lines.
+- French: pronominal verbs aren't joined to their pronoun (*s'appelle* opens *appeler*, not
+  *s'appeler*); ALL-CAPS text that drops accents (*ETE* for *été*) isn't re-accented; a pointer
+  entry whose lemma is itself a pointer (*allées → allé*) stays a pointer.
 - English: book mode is untested on English print; no English frequency dictionary is offered;
   irregular forms rely on Wiktionary's form-of entries; the English OCR pack is only used for
   English (PaddleOCR on Japanese untested).

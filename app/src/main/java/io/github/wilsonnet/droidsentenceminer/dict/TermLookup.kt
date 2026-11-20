@@ -255,7 +255,35 @@ class TermLookup(
         return index until index + (from?.text?.length ?: 1)
     }
 
-    suspend fun lookup(word: String, allowDeinflection: Boolean = true): LookupDetails = withContext(Dispatchers.Default) {
+    /**
+     * Every entry for [word] (deinflected unless [allowDeinflection] is false), with wty's inflected-form
+     * entries replaced by their lemmas' ([DictionaryDeinflections]).
+     */
+    suspend fun lookup(word: String, allowDeinflection: Boolean = true): LookupDetails {
+        val details = lookupDirect(word = word, allowDeinflection = allowDeinflection)
+        val pointers = details.terms.flatMap { DictionaryDeinflections.pointers(it) }
+        val lemmas = pointers.map { it.lemma }.distinct()
+        if (!allowDeinflection || lemmas.isEmpty()) return details
+        val found = lemmas.associateWith { lemma -> lookupDirect(word = lemma, allowDeinflection = false) }
+        val lemmaTerms =
+            found.mapValues { (_, lemma) ->
+                lemma.terms.filter { DictionaryDeinflections.pointers(it).isEmpty() }
+            }
+        val terms = DictionaryDeinflections.replace(terms = details.terms, lemmas = lemmaTerms)
+        // The header's inflection is the first entry's: "concours" (a noun) must not show concourir's.
+        return details.copy(
+            terms = terms,
+            frequencies = (details.frequencies + found.values.flatMap { it.frequencies }).distinct(),
+            deinflection = terms.firstOrNull()?.deinflectionReasons.orEmpty(),
+        )
+    }
+
+    @Suppress(
+        "FunctionSignature", // Legacy expression body (was lookup); ktlint's wrapping rules disagree on these (dsm-lint skill).
+        "CognitiveComplexMethod", // Legacy (was lookup).
+        "CyclomaticComplexMethod", // Legacy (was lookup).
+    )
+    private suspend fun lookupDirect(word: String, allowDeinflection: Boolean): LookupDetails = withContext(Dispatchers.Default) {
         val language = Languages.current
         val dicts = dictionariesByPriority()
         if (dicts.isEmpty() || word.isBlank()) {
@@ -418,9 +446,12 @@ class TermLookup(
         return dictIds.associateWith { loaded[it] ?: tagCache[it].orEmpty() }.filterValues { it.isNotEmpty() }
     }
 
+    @Suppress("FunctionExpressionBody") // Legacy block body; reshaping it resurfaces its baselined findings (dsm-lint skill).
     private fun rankTerms(surface: String, terms: List<TermResult>): List<TermResult> {
         return terms
-            .distinctBy { "${it.dictId}:${it.expression}:${it.reading}:${it.sequence}:${it.definitionTags}" }
+            // wty numbers every row 0: without the glossary, "suis" (être, suivre, estre) collapsed into one row.
+            // Spaced languages only, so Japanese results stay exactly as they were.
+            .distinctBy { "${it.dictId}:${it.expression}:${it.reading}:${it.sequence}:${it.definitionTags}:${glossaryKey(it)}" }
             .sortedWith(
                 compareBy<TermResult> { it.dictionaryPriority }
                     .thenByDescending { if (it.expression == surface) 1 else 0 }
@@ -430,6 +461,8 @@ class TermLookup(
                     .thenByDescending { it.score },
             )
     }
+
+    private fun glossaryKey(term: TermResult): String = if (Languages.current.usesSpaces) term.glossaryJson else ""
 
     /**
      * Single kana (particles, okurigana) and pure grammatical entries make the

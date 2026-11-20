@@ -96,6 +96,7 @@ class WordAudio(private val client: OkHttpClient = defaultClient) {
             WordAudioSource.JISHO -> jisho(term, read)
             WordAudioSource.WIKTIONARY -> wiktionary(language, term)
             WordAudioSource.LINGUA_LIBRE -> if (prefix == null) emptyList() else linguaLibre(prefix, language.linguaLibreArticles, term)
+            WordAudioSource.WIKTIONARY_PAGE -> wiktionaryPage(language = language, term = term)
         }
     }
 
@@ -113,6 +114,14 @@ class WordAudio(private val client: OkHttpClient = defaultClient) {
             WordAudioSources
                 .parseLinguaLibreTitles(json = search, prefix = prefix, term = term, articles = articles)
                 .take(LINGUA_LIBRE_FILES)
+        }
+
+    // Files on the word's page of the language's own Wiktionary (`Fr-chat.ogg`, `LL-Q150 (fra)-<speaker>-chat.wav`).
+    private fun wiktionaryPage(language: LanguageModule, term: String): List<String> =
+        commonsAudio(WiktionaryPageAudio.pageUrl(language = language.code, term = term)) { page ->
+            WiktionaryPageAudio
+                .parseTitles(json = page, language = language.code, linguaLibrePrefix = language.linguaLibrePrefix, term = term)
+                .take(WIKTIONARY_FILES)
         }
 
     // Commons search → file titles picked by [titles] → their download URLs (empty when anything is missing).

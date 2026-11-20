@@ -16,7 +16,7 @@ import org.json.JSONObject
  */
 object DebugExtras {
     /** Paths answered by [handle]. */
-    val PATHS = setOf("/whats_new", "/card_contents", "/manga_ocr", "/manga_enhance")
+    val PATHS = setOf("/whats_new", "/card_contents", "/card_fields", "/manga_ocr", "/manga_enhance")
 
     /** Answers one request for a path in [PATHS]. */
     fun handle(app: Application, path: String, params: Map<String, String>): JSONObject {
@@ -24,6 +24,7 @@ object DebugExtras {
             when (path) {
                 "/whats_new" -> whatsNew(app, params)
                 "/card_contents" -> cardContents(app)
+                "/card_fields" -> cardFields(app = app, word = params["word"].orEmpty())
                 "/manga_enhance" -> EnhanceDebug.handle(app, params)
                 else -> MangaDebug.handle(app, params)
             }
@@ -57,6 +58,23 @@ object DebugExtras {
                 .put("language", Languages.current.code)
                 .put("all", JSONArray(CardFields.current))
                 .put("enabled", JSONArray(container.miner.cardFields()))
+        }
+    }
+
+    // `/card_fields?word=`: the language-specific contents a card for [word] gets (built, not added):
+    // the dictionary form, IPA, gender article, reading and word audio.
+    private fun cardFields(app: Application, word: String): JSONObject {
+        val container = AppContainer.from(app)
+        return runBlocking {
+            val card = container.miner.buildCard(word, "", details = container.lookup.lookup(word))
+            JSONObject()
+                .put("ok", true)
+                .put("expression", card.expression)
+                .put("reading", card.reading)
+                .put("ipa", card.ipa)
+                .put("gender", card.gender)
+                .put("wordAudio", card.wordAudioName ?: JSONObject.NULL)
+                .put("wordAudioBytes", card.wordAudioBytes?.size ?: 0)
         }
     }
 }

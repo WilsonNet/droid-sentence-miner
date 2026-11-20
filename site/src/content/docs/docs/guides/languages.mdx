@@ -1,6 +1,6 @@
 ---
 title: Languages
-description: Study Japanese (the main focus), English or German. Only the language you pick downloads dictionaries and OCR models.
+description: Study Japanese (the main focus), English, German or French. Only the language you pick downloads dictionaries and OCR models.
 ---
 
 Droid Sentence Miner is built for Japanese first, and it supports other languages as small
@@ -49,6 +49,26 @@ any time in **Settings → Language**.
   Swiss), then Lingua Libre.
 - **OCR**: the built-in ML Kit model reads umlauts and ß; the optional OCR models (23 MB, the same
   PaddleOCR pack as English) work too. Hyphenated line breaks (*Wör-* / *terbuch*) are joined.
+
+## French
+
+- **Dictionaries**: install *Wiktionary French → English* (11 MB) and *Wiktionary French IPA*
+  (1.9 MB). *Wiktionary French* (French → French, 77 MB) and French → Portuguese, Spanish, German,
+  Italian, Russian, Chinese, Japanese and Korean glossaries are there too.
+- **Words and phrases**: whole words and phrases of up to four words (*pomme de terre*,
+  *est-ce que*). Elided words are looked up without their article or pronoun: *l'homme → homme*,
+  *qu'il → il*, *j'aime → aimer* (straight ' or curly ’). Wiktionary lists conjugated and plural
+  forms itself, and the popup opens the dictionary form with the inflection: *suis → être*,
+  *mangeait → manger*, *chevaux → cheval*; regular endings are undone on top (*parlerons → parler*,
+  *finissaient → finir*, *heureuse → heureux*).
+- **Cards**: the *Gender* field gets *un* or *une*, the *IPA* field the pronunciation. Word audio
+  comes from the recordings on the word's French Wiktionary page (`Fr-…` files and Lingua Libre
+  speakers), then a Lingua Libre search.
+- **OCR**: install the **French OCR models** (23 MB, the same PaddleOCR pack as English) in
+  **Settings → Language**: on French TV captions it made 2.9 % word errors against the built-in
+  reader's 14.3 % (which also drops apostrophes: *lintérieur*). « Guillemets », the space French
+  puts before `!?:;`, detached apostrophes (*l' homme*) and hyphenated line breaks (*dit-* / *il*)
+  are cleaned up.
 
 ## Japanese
 

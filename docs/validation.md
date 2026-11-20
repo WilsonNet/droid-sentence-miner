@@ -34,6 +34,21 @@ What was measured, on which device, and how. Recipes and scripts: [`.opencode/sk
   a smoke test, not a benchmark. Cards: *Droid Sentence Miner (German)* created on the first card
   with Gender = der, IPA = /hʊnt/, word audio; with IPA set to *Nothing* in the field mapping,
   *Haus* came out with IPA empty (Gender = das) and the mapping reset brought it back.
+- French (Xiaomi Pad 7, 2026-11-20), Wiktionary French → English (494,981 entries) + French IPA:
+  l'homme, L’homme, mangeait, chevaux, qu'il, s'appelle, aujourd’hui, pomme de terre, parlerons,
+  heureuse, BONJOUR, finissaient, commençait, suis (→ être, suivre, estre), était, plaisent all
+  resolve; tap → popup 61 ms warm on a 13-word caption. OCR, 80 TEDx caption frames
+  (`Cpa1i82J23s`, French manual subs): ML Kit 3.6 % CER / 14.3 % WER / 40 % exact / 182 ms,
+  PaddleOCR pack 2.1 % / 2.9 % / 81 % / 218 ms. Live YouTube (same talk, French captions,
+  fullscreen, area `l=0.03 t=0.70 r=0.97 b=0.93`, pack): 33/35 logged lines identical to the
+  caption file (misses: a dropped space before *?*, a stray *l*); 7 sentence clips cross-correlated
+  with the video's audio at NCC 0.90–0.99, each covering its cue (start 0.06–0.45 s early, end
+  −0.21 to +0.83 s). Word audio (Wiktionary page source) found for chat, manger, homme, pomme de
+  terre, aujourd'hui, être, cheval, passion, choisir. Cards (deck *DSM*, Anime Cards): *passion*
+  and *choisissez → choisir* with IPA in Reading, sentence, clip, screenshot, word audio;
+  `/card_fields` shows Gender un/une for nouns. Comic: Pepper&Carrot ep. 6 (French, CC-BY) as a
+  .cbz in the manga reader, offline OCR via the pack; tapping *concours* opens the noun (masc) and
+  *concourir* with its inflection.
 - Lookup speed with 8 dictionaries (~2.1 M rows: Jitendex, Kanjium, Pixiv, 広辞苑, 三省堂, 実用日本語表現,
   新明解, 大辞林), Xiaomi Pad 7, `/lookup_bench` median per tap (line scan + lookup + popup
   HTML), before → after the lean-scan/cache work:

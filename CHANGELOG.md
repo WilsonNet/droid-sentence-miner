@@ -6,6 +6,33 @@ versions are the `v*` tags that publish a signed APK on
 
 ## [Unreleased]
 
+### Added
+- **French.** Pick it as your study language: lookups of words and phrases (*pomme de terre*,
+  *est-ce que*), elided words (*l'homme*, *qu'il*, *j'aime* — with ' or ’), conjugations
+  (*mangeait → manger*, *suis → être*, *finissaient → finir*, *commençait → commencer*), plurals and
+  agreement (*chevaux → cheval*, *heureuse → heureux*), IPA, the noun's gender on the card (un/une),
+  word audio from the French Wiktionary's own recordings (Lingua Libre speakers, `Fr-…ogg`), and OCR
+  clean-up for « guillemets », NBSP before punctuation, detached apostrophes (*l' homme*) and words
+  hyphenated across lines (*dit- il* stays *dit-il*).
+- **French dictionaries in one tap**: Wiktionary French → English (495,000 entries, with conjugated
+  forms) and French IPA (recommended), Wiktionary French (monolingual, 77 MB) and its IPA, and small
+  French → Portuguese / Spanish / German / Italian / Russian / Chinese / Japanese / Korean glossaries.
+- **French OCR**: the optional OCR pack (the English one: PaddleOCR, its recognizer reads every French
+  letter, œ and « ») reads French subtitles with 2.1 % character / 2.9 % word errors vs the built-in
+  reader's 3.6 % / 14.3 % (80 TEDx caption frames, Xiaomi Pad 7).
+
+### Changed
+- **Inflected-form entries open their lemma** (French, German, English Wiktionary dictionaries): an
+  entry that only says "imperfect of *manger*" is replaced by *manger*'s own entry with that
+  inflection, like Yomitan — so irregular forms (*suis → être*, *ging → gehen*) get the real
+  definition, and the card is for the dictionary form.
+
+### Fixed
+- **Homographs with the same headword were merged** (English, German, French): Wiktionary
+  dictionaries number every entry 0, so *suis* (être / suivre) showed only one of them.
+- **IPA with combining marks** (French nasals *ɔ̃*, *ɑ̃*) drew the tilde beside the letter on
+  HyperOS: the popup's IPA line now uses a serif font that has both.
+
 ## [0.9.1] — 2026-11-16
 
 ### Fixed

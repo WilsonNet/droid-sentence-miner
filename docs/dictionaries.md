@@ -18,6 +18,7 @@ dictionary's `index.json` and offers newer revisions in place (priority and on/o
 | Japanese | **Jitendex** (Japanese → English) + **Kanjium pitch accents** | JMnedict for names, Pixiv Light for anime/game terms, KANJIDIC for kanji |
 | English | **Wiktionary English** + **Wiktionary English IPA** | a small English → *your language* glossary |
 | German | **Wiktionary German → English** + **Wiktionary German IPA** | Wiktionary German (monolingual, bigger), a German → *your language* glossary |
+| French | **Wiktionary French → English** + **Wiktionary French IPA** | Wiktionary French (monolingual, much bigger), a French → *your language* glossary |
 
 Wiktionary dictionaries come from [wty](https://github.com/yomidevs/wiktionary-to-yomitan)
 (kaikki.org extracts, CC BY-SA), rebuilt regularly; names are `wty-<word language>-<gloss
@@ -56,6 +57,16 @@ is big.
 
 Measured on a Xiaomi Pad 7 (2026-11-09): `wty-de-en` imported 602,286 entries; a tap on
 *gemacht* takes 54 ms warm (lookup 5 ms, popup HTML 43 ms) with 13 dictionaries installed.
+
+## French
+
+| Dictionary | What it is | Size | Updates |
+| --- | --- | --- | --- |
+| Wiktionary French → English ★ (`wty-fr-en`) | French words glossed in English: 495,000 entries, 395,000 of them conjugated/plural forms pointing at their lemma (*mangeait* → *manger*, *suis* → *être*). Lookups open the lemma's entry with that inflection. Nouns carry gender tags, which fill the card's *Gender* field (un/une). | 11 MB | yes |
+| Wiktionary French IPA ★ (`wty-fr-en-ipa`) | IPA for French words (English Wiktionary), under the headword and in the card's IPA field. | 1.9 MB | yes |
+| Wiktionary French (`wty-fr-fr`) | French → French from the French Wiktionary: definitions, examples, conjugated forms. Much bigger than the English one; use either or both. | 77 MB | yes |
+| Wiktionary French IPA, French Wiktionary (`wty-fr-fr-ipa`) | More IPA transcriptions. | 19 MB | yes |
+| Wiktionary French → Portuguese / Spanish / German / Italian / Russian / Chinese / Japanese / Korean (`wty-fr-<xx>`) | French words glossed in that language. Chinese (3 MB) and Russian (1.7 MB) are the biggest; the others are under 1 MB. | 0.3–3 MB | yes |
 
 ## Adding a dictionary to this list
 

@@ -443,7 +443,7 @@ class CardMiner(
 .dsm-entry-head { display: flex; align-items: baseline; gap: 8px; }
 .dsm-headword { font-size: 1.3em; font-weight: 700; }
 .dsm-reading { opacity: 0.75; }
-.dsm-ipa { opacity: 0.8; margin: 2px 0 6px; font-size: 0.95em; }
+.dsm-ipa { opacity: 0.8; margin: 2px 0 6px; font-size: 0.95em; font-family: "Noto Serif", serif; }
 .dsm-actions { margin-left: auto; align-self: center; display: flex; gap: 2px; flex-shrink: 0; }
 .dsm-add, .dsm-edit { border: none; padding: 5px 14px; font: inherit; font-size: 0.9em;
   background: rgba(128,128,128,0.25); color: inherit; }
