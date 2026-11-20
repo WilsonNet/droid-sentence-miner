@@ -6,6 +6,10 @@ versions are the `v*` tags that publish a signed APK on
 
 ## [Unreleased]
 
+### Fixed
+- Typing in a Settings field (API key, AnkiConnect URL…) no longer pushes the page's top bar under
+  the status bar: the page now shrinks above the keyboard instead of sliding up.
+
 ## [0.11.0] — 2026-11-20
 
 ### Added

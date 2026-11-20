@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -146,7 +148,11 @@ private fun MainTabsScaffold(
     Scaffold(
         bottomBar = { if (!wide && !hideChrome) AppBottomBar(tab = tab, onSelect = select) },
     ) { padding ->
-        Row(if (hideChrome) Modifier else Modifier.padding(padding)) {
+        // The keyboard shrinks the content (adjustResize + imePadding): panning the window pushed the
+        // page's top bar under the status bar. The Scaffold's padding is consumed first so the bottom
+        // bar isn't counted twice.
+        val content = if (hideChrome) Modifier else Modifier.padding(padding).consumeWindowInsets(padding).imePadding()
+        Row(content) {
             if (wide && !hideChrome) {
                 AppSideRail(tab = tab, onSelect = select)
             }
