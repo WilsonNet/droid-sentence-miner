@@ -151,6 +151,17 @@ Everything the app does, in detail. The short version is in the [README](../READ
   on the dictionary whose definitions go into the glossary (by default the top one), *Use on card*
   (faded) on the others. Tapping one puts only that dictionary on that headword's card; tapping it
   again returns to the setting.
+- **AI explanations** — the popup's ✦ button (next to *+ Anki*, in every popup: over apps, manga,
+  books, Texts, shared text) asks for a grammar breakdown of the sentence focused on the tapped word.
+  *AI app* mode hands the prompt to an installed app in one tap (Gemini fills its message box;
+  Claude, ChatGPT, Perplexity, Copilot, DeepSeek, Grok, Le Chat get it via the share sheet and the
+  clipboard). *API key* mode swaps the definition for the streamed answer (skeleton while waiting,
+  Markdown when it arrives, prompt chips, ↻, *Ask Gemini* hand-off, the model in the footer):
+  OpenAI-compatible, Anthropic Messages and Gemini protocols cover Google Gemini, Groq, Cerebras,
+  Mistral, OpenRouter, OpenAI, Anthropic, DeepSeek, xAI, OpenCode Go, Ollama and custom endpoints;
+  the model list is read from the provider. Prompts are editable (built-ins restorable), and an
+  answer you opened goes after/before the glossary or into its own field on the next card. One
+  switch in *Settings → AI explanations* hides everything.
 - **Texts page** (GSM's texthooker) — every recognized line, newest first. Tap a line, tap a word,
   and mine it: the card gets that line's sentence, its screenshot and its voice clip.
 - **Replay buffer sentence audio** — the last 5 minutes (configurable 1–10) of game audio are kept

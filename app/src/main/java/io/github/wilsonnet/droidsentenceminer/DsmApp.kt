@@ -2,6 +2,7 @@ package io.github.wilsonnet.droidsentenceminer
 
 import android.app.Application
 import android.content.Context
+import io.github.wilsonnet.droidsentenceminer.ai.AiService
 import io.github.wilsonnet.droidsentenceminer.anki.AnkiClient
 import io.github.wilsonnet.droidsentenceminer.anki.AnkiConnectBridge
 import io.github.wilsonnet.droidsentenceminer.anki.AnkiDroidBridge
@@ -136,6 +137,9 @@ class AppContainer(private val context: Context) {
 
     /** Language lookup options the user switched off (Settings → the study language's lookups). */
     val lookupOptions by lazy { LookupOptionPrefs(context) }
+
+    /** AI explanations: settings, API client, prompt context (`ai/`). */
+    val ai by lazy { AiService(context) }
 
     /**
      * Reads the study language before anything scans text and follows changes. Installs from

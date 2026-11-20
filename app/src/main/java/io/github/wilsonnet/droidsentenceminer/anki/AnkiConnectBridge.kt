@@ -153,10 +153,16 @@ class AnkiConnectBridge(
                     CardFields.PITCH_GRAPH to card.pitchGraphHtml,
                     CardFields.IPA to card.ipa,
                     CardFields.GENDER to card.gender,
+                    CardFields.AI_EXPLANATION to card.aiExplanation,
                 )
             val modelFields = modelFieldNames(model) ?: card.fields
             val mappedFields =
-                AnkiFieldMapper.mapToNamedFields(fieldNames = modelFields, values = valueMap, custom = fieldMap, canonicals = card.fields)
+                AnkiFieldMapper.mapToNamedFields(
+                    fieldNames = modelFields,
+                    values = valueMap,
+                    custom = fieldMap,
+                    canonicals = card.mappedFields,
+                )
             val fields = buildJsonObject {
                 mappedFields.forEach { (name, value) -> put(name, value) }
             }

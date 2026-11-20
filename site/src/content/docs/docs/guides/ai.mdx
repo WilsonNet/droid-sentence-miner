@@ -1,0 +1,57 @@
+---
+title: AI explanations
+description: A grammar breakdown of the sentence, focused on the word you looked up — from the Gemini app in one tap, or in the popup with your own API key. Off with one switch.
+---
+
+The lookup popup has an AI button (✦) next to **+ Anki**. By default it asks for a short
+grammar breakdown of the sentence in English, focused on how the word you tapped is used: its
+form, the patterns around it, and a natural translation.
+
+Don't want AI at all? Turn off **Settings → AI explanations**: every AI button disappears and
+nothing is sent anywhere.
+
+## Two ways to answer
+
+**AI app (no setup, free).** The button opens an AI app you already have, with the prompt typed
+in. Gemini puts it straight into its message box: tap send. Claude, ChatGPT and other apps get
+it through the share sheet, and the prompt is also copied, so you can paste it if the app doesn't fill it in.
+Pick the app under **Settings → AI explanations → Answers → AI app**.
+
+**API key (answers in the popup).** The answer streams into the popup in place of the
+definition. Tap ✦ again or press Back to return to the definition. Chips switch between prompts,
+and ↻ asks again. Pick a provider under **Answers → API key**, paste your key, pick a model from
+the list and tap **Send a test**.
+
+| Provider | Notes |
+| --- | --- |
+| Google Gemini | Free tier with a Google account: key from [Google AI Studio](https://aistudio.google.com/apikey). |
+| Groq, Cerebras, Mistral | Free tiers. |
+| OpenRouter | Hundreds of models, some free. |
+| OpenAI, Anthropic, DeepSeek, xAI | Paid. |
+| OpenCode Go | Subscription; open models such as DeepSeek V4.1 Flash and GLM-5.3. |
+| Ollama | Your own computer on the same network, no key: enter its address. |
+| Custom endpoint | Any API that speaks the OpenAI, Anthropic or Gemini format. |
+
+Keys are stored encrypted with the Android Keystore and only sent to the provider you picked.
+
+## Prompts
+
+**Settings → AI explanations → Prompts** lists the prompts the popup offers: *Grammar* (the
+default), *Translate* and *Word nuance*, plus any you add. Tap one to edit it. Placeholders are
+filled from the lookup: `{word}`, `{sentence}`, `{lemma}` (dictionary form), `{reading}`,
+`{definition}` and `{language}`. Tap a placeholder chip to insert it at the cursor.
+
+Built-in prompts can't be lost: an edited one shows **Edited by you**, with **Restore original** to
+go back to the text that shipped. **Run first** makes a prompt the one the button starts with.
+
+## On the card
+
+An answer you opened in the popup can go on the card you mine next:
+
+- **After the glossary** (default) or **Before the glossary**: in the same field as the definitions.
+- **In its own field**: a field named *Grammar* or *AI Explanation*, or any field you set to
+  *AI explanation* in **Settings → Anki → Fields**. To use it with an existing note type (Anime
+  Cards, Lapis), add a *Grammar* field in AnkiDroid once.
+- **Not added**.
+
+Mining never calls the AI on its own: only an answer you already read goes on the card.

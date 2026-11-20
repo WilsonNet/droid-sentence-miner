@@ -70,6 +70,10 @@ with AI upscaling (right). Pages: *Black Jack ni Yoroshiku* by Shuho Sato (free 
   background volume pre-OCR, single/double-page/vertical modes, readable text boxes, a page filter
   with Anime4K AI upscaling for blurry scans, and panel cropping before sending to Anki), or
   photograph a printed page and tap the text to look it up.
+- **AI explanations (optional)** — a grammar breakdown of the sentence focused on the tapped word:
+  one tap opens Gemini with the prompt typed, or bring your own API key (Gemini free tier, Groq,
+  OpenRouter, OpenAI, Anthropic, Ollama…) for answers in the popup and on the card. Editable
+  prompts; one switch hides it all.
 - **Multilingual, Japanese first** — pick the language you study on first launch: Japanese
   (main focus), English, German or French (Wiktionary dictionaries, inflections, IPA, noun genders on
   cards, optional PaddleOCR pack); each language has its own Anki deck, note type and card

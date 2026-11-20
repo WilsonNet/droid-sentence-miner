@@ -42,6 +42,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.github.wilsonnet.droidsentenceminer.AppContainer
 import io.github.wilsonnet.droidsentenceminer.BuildConfig
+import io.github.wilsonnet.droidsentenceminer.PAGE_AI
 import io.github.wilsonnet.droidsentenceminer.audio.AudioCaptureManager
 import io.github.wilsonnet.droidsentenceminer.core.GlossaryMode
 import kotlinx.coroutines.flow.first
@@ -142,6 +143,7 @@ fun SettingsScreen(modifier: Modifier = Modifier, onOpen: (String) -> Unit = {})
             "Anki",
             "Backend, deck, note type and fields" + if (ankiDeck.isNotBlank()) " · deck: $ankiDeck" else "",
         ) { onOpen(io.github.wilsonnet.droidsentenceminer.PAGE_ANKI) }
+        AiSettingsRow(onOpen = { onOpen(PAGE_AI) })
         LanguageLookupOptionsCard(languageCode = language.code)
 
         Card(Modifier.fillMaxWidth()) {

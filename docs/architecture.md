@@ -143,6 +143,28 @@ reuse the engine with their own pack. Code per language is plain Kotlin of a few
 cannot safely load downloaded code in a sideloaded APK, so modules ship in the APK and only data is
 downloaded. Adding a language: `.opencode/skills/dsm-language/SKILL.md`.
 
+## AI explanations (`ai/`)
+
+- **Providers are data, protocols are code.** `AiProvider` rows (`AiProviders.ALL`) name a base URL,
+  key page, protocol and quirks (`modelsUrl`, `hasSessionHeader`, `extraBody`); `AiProtocol` is one of
+  OpenAI Chat Completions, Anthropic Messages, Gemini `streamGenerateContent`. `AiWire` builds URLs,
+  headers and bodies, `AiStream` parses SSE events, model lists and error bodies (both pure, unit
+  tested); `AiClient` (OkHttp) streams `AiDelta`s. A new provider is usually one row.
+- **Settings** (`AiPrefs`, DataStore): master switch, mode (app / API), provider, per-provider key
+  (AES-GCM with an Android Keystore key, `AiKeyStore`), model and base URL, prompt edits (built-in
+  id → template) and custom prompts (JSON), default prompt, card placement.
+- **Prompts** (`AiPrompts`, `AiPromptRenderer`): built-ins keep their `original`, so an edit is
+  restorable; placeholders are filled from `AiService.lookupContext` (word, sentence, lemma, reading,
+  first definition as plain text, study language).
+- **Popup** (`ui/components/AiAnswerPanel.kt`, `AiPopupState.kt`): `AiHeaderButton` + `AiOrDefinition`
+  wrap the existing lookup card/dialog; answers are cached per prompt for the popup's lifetime.
+- **App hand-off** (`AiApps`): `ACTION_SEND` text/plain to a known AI app's package (manifest
+  `<queries>`), new task, clipboard copy for apps not known to prefill.
+- **Cards** (`AiCardNotes`): a finished popup answer is kept per expression for 30 min;
+  `CardMiner.mine` applies it after `buildCard` — Markdown → HTML (`AiMarkdown.toHtml`) appended
+  or prepended to the glossary, or `AnkiCard.aiExplanation` → `CardFields.AI_EXPLANATION`, which is
+  never part of our own note types (AnkiDroid's API can't add fields to an existing one).
+
 ## Dictionary compatibility
 
 Yomitan/Yomichan format 3 (and legacy format 2) zips are supported:

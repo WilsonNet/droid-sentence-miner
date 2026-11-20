@@ -30,6 +30,10 @@ The app makes a network request only for a feature you use:
 | Your AnkiConnect URL | When mining with the AnkiConnect backend. |
 | JapanesePod101, Jisho | Word audio lookup when **Word audio** is enabled. |
 | Your custom audio URL | If you configure one. |
+| Your AI provider (Gemini, OpenAI, Anthropic, OpenRouter, your own server…) | Only when you tap the AI button with an API key set: the prompt (the word, its sentence, dictionary form, reading and first definition) goes to that provider. The key is stored encrypted on the phone. Turn AI off in **Settings → AI explanations**. |
+
+In **AI app** mode the prompt is handed to the AI app you picked (Gemini, Claude…) through
+Android's share sheet; that app's own terms apply from there.
 
 Google ML Kit runs on-device. Model updates, if any, are managed by Google Play services under
 Google's terms, not by Droid Sentence Miner.

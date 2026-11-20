@@ -93,6 +93,7 @@ export default defineConfig({
             { label: "Texts and sentence audio", slug: "docs/guides/texts-and-audio" },
             { label: "Anki mining", slug: "docs/guides/anki" },
             { label: "Languages", slug: "docs/guides/languages" },
+            { label: "AI explanations", slug: "docs/guides/ai" },
           ],
           label: "Guides",
         },

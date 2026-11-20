@@ -31,6 +31,7 @@ object AnkiFieldMapper {
             // Languages with IPA instead of a reading: a note type's "Reading" takes the IPA when it has no IPA field.
             CardFields.IPA to listOf("ipa", "pronunciation", "phonetic", "phonetics", "transcription", "reading", "wordreading"),
             CardFields.GENDER to listOf("gender", "article", "artikel", "genus"),
+            CardFields.AI_EXPLANATION to listOf("aiexplanation", "grammar", "grammarexplanation", "grammarnotes", "ai", "ainotes"),
         )
 
     /** Fields that unambiguously hold the sentence clip (preferred over a plain "Audio"). */

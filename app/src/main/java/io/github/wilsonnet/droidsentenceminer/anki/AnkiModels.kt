@@ -39,6 +39,8 @@ data class AnkiCard(
     val ipa: String = "",
     /** A noun's article / gender ("der", "die/das"); empty for other words and languages without gender. */
     val gender: String = "",
+    /** The popup's AI answer as HTML, for a field of its own ([CardFields.AI_EXPLANATION]); empty: none. */
+    val aiExplanation: String = "",
     /**
      * The contents this card carries ([CardFields] names: the study language's, minus the ones turned
      * off): our note type is created with these fields, other note types get only these filled.
@@ -49,6 +51,9 @@ data class AnkiCard(
     /** Dictionary images referenced by [meaningHtml] (`src="<name>"`), stored as Anki media on add. */
     val glossaryMedia: List<GlossaryMedia> = emptyList(),
 ) {
+    /** The contents field matching fills: [fields], plus the AI explanation when there is one. */
+    val mappedFields: List<String> get() = if (aiExplanation.isBlank()) fields else fields + CardFields.AI_EXPLANATION
+
     override fun equals(other: Any?): Boolean = this === other
     override fun hashCode(): Int = System.identityHashCode(this)
 }
@@ -96,6 +101,9 @@ object CardFields {
     /** A noun's article (German der/die/das). */
     const val GENDER = "Gender"
 
+    /** The lookup popup's AI answer, when Settings → AI puts it in a field of its own (never part of our note types). */
+    const val AI_EXPLANATION = "AiExplanation"
+
     /** Japanese cards (and the historic order of the "Droid Sentence Miner" note type). */
     val ORDER = listOf(EXPRESSION, READING, MEANING, SENTENCE, IMAGE, AUDIO, SOURCE, WORD_AUDIO, PITCH_GRAPH)
 
@@ -136,6 +144,7 @@ object CardFields {
         PITCH_GRAPH -> "Pitch graph"
         IPA -> "IPA pronunciation"
         GENDER -> "Gender (article)"
+        AI_EXPLANATION -> "AI explanation"
         else -> "Nothing"
     }
 }

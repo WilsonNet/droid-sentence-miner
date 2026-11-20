@@ -6,6 +6,22 @@ versions are the `v*` tags that publish a signed APK on
 
 ## [Unreleased]
 
+### Added
+- **AI explanations.** An ✦ button in the lookup popup asks for a grammar breakdown of the
+  sentence, focused on the word you tapped (its form, the patterns around it, a natural
+  translation). Two ways: **AI app** opens Gemini with the prompt already typed (Claude, ChatGPT
+  and others through the share sheet, prompt also copied) — free, nothing to set up; **API key**
+  streams the answer into the popup from Google Gemini (free tier), Groq, Cerebras, Mistral,
+  OpenRouter, OpenAI, Anthropic, DeepSeek, xAI, OpenCode Go, Ollama on your computer, or any
+  OpenAI-, Anthropic- or Gemini-compatible endpoint. Keys are stored encrypted.
+- **Editable prompts**: *Grammar*, *Translate* and *Word nuance* built in, add your own, with
+  `{word}`, `{sentence}`, `{lemma}`, `{reading}`, `{definition}` and `{language}` placeholders.
+  Edited built-ins can always go back with *Restore original*.
+- **AI answers on cards**: an answer you opened goes after (or before) the glossary, or into its own
+  field (*Grammar* / *AI Explanation*, or any field set to *AI explanation* in *Settings → Anki →
+  Fields*). Mining never calls the AI by itself.
+- **One switch to turn AI off** (*Settings → AI explanations*): no AI button anywhere, nothing sent.
+
 ## [0.10.0] — 2026-11-20
 
 ### Added

@@ -434,7 +434,7 @@ private fun FieldMappingRow(field: String, canonical: String, onPick: (String) -
                 Icon(Icons.Default.ArrowDropDown, contentDescription = null)
             }
             DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-                (listOf("") + CardFields.current).forEach { option ->
+                (listOf("") + CardFields.current + CardFields.AI_EXPLANATION).forEach { option ->
                     DropdownMenuItem(
                         text = { Text(CardFields.label(option)) },
                         onClick = {

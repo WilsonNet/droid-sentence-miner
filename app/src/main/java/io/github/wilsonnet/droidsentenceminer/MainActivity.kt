@@ -42,6 +42,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
 import io.github.wilsonnet.droidsentenceminer.ui.components.ReadableWidth
 import io.github.wilsonnet.droidsentenceminer.ui.components.WhatsNewOnUpdate
+import io.github.wilsonnet.droidsentenceminer.ui.screens.AiSettingsScreen
 import io.github.wilsonnet.droidsentenceminer.ui.screens.AnkiScreen
 import io.github.wilsonnet.droidsentenceminer.ui.screens.BookScreen
 import io.github.wilsonnet.droidsentenceminer.ui.screens.DictionaryScreen
@@ -215,6 +216,7 @@ private fun AppTabContent(
                 when (settingsPage) {
                     PAGE_DICTIONARIES -> SettingsSubPage({ onOpenSettingsPage(null) }, inner) { DictionaryScreen(it) }
                     PAGE_ANKI -> SettingsSubPage({ onOpenSettingsPage(null) }, inner) { AnkiScreen(it) }
+                    PAGE_AI -> SettingsSubPage({ onOpenSettingsPage(null) }, inner) { AiSettingsScreen(it) }
                     else -> SettingsScreen(inner, onOpen = { onOpenSettingsPage(it) })
                 }
             }
@@ -224,6 +226,9 @@ private fun AppTabContent(
 
 const val PAGE_DICTIONARIES = "dictionaries"
 const val PAGE_ANKI = "anki"
+
+/** Settings → AI explanations. */
+const val PAGE_AI = "ai"
 
 @Composable
 private fun SettingsSubPage(

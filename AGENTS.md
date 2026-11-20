@@ -151,7 +151,7 @@ Endpoints: `/state`, `/scan`, `/frame.png`, `/ocr` (`l,t,r,b` crops the file fir
 `/word_audio?term=`, `/autoocr?on=1|0`, `/lines?limit=`, `/clip.wav?id=&trim=0|1`, `/line_shot.jpg?id=`, `/mine_line?id=&word=`,
 `/set_region?l=&t=&r=&b=&orientation=`, `/clear_lines`, `/add_line?text=&ago=&dur=`,
 `/quick?l=&t=&r=&b=` (bubble quick lookup of a box), `/whats_new?reset=1|show=1` (update dialog), `/manga_ocr?file=&engine=local|lens|lensreg|mlkit&raw=1` (manga page OCR; `?models=install|status` downloads the manga models), `/manga_enhance?file=&w=&h=&method=&ai=1` (manga page filter benchmark),
-`/card_contents` (Anki contents the current field mapping receives), `/card_fields?word=&sentence=` (a card's IPA/gender/lemma/word audio, not added), `/install_ocr_models` (meikiocr download), `/ocr?engine=meiki|mlkit`, `/select_areas` (opens the area editor),
+`/card_contents` (Anki contents the current field mapping receives), `/ai`, `/ai_ask`, `/ai_models`, `/ai_send` (AI explanations), `/card_fields?word=&sentence=` (a card's IPA/gender/lemma/word audio, not added), `/install_ocr_models` (meikiocr download), `/ocr?engine=meiki|mlkit`, `/select_areas` (opens the area editor),
 `/install_dict?id=jitendex|jmnedict|pixiv-light` (background install; progress in `/state.dictInstall`),
 `/drive_list?url=` (public Drive folder listing), `/install_drive?url=` (public Drive file, same progress),
 `/anki_notes?word=` (field-level card verification via the AnkiDroid provider),
@@ -669,6 +669,16 @@ See `.opencode/skills/dsm-debug-api/SKILL.md` for the full reference and recipes
   Benchmark: `/manga_enhance` + `tools/manga-eval/enhance_bench.py`. Always also *look* at a real
   page at phone size: 0.9.0 scored well but drew white halos (fixed in 0.9.1 by clamping Lanczos
   ringing when shrinking and AI pixels brighter than their 2×2 source).
+- **AI explanations** (`ai/`, `ui/components/AiAnswerPanel.kt`, `ui/screens/Ai*.kt`; `docs/architecture.md`):
+  a provider is an `AiProvider` row, a wire format an `AiProtocol` (OpenAI chat / Anthropic / Gemini).
+  OpenCode Go refuses requests without `x-opencode-session` (`MissingSessionID`) and wants a
+  client User-Agent; its reasoning models wait ~8 s before the first token, `extraBody`
+  `{"thinking":{"type":"disabled"}}` halves that (deepseek-v4.1-flash 8.5 → 4.6 s, glm-5.3 11.9 → 5.5 s).
+  Gemini's app prefills shared text (`ACTION_SEND` to `com.google.android.apps.bard`, which opens in
+  `googlequicksearchbox`) but never sends it. AnkiDroid's API can't add a field to an existing note
+  type, so *own field* fills a *Grammar*/*AI Explanation* field the user adds (or a mapped one) and
+  `AI_EXPLANATION` stays out of `CardFields.forLanguage` (our note types/templates unchanged).
+  Test with `/ai`, `/ai_ask`, `/ai_models`, `/ai_send`; never commit a key (set it over adb only).
 - **New debug endpoints go in `debug/DebugExtras.kt`** (routed by one `if` before `DebugApi`'s
   `when`): adding a `when` branch, or editing any branch, resurfaces ~90 baselined findings.
 
@@ -698,6 +708,7 @@ app/src/main/java/io/github/wilsonnet/droidsentenceminer/
 ├── book/      Book mode: page photo loading, ML Kit page OCR, tategaki layout
 ├── manga/     Manga .cbz reader: CBZ archive, .mokuro parser, on-device manga OCR (models, region grouping), Lens/ML Kit + Manatan grouping, batch pre-OCR, Room DB (manga.db), Drive/local import queue
 ├── ui/        Compose screens, theme, lookup dialogs, audio editor, panel cropper, What's new dialog
+├── ai/        AI explanations: provider presets, OpenAI/Anthropic/Gemini wire + SSE parsing, prompts, encrypted keys, app hand-off, answers for cards
 ├── update/    In-app updater (GitHub releases), What's new (bundled CHANGELOG.md)
 └── core/      Settings (DataStore)
 

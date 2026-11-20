@@ -139,12 +139,13 @@ class AnkiDroidBridge(private val context: Context) : AnkiBridge {
                         CardFields.PITCH_GRAPH to card.pitchGraphHtml,
                         CardFields.IPA to card.ipa,
                         CardFields.GENDER to card.gender,
+                        CardFields.AI_EXPLANATION to card.aiExplanation,
                     )
                 val t2 = android.os.SystemClock.elapsedRealtime()
                 android.util.Log.i("DSM-Mine", "AnkiDroid: deck/model ${t1 - t0} ms, media ${t2 - t1} ms")
                 val fieldNames = api.getFieldList(modelId)?.toList() ?: card.fields
                 val fields =
-                    AnkiFieldMapper.mapToArray(fieldNames = fieldNames, values = values, custom = fieldMap, canonicals = card.fields)
+                    AnkiFieldMapper.mapToArray(fieldNames = fieldNames, values = values, custom = fieldMap, canonicals = card.mappedFields)
                 val tags = card.tags.toSet()
 
                 if (api.findDuplicateNotes(modelId, card.expression).isNotEmpty()) {

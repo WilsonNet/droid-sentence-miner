@@ -2,6 +2,7 @@ package io.github.wilsonnet.droidsentenceminer.anki
 
 import android.content.Context
 import android.graphics.Bitmap
+import io.github.wilsonnet.droidsentenceminer.ai.AiCardNotes
 import io.github.wilsonnet.droidsentenceminer.audio.AudioSegment
 import io.github.wilsonnet.droidsentenceminer.audio.M4aEncoder
 import io.github.wilsonnet.droidsentenceminer.core.DsmPrefs
@@ -188,6 +189,8 @@ class CardMiner(
         (ankiClient.isDuplicate(expression) as? AnkiResult.Success)?.value
     }
 
+    /** Builds [word]'s card (with the popup's AI answer, see [AiCardNotes]), adds it to Anki and logs it in the history. */
+    @Suppress("MultilineExpressionWrapping") // Legacy expression body; ktlint's wrapping rules disagree on these (dsm-lint skill).
     suspend fun mine(
         word: String,
         sentence: String,
@@ -198,7 +201,8 @@ class CardMiner(
         wordAudioFetch: Deferred<WordAudio.Clip?>? = null,
     ): AnkiResult<String> = withContext(Dispatchers.IO) {
         val t0 = android.os.SystemClock.elapsedRealtime()
-        val card = buildCard(word, sentence, image, details, audio, wordAudioFetch)
+        val built = buildCard(word, sentence, image, details, audio, wordAudioFetch)
+        val card = AiCardNotes.applyTo(context, built)
         val snapshot = prefs.snapshot()
         val t1 = android.os.SystemClock.elapsedRealtime()
 

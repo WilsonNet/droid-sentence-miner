@@ -569,14 +569,25 @@ fun WordLookupDialog(
         )
     val onTap = recursiveTap(stack)
     if (stack.size > 1) androidx.activity.compose.BackHandler { stack.removeAt(stack.lastIndex) }
+    val ai = rememberAiPopupState(word = entry.word, sentence = entry.sentence)
+    val aiSettings = rememberAiSettings()
+    val aiLookup = aiLookupContext(word = entry.word, sentence = entry.sentence, details = state.details)
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { LookupHeader(state, entry.word, onBack = if (stack.size > 1) ({ stack.removeAt(stack.lastIndex) }) else null) },
+        title = {
+            Row(verticalAlignment = Alignment.Top) {
+                val back: (() -> Unit)? = if (stack.size > 1) ({ stack.removeAt(stack.lastIndex) }) else null
+                LookupHeader(state = state, word = entry.word, modifier = Modifier.weight(1f), onBack = back)
+                AiHeaderButton(state = ai, settings = aiSettings, lookup = aiLookup)
+            }
+        },
         text = {
             // No verticalScroll here: the WebView scrolls itself, and an outer scroll fought it for drags.
             Column(Modifier.heightIn(max = 420.dp)) {
-                LookupBody(state, dark, maxHeight = 360.dp, onTextTap = onTap, onEntryMine = { mine(it, null) }, onEntryEdit = edit)
+                AiOrDefinition(state = ai, settings = aiSettings, lookup = aiLookup, maxHeight = 400.dp, handleBack = true) {
+                    LookupBody(state, dark, maxHeight = 360.dp, onTextTap = onTap, onEntryMine = { mine(it, null) }, onEntryEdit = edit)
+                }
                 state.status?.let {
                     Spacer(Modifier.size(8.dp))
                     Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
@@ -715,6 +726,9 @@ fun WordLookupCard(
             openEditor = openEditor,
         )
     val onTap = recursiveTap(stack)
+    val ai = rememberAiPopupState(word = entry.word, sentence = entry.sentence)
+    val aiSettings = rememberAiSettings()
+    val aiLookup = aiLookupContext(word = entry.word, sentence = entry.sentence, details = state.details)
     var pendingCropEntry by remember { mutableStateOf<Int?>(null) }
     val triggerMine: (Int) -> Unit = { idx ->
         if (cropOnMine && pageImage != null) {
@@ -759,6 +773,7 @@ fun WordLookupCard(
                     onBack = if (stack.size > 1) ({ stack.removeAt(stack.lastIndex) }) else null,
                 )
                 MineButton(state, onClick = { triggerMine(0) }, onEdit = { edit(0) })
+                AiHeaderButton(state = ai, settings = aiSettings, lookup = aiLookup)
                 androidx.compose.material3.IconButton(onClick = onDismiss) {
                     Icon(Icons.Default.Close, contentDescription = "Close")
                 }
@@ -770,14 +785,16 @@ fun WordLookupCard(
             // The rest of the card, whatever the header took: a fixed guess for the header clipped the
             // bottom of the definition when the header was taller (deinflection line, error, back).
             Box(Modifier.weight(1f, fill = false).padding(end = 8.dp)) {
-                LookupBody(
-                    state = state,
-                    dark = dark,
-                    maxHeight = maxHeight,
-                    onTextTap = onTap,
-                    onEntryMine = triggerMine,
-                    onEntryEdit = edit,
-                )
+                AiOrDefinition(state = ai, settings = aiSettings, lookup = aiLookup, maxHeight = maxHeight, handleBack = handleBack) {
+                    LookupBody(
+                        state = state,
+                        dark = dark,
+                        maxHeight = maxHeight,
+                        onTextTap = onTap,
+                        onEntryMine = triggerMine,
+                        onEntryEdit = edit,
+                    )
+                }
             }
         }
     }

@@ -25,6 +25,11 @@
             <action android:name="android.intent.action.PROCESS_TEXT" />
             <data android:mimeType="text/plain" />
         </intent>
+        <!-- AI apps (Gemini, Claude, ChatGPT…) the lookup popup hands prompts to: ai/AiApps.kt -->
+        <intent>
+            <action android:name="android.intent.action.SEND" />
+            <data android:mimeType="text/plain" />
+        </intent>
     </queries>
 
     <application
